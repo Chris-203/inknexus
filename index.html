@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#101218">
 <title>InkNexus</title>
@@ -78,7 +78,11 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
 .rbar button{background:var(--surface);border:1px solid var(--line);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;padding:0}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-iframe.frame{display:block;width:100%;height:calc(100dvh - 110px);border:0;background:#fff}
+/* in-app site view: the − / + buttons render the site narrower (--fz) and scale it back up to fill the screen,
+   like the browser's text zoom; pinching over another site's page cannot be caught by the app */
+.fwrap{height:calc(100dvh - 110px);overflow:hidden;touch-action:pan-x pan-y}
+iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc((100dvh - 110px) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
+.rbar .fz{width:34px;font-size:17px}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:36px;min-height:36px;padding:0;vertical-align:middle}
@@ -379,14 +383,19 @@ function zoomable(wrap,pages){
    the reader's own pinch uses touch events, which still arrive. */
 for(const g of ['gesturestart','gesturechange'])document.addEventListener(g,e=>e.preventDefault(),{passive:false});
 
+/* Site-view zoom per site, kept on this device only (not in the library or backups). */
+const FZ_KEY='inknexus-frame-zoom',FZ_STEPS=[1,1.25,1.5,1.75,2];
+const fzGet=h=>{try{return JSON.parse(localStorage.getItem(FZ_KEY)||'{}')[h]||1}catch(e){return 1}};
+const fzSet=(h,z)=>{try{const m=JSON.parse(localStorage.getItem(FZ_KEY)||'{}');m[h]=z;localStorage.setItem(FZ_KEY,JSON.stringify(m))}catch(e){}};
 function vFrame(){
   const x=find(V.id),l=x&&x.links[V.i];if(!l)return go({name:'library'});
-  const u=V.url||l.url;
+  const u=V.url||l.url,fz=fzGet(host(u));
   app.innerHTML=`<div class="rbar"><button data-a="fback" aria-label="Back to series">‹</button><b>${esc(l.label||host(l.url))}</b>
   ${V.ch&&l.tpl?`<button data-a="fnext" aria-label="Mark read and open next chapter" style="width:auto;padding:0 10px;font-size:13px">Next ›</button>`:`<button data-a="finc" aria-label="Mark next chapter read" style="width:auto;padding:0 10px;font-size:13px">+1 ch</button>`}
   <button data-a="paste" data-i="${V.i}" aria-label="Update chapter from copied link" style="width:auto;padding:0 10px;font-size:13px">Paste</button>
+  <button class="fz" data-a="fzoom" data-d="-1" aria-label="Zoom the site out" ${fz<=FZ_STEPS[0]?'disabled':''}>−</button><button class="fz" data-a="fzoom" data-d="1" aria-label="Zoom the site in" ${fz>=FZ_STEPS[FZ_STEPS.length-1]?'disabled':''}>+</button>
   <a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">Browser</a></div>
-  <iframe class="frame" src="${esc(u)}" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer" title="${esc(x.title)}"></iframe>`;
+  <div class="fwrap"><iframe class="frame" style="--fz:${fz}" src="${esc(u)}" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer" title="${esc(x.title)}"></iframe></div>`;
 }
 
 /* ---------- events ---------- */
@@ -429,6 +438,13 @@ document.addEventListener('click',async e=>{
     if(V.name!=='frame')render();
   }
   else if(a==='fback')go({name:'series',id:V.id,src:V.src});
+  else if(a==='fzoom'){
+    /* change the zoom in place so the site keeps its scroll position */
+    const f=$('iframe.frame'),h=host(f.getAttribute('src')),i=FZ_STEPS.indexOf(fzGet(h)),z=FZ_STEPS[Math.min(FZ_STEPS.length-1,Math.max(0,(i<0?0:i)+(+b.dataset.d)))];
+    fzSet(h,z);f.style.setProperty('--fz',z);
+    document.querySelectorAll('[data-a=fzoom]').forEach(k=>k.disabled=(+k.dataset.d<0?z<=FZ_STEPS[0]:z>=FZ_STEPS[FZ_STEPS.length-1]));
+    toast(`Site zoom ${Math.round(z*100)}%`);
+  }
   else if(a==='finc'){x.last=Math.floor(x.last||0)+1;x.t=Date.now();save();toast('Now on chapter '+x.last)}
   else if(a==='src'){V.src=id;x.src=id;save();render()}
   else if(a==='hide'){
