@@ -107,14 +107,22 @@ const save=()=>{try{localStorage.setItem('longstrip',JSON.stringify(S))}catch(e)
    Each reader source implements: search(q), chapters(ref), pages(chapterId).
    Add another licensed/open API here and it shows up everywhere. */
 const MD='https://api.mangadex.org';
-const DEFAULT_PROXY=''; // intentionally empty: set per device via your private setup link (see README)
+const DEFAULT_PROXY='/api/mangadex'; // same-origin Vercel Function (api/mangadex.js)
+/* S.proxy (set by an old #proxy= setup link) still overrides it for now. */
+const apiHint=(st,own)=>st===429?'MangaDex is rate-limiting, wait a minute and try again'
+  :st===403?(own?'your proxy refused it; clear it in Connection settings':'request refused; reload the page and try again')
+  :st===404?'not found on MangaDex'
+  :st>=500?'MangaDex or the relay is down, try again later'
+  :'try again later';
 const api=async u=>{
-  const p=S.proxy||DEFAULT_PROXY;
-  if(!p)throw new Error('no proxy set');
-  const r=await fetch(p?`${p}?url=${encodeURIComponent(u)}`:u);
-  if(!r.ok)throw new Error('HTTP '+r.status);
+  const own=!!S.proxy,p=S.proxy||DEFAULT_PROXY;
+  let r;
+  try{r=await fetch(`${p}?url=${encodeURIComponent(u)}`)}
+  catch(e){throw new Error(own?'could not reach your proxy; clear it in Connection settings':'network error; check your connection and try again')}
+  if(!r.ok)throw new Error(`HTTP ${r.status}: ${apiHint(r.status,own)}`);
   return r;
 };
+const why=e=>(e&&e.message)||'unknown error';
 const RATING='&contentRating[]=safe&contentRating[]=suggestive';
 const Sources={
   mangadex:{
@@ -252,7 +260,7 @@ function vSeries(){
     const chs=cache[x.md];
     if(!chs){
       body='<p class="hint">Loading chapters…</p>';
-      Sources.mangadex.chapters(x.md).then(c=>{cache[x.md]=c}).catch(()=>{cache[x.md]=[];toast('Could not reach MangaDex')})
+      Sources.mangadex.chapters(x.md).then(c=>{cache[x.md]=c}).catch(e=>{cache[x.md]=[];toast('Could not load chapters from MangaDex ('+why(e)+')')})
         .finally(()=>{if(V.name==='series'&&V.id===x.id)render()});
     }else if(!chs.length){
       body='<p class="hint">No readable English chapters here. Switch to another source.</p>';
@@ -301,7 +309,7 @@ async function vReader(){
       if(en[0].isIntersecting){ob.disconnect();
         if(V.n>(x.last||0)){x.last=V.n;x.t=Date.now();save();toast(`Chapter ${fmt(V.n)} marked read`)}}
     },{threshold:.6}).observe($('#end'));
-  }catch(e){if(V.tok===tok)$('#strip').innerHTML='<p class="hint">Could not load this chapter. Check your connection, or try a different source.</p>'}
+  }catch(e){if(V.tok===tok)$('#strip').innerHTML='<p class="hint">Could not load this chapter ('+esc(why(e))+'). Try again, or switch to a different source.</p>'}
 }
 
 function vFrame(){
@@ -403,7 +411,7 @@ document.addEventListener('click',async e=>{
     $('#mres').innerHTML='<p class="hint">Searching…</p>';
     try{V.mres=await Sources.mangadex.search(x.title);
       $('#mres').innerHTML=V.mres.length?V.mres.map((o,i)=>`<div class="res"><img src="${esc(o.cover)}" alt=""><div><b>${esc(o.title)}</b></div><button class="btn sm" style="margin:0;width:auto" data-a="pickmd" data-i="${i}">Use</button></div>`).join(''):'<p class="hint">No match on MangaDex.</p>';
-    }catch(err){$('#mres').innerHTML='<p class="hint">Could not reach MangaDex.</p>'}
+    }catch(err){$('#mres').innerHTML='<p class="hint">Could not reach MangaDex ('+esc(why(err))+').</p>'}
   }
   else if(a==='pickmd'){
     const o=V.mres[+b.dataset.i];x.md=o.ref;x.mdh=false;if(!x.cover)x.cover=o.cover;V.src='md';x.src='md';save();closeModal();render();
@@ -431,7 +439,7 @@ document.addEventListener('submit',async e=>{
     V.res=[...(a1.value||[]),...(b1.value||[])];$('#res').innerHTML=resList(V.res);
     if(a1.status==='rejected')toast('MangaDex failed ('+((a1.reason&&a1.reason.message)||'blocked')+'). Showing AniList only.');
     if(b1.status==='rejected')toast('AniList failed ('+((b1.reason&&b1.reason.message)||'blocked')+'). Showing MangaDex only.')}
-    catch(err){$('#res').innerHTML='<p class="hint">Could not reach MangaDex or AniList. If your connection is fine, the browser may be blocking it: set up a proxy in Connection settings below, or add the series by link.</p>'}
+    catch(err){$('#res').innerHTML='<p class="hint">Could not reach MangaDex or AniList. Check your connection and try again, or add the series by link.</p>'}
   }else if(f.id==='mf'){
     const d=new FormData(f);
     let url=d.get('url').trim();const r=parseChUrl(url),given=parseFloat(d.get('ch'));
