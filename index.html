@@ -210,7 +210,7 @@ function addItem(o){
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
 /* Link-only sites: a name and the site's main address, prefilled so you only add the series path.
    Sites move domains often; edit the address here when one changes. */
-const PRESETS=[['Asura Scans','https://asuracomic.net/'],['Thunder Scans','https://en-thunderscans.com/'],['Comix','https://comix.to/'],
+const PRESETS=[['Asura Scans','https://asurascans.com/comics/'],['Thunder Scans','https://en-thunderscans.com/'],['Comix','https://comix.to/'],['Toonily','https://toonily.com/'],
   ['Tapas','https://tapas.io/'],['MANGA Plus','https://mangaplus.shueisha.co.jp/']];
 const presetHtml=()=>`<div class="presets">${PRESETS.map(([n],i)=>`<button type="button" class="chip" data-a="preset" data-i="${i}">${n}</button>`).join('')}</div>`;
 function parseChUrl(u){
