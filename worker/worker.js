@@ -2,7 +2,7 @@
 // Put your deployed site address(es) in ALLOWED. Requests from any other website are refused.
 // Note: opening the worker URL directly in a browser tab also shows "blocked" (no Origin header). That is expected.
 const ALLOWED = [
-  "https://YOUR-SITE.vercel.app",
+  "https://inknexus-psi.vercel.app",
 ];
 
 export default {

@@ -35,7 +35,7 @@ The worker only forwards requests to `api.mangadex.org`, and only for the site(s
 ### Connecting a device (keeps the proxy out of the repo)
 The proxy address is not stored in this repo. Open this once on each device and browser you use:
 
-`https://YOUR-SITE.vercel.app/#proxy=https://your-worker.workers.dev`
+`https://inknexus-psi.vercel.app/#proxy=https://your-worker.workers.dev`
 
 The app saves it in that browser's storage and removes it from the address bar. You can also paste it under Find > Connection settings. Backups never contain the proxy.
 
