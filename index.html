@@ -68,6 +68,8 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .ch{display:flex;justify-content:space-between;gap:12px;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:13px 16px;text-align:left;cursor:pointer}
 .ch span{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch.read{opacity:.45}
+.credit{color:var(--muted);font-size:13px;padding:10px 16px;margin:0}
+.credit a{color:var(--accent);display:inline-block;padding:6px 0}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}
 .rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
 .rbar button{background:var(--surface);border:1px solid var(--line);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;padding:0}
@@ -140,7 +142,7 @@ const Sources={
     async chapters(ref){
       let out=[],off=0,total=1;
       while(off<total&&off<3000){
-        const r=await api(`${MD}/manga/${ref}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=500&offset=${off}&includeExternalUrl=1${RATING}`);
+        const r=await api(`${MD}/manga/${ref}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=500&offset=${off}&includeExternalUrl=1&includes[]=scanlation_group${RATING}`);
         const j=await r.json();
         total=j.total||0;off+=500;out.push(...(j.data||[]));
       }
@@ -151,7 +153,8 @@ const Sources={
         if(!ext&&!(c.attributes.pages>0))continue;
         const cur=byNum.get(n);
         if(cur&&(!cur.ext||ext))continue;
-        byNum.set(n,{id:c.id,num:n,title:c.attributes.title||'',ext});
+        const grp=(c.relationships||[]).filter(r=>r.type==='scanlation_group'&&r.attributes).map(r=>r.attributes.name).join(' & ');
+        byNum.set(n,{id:c.id,num:n,title:c.attributes.title||'',ext,grp});
       }
       const res=[...byNum.values()].sort((a,b)=>a.num-b.num);
       res.listed=out.length; // English chapters MangaDex returned, before dropping unreadable ones
@@ -276,8 +279,9 @@ function vSeries(){
       const asc=S.sort==='asc',list=asc?chs:[...chs].reverse();
       body=`<div class="row" style="align-items:center"><button class="btn ghost sm" data-a="sort">Sort: ${asc?'oldest first':'newest first'}</button><span class="sub">${chs.length} chapters, ${fmt(chs[0].num)} to ${fmt(chs[chs.length-1].num)}</span></div>`+
         (chs[0].num>1?`<p class="hint">Chapters before ${fmt(chs[0].num)} are not on MangaDex. Try another source for those.</p>`:'')+
-        list.map(c=>`<button class="ch ${c.num<=(x.last||0)?'read':''}" data-a="read" data-n="${c.num}"><b>Ch. ${fmt(c.num)}</b><span>${c.ext?'Official site ↗':esc(c.title)}</span></button>`).join('');
+        list.map(c=>`<button class="ch ${c.num<=(x.last||0)?'read':''}" data-a="read" data-n="${c.num}"><b>Ch. ${fmt(c.num)}</b><span>${esc([c.ext?'Official site ↗':c.title,c.grp].filter(Boolean).join(' · '))}</span></button>`).join('');
     }
+    body+=`<p class="credit">Chapters and data from MangaDex. Scanlation groups are credited on each chapter. <a href="https://mangadex.org/title/${esc(x.md)}" target="_blank" rel="noopener noreferrer">View on MangaDex ↗</a></p>`;
   }else if(V.src[0]==='l'){
     const i=+V.src.slice(1),l=x.links[i];
     if(l){const nx=Math.floor(x.last||0)+1;body=`<div class="pad">${l.resume?`<button class="btn" data-a="frame" data-i="${i}" data-resume="1">Resume ch. ${fmt(l.rn||0)} (saved link)</button>`:''}${l.tpl?`<button id="cont" class="btn" data-a="frame" data-cont="1" data-i="${i}" data-n="${nx}">Continue with ch. ${nx}</button>`:''}
@@ -307,9 +311,10 @@ async function vReader(){
     const pages=await Sources.mangadex.pages(c.id);
     if(V.tok!==tok)return;
     const prev=[...chs].reverse().find(k=>k.num<V.n),next=chs.find(k=>k.num>V.n);
-    $('#strip').innerHTML=pages.map(u=>`<img src="${esc(u.a)}" data-b="${esc(u.b)}" referrerpolicy="no-referrer" loading="lazy" alt="Page failed to load">`).join('')+
+    const credit=`<p class="credit">${c.grp?`Scanlation by ${esc(c.grp)}`:'No scanlation group credited'} · via MangaDex. <a href="https://mangadex.org/chapter/${esc(c.id)}" target="_blank" rel="noopener noreferrer">Read on MangaDex ↗</a></p>`;
+    $('#strip').innerHTML=credit+pages.map(u=>`<img src="${esc(u.a)}" data-b="${esc(u.b)}" referrerpolicy="no-referrer" loading="lazy" alt="Page failed to load">`).join('')+
       `<div id="end" class="endbar">${prev?`<button class="btn ghost" data-a="read" data-n="${prev.num}">‹ Ch. ${fmt(prev.num)}</button>`:''}
-       ${next?`<button class="btn" data-a="read" data-n="${next.num}">Ch. ${fmt(next.num)} ›</button>`:`<button class="btn" data-a="back">Back to series</button>`}</div>`;
+       ${next?`<button class="btn" data-a="read" data-n="${next.num}">Ch. ${fmt(next.num)} ›</button>`:`<button class="btn" data-a="back">Back to series</button>`}</div>`+credit;
     new IntersectionObserver((en,ob)=>{
       if(en[0].isIntersecting){ob.disconnect();
         if(V.n>(x.last||0)){x.last=V.n;x.t=Date.now();save();toast(`Chapter ${fmt(V.n)} marked read`)}}
