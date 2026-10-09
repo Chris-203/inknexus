@@ -80,9 +80,12 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* in-app site view: the − / + buttons render the site narrower (--fz) and scale it back up to fill the screen,
    like the browser's text zoom; pinching over another site's page cannot be caught by the app */
-.fwrap{height:calc(100dvh - 110px);overflow:hidden;touch-action:pan-x pan-y}
-iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc((100dvh - 110px) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
-.rbar .fz{width:34px;font-size:17px}
+.fwrap{--fh:calc(100dvh - 59px - env(safe-area-inset-top,0px));height:var(--fh);overflow:hidden;touch-action:pan-x pan-y}
+body.nonav{padding-bottom:0}
+.rbar.fbar{gap:6px}
+.rbar.fbar b{font-size:14px}
+iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc(var(--fh) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
+.rbar .fz{width:32px;font-size:17px}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:36px;min-height:36px;padding:0;vertical-align:middle}
@@ -243,6 +246,7 @@ const fmt=n=>Number.isInteger(n)?n:+n.toFixed(1);
 /* ---------- views ---------- */
 function render(){
   $('#nav').style.display=(V.name==='reader'||V.name==='frame')?'none':'flex';
+  document.body.classList.toggle('nonav',V.name==='frame');
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.id===(V.name==='search'?'search':'library')));
   ({library:vLibrary,search:vSearch,series:vSeries,reader:vReader,frame:vFrame})[V.name]();
 }
@@ -390,11 +394,11 @@ const fzSet=(h,z)=>{try{const m=JSON.parse(localStorage.getItem(FZ_KEY)||'{}');m
 function vFrame(){
   const x=find(V.id),l=x&&x.links[V.i];if(!l)return go({name:'library'});
   const u=V.url||l.url,fz=fzGet(host(u));
-  app.innerHTML=`<div class="rbar"><button data-a="fback" aria-label="Back to series">‹</button><b>${esc(l.label||host(l.url))}</b>
-  ${V.ch&&l.tpl?`<button data-a="fnext" aria-label="Mark read and open next chapter" style="width:auto;padding:0 10px;font-size:13px">Next ›</button>`:`<button data-a="finc" aria-label="Mark next chapter read" style="width:auto;padding:0 10px;font-size:13px">+1 ch</button>`}
-  <button data-a="paste" data-i="${V.i}" aria-label="Update chapter from copied link" style="width:auto;padding:0 10px;font-size:13px">Paste</button>
+  app.innerHTML=`<div class="rbar fbar"><button data-a="fback" aria-label="Back to series">‹</button><b>${esc(l.label||host(l.url))}</b>
+  ${V.ch&&l.tpl?`<button data-a="fnext" aria-label="Mark read and open next chapter" style="width:auto;padding:0 8px;font-size:13px">Next ›</button>`:`<button data-a="finc" aria-label="Mark next chapter read" style="width:auto;padding:0 8px;font-size:13px">+1 ch</button>`}
+  <button data-a="paste" data-i="${V.i}" aria-label="Update chapter from copied link" style="width:auto;padding:0 8px;font-size:13px">Paste</button>
   <button class="fz" data-a="fzoom" data-d="-1" aria-label="Zoom the site out" ${fz<=FZ_STEPS[0]?'disabled':''}>−</button><button class="fz" data-a="fzoom" data-d="1" aria-label="Zoom the site in" ${fz>=FZ_STEPS[FZ_STEPS.length-1]?'disabled':''}>+</button>
-  <a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">Browser</a></div>
+  <a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer" aria-label="Open in browser" style="padding:7px 10px">Open ↗</a></div>
   <div class="fwrap"><iframe class="frame" style="--fz:${fz}" src="${esc(u)}" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer" title="${esc(x.title)}"></iframe></div>`;
 }
 
