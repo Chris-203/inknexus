@@ -17,27 +17,17 @@ InkNexus does not host, scrape or copy chapter images from sites that don't offe
 
 ## Run it
 
-It is one static file, `index.html`. No build step.
+It is one static file, `index.html`, plus the MangaDex relay in `api/`. No build step.
 
 ### Vercel
 1. Push this repo to GitHub.
 2. On vercel.com choose Add New > Project, import the repo.
 3. Framework preset: **Other**. Leave build command and output directory empty. Deploy.
 
-### Cloudflare proxy (needed for MangaDex search)
-Browsers block direct calls to the MangaDex API, so `worker/worker.js` relays them.
-1. Create a Worker on Cloudflare and paste in `worker/worker.js`.
-2. Edit `ALLOWED` at the top to your deployed site address, then deploy.
-3. Copy the worker's URL (for example `https://name.account.workers.dev`).
+### MangaDex relay
+Browsers block direct calls to the MangaDex API, so `api/mangadex.js`, a Vercel Function deployed with the site, relays them at `/api/mangadex`. It works on production and on every preview with no setup. It only forwards GET requests to `https://api.mangadex.org`, and only for pages on the same site. Chapter images load directly from MangaDex, not through the relay.
 
-The worker only forwards requests to `api.mangadex.org`, and only for the site(s) in `ALLOWED`.
-
-### Connecting a device (keeps the proxy out of the repo)
-The proxy address is not stored in this repo. Open this once on each device and browser you use:
-
-`https://inknexus-psi.vercel.app/#proxy=https://your-worker.workers.dev`
-
-The app saves it in that browser's storage and removes it from the address bar. You can also paste it under Find > Connection settings. Backups never contain the proxy.
+To run it locally, use `vercel dev`. A plain static server serves the page but not `/api/mangadex`, so MangaDex search fails with HTTP 404.
 
 ## Data
 Your library is stored in your browser's local storage, separately for each browser and each installed home-screen shortcut. Use Export backup regularly and Import to move a library between browsers.

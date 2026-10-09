@@ -107,19 +107,17 @@ const save=()=>{try{localStorage.setItem('longstrip',JSON.stringify(S))}catch(e)
    Each reader source implements: search(q), chapters(ref), pages(chapterId).
    Add another licensed/open API here and it shows up everywhere. */
 const MD='https://api.mangadex.org';
-const DEFAULT_PROXY='/api/mangadex'; // same-origin Vercel Function (api/mangadex.js)
-/* S.proxy (set by an old #proxy= setup link) still overrides it for now. */
-const apiHint=(st,own)=>st===429?'MangaDex is rate-limiting, wait a minute and try again'
-  :st===403?(own?'your proxy refused it; clear it in Connection settings':'request refused; reload the page and try again')
+const RELAY='/api/mangadex'; // same-origin Vercel Function (api/mangadex.js)
+const apiHint=st=>st===429?'MangaDex is rate-limiting, wait a minute and try again'
+  :st===403?'request refused; reload the page and try again'
   :st===404?'not found on MangaDex'
   :st>=500?'MangaDex or the relay is down, try again later'
   :'try again later';
 const api=async u=>{
-  const own=!!S.proxy,p=S.proxy||DEFAULT_PROXY;
   let r;
-  try{r=await fetch(`${p}?url=${encodeURIComponent(u)}`)}
-  catch(e){throw new Error(own?'could not reach your proxy; clear it in Connection settings':'network error; check your connection and try again')}
-  if(!r.ok)throw new Error(`HTTP ${r.status}: ${apiHint(r.status,own)}`);
+  try{r=await fetch(`${RELAY}?url=${encodeURIComponent(u)}`)}
+  catch(e){throw new Error('network error; check your connection and try again')}
+  if(!r.ok)throw new Error(`HTTP ${r.status}: ${apiHint(r.status)}`);
   return r;
 };
 const why=e=>(e&&e.message)||'unknown error';
@@ -244,8 +242,7 @@ function vSearch(){
   <details class="manual"><summary>Add by link</summary>
   <form id="mf" class="stack"><input name="title" placeholder="Title" required>
   ${presetHtml()}<input name="label" placeholder="Site name (optional)"><input name="url" type="url" placeholder="https://…" required>
-  <input name="ch" type="number" step="any" min="0" placeholder="Chapter you're on (optional if the link has one)"><button class="btn">Add to library</button></form></details>
-  <div class="row"><button class="btn ghost sm" data-a="proxy">Connection settings</button></div>`;
+  <input name="ch" type="number" step="any" min="0" placeholder="Chapter you're on (optional if the link has one)"><button class="btn">Add to library</button></form></details>`;
 }
 
 function vSeries(){
@@ -416,12 +413,8 @@ document.addEventListener('click',async e=>{
   else if(a==='pickmd'){
     const o=V.mres[+b.dataset.i];x.md=o.ref;x.mdh=false;if(!x.cover)x.cover=o.cover;V.src='md';x.src='md';save();closeModal();render();
   }
-  else if(a==='proxy'){
-    const v=prompt('Proxy URL (your Cloudflare Worker address). Leave empty to clear it.',S.proxy||'');
-    if(v!==null){S.proxy=v.trim().replace(/\/+$/,'');save();toast(S.proxy?'Proxy saved on this device':'Proxy cleared');render()}
-  }
   else if(a==='export'){
-    const u=URL.createObjectURL(new Blob([JSON.stringify({...S,proxy:''})],{type:'application/json'}));
+    const u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));
     const l=document.createElement('a');l.href=u;l.download='inknexus-backup.json';l.click();URL.revokeObjectURL(u);
   }
   else if(a==='import')$('#imp').click();
@@ -470,7 +463,7 @@ document.addEventListener('change',e=>{
   if(e.target.id==='last'){syncLast(e);if(!$('#cont')&&V.src==='md')render()}
   if(e.target.id==='imp'){
     const file=e.target.files[0];if(!file)return;
-    file.text().then(t=>{const j=JSON.parse(t);if(Array.isArray(j.lib)){j.proxy=S.proxy;S=j;save();render();toast('Backup imported')}else throw 0})
+    file.text().then(t=>{const j=JSON.parse(t);if(Array.isArray(j.lib)){delete j.proxy;S=j;save();render();toast('Backup imported')}else throw 0})
       .catch(()=>toast('That file is not an InkNexus backup'));
     e.target.value='';
   }
@@ -483,11 +476,9 @@ document.addEventListener('error',e=>{
   else if(!toast.shown){toast.shown=1;toast('Some pages failed to load. Try another chapter or source.')}
 },true);
 
-/* One-time setup link: https://your-site/#proxy=https://your-worker.workers.dev
-   Saves the proxy on this device, then removes it from the address bar. */
 (function(){
-  const m=location.hash.match(/proxy=([^&]+)/);
-  if(m){S.proxy=decodeURIComponent(m[1]).replace(/\/+$/,'');save();history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>toast('Proxy saved on this device'),300)}
+  /* drop the worker address an old #proxy= setup link saved; MangaDex now goes through /api/mangadex */
+  if('proxy' in S){delete S.proxy;save()}
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 })();
 
