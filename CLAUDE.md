@@ -1,7 +1,7 @@
 # InkNexus
 
 Every series. One place. A mobile-first webtoon and manhwa tracker and reader.
-A static web app: no build step, no framework. Deployed on Vercel at https://inknexus-psi.vercel.app.
+Plain TypeScript, no framework, bundled by Vite. Deployed on Vercel at https://inknexus-psi.vercel.app.
 
 ## Workflow
 - `main` is protected. Every change goes through a branch and a pull request. Do not push to `main`.
@@ -16,27 +16,45 @@ A static web app: no build step, no framework. Deployed on Vercel at https://ink
 - Include screenshots or other media of the change in the PR body when there is anything visible to show.
 
 ## Check before committing
-The whole app lives in one inline script, so a syntax error blanks the page. Run:
+Run all three. The GitHub "Check" action runs them on every PR too.
 
 ```
-node -e "const s=require('fs').readFileSync('index.html','utf8');const m=s.match(/<script>([\s\S]*)<\/script>/)[1];new Function(m);console.log('syntax ok')"
+npm run typecheck
+npm test
+npm run build
 ```
+
+Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm run dev` serves the page without the relay, so MangaDex fails there.
 
 ## Layout
-- `index.html`: markup, CSS and all JS in one file
+- `index.html`: page shell and meta tags; loads `src/main.ts`
+- `src/main.ts`: event handlers: one delegated click handler keyed on `data-a` attributes, form submits, the last-chapter field, backup import
+- `src/views.ts`: navigation (`go()`, `goBack()`; views live in browser history so the phone back gesture works) and the views `vLibrary`, `vSearch`, `vSeries`, `vReader`, `vFrame`
+- `src/state.ts`: the library `S`, saved on every change. `src/ui.ts`: `$`, `esc`, `toast`, the bottom sheet
+- `src/lib/`: `api.ts` (`api()` and `RELAY`), `links.ts` (`parseChUrl()`, `linkFrom()`, `isWebUrl()`, `PRESETS`), `storage.ts` (the `longstrip` key; `toState()` checks saved and imported data), `chapters.ts` (session chapter cache, one load at a time), `updates.ts` (library "new" badges), `names.ts`, `zoom.ts` (reader pinch and double-tap), `types.ts`
+- `src/sources/`: `mangadex.ts` (`toChapterList()` is the chapter filter) and `anilist.ts`
+- `*.test.ts`: Vitest tests next to the code they test
+- `src/styles.css`: all styles
 - `api/mangadex.js`: Vercel Function that relays MangaDex API GETs (CORS workaround) at `/api/mangadex`, limited to `https://api.mangadex.org` and same-site requests
 - `assets/`: cover art (`cover.svg` is the source, `cover.png` is rendered from it)
-- `favicon.svg`, `apple-touch-icon.png`: icons
+- `public/`: icons, copied as-is into the build
+- `vercel.json`: builds with Vite into `dist/`
 
-Where things are in `index.html`: `Sources` (MangaDex and AniList), `api()` and `RELAY` (fetch through `/api/mangadex`), `parseChUrl()` (chapter number and URL pattern from a pasted link), the views `vLibrary`, `vSearch`, `vSeries`, `vReader`, `vFrame`, and one delegated click handler keyed on `data-a` attributes. State is the object `S`, saved to localStorage.
+Library data uses the field names in `src/lib/types.ts`. They match what is already saved in people's browsers, so do not rename them without a migration.
+
+## Code
+- **Keep styling consistent.** Use the existing classes and the color tokens in `:root`. Add a class rather than an inline `style`.
+- **Do not recreate existing logic.** Look for a helper before writing one (`why()`, `linkFrom()`, `resRow()`, `sourcesOf()`, `stepChapter()`), and extend it rather than copy it.
+- **No unnecessary complexity.** Pick the simplest thing that works. No framework, layer or workaround the problem does not need.
+- **No filler.** Comments explain why, not what. UI text, commit messages and PR bodies say what changed in plain sentences, without padding.
 
 ## Rules
 - **Storage key stays `longstrip`.** It predates the rename. Changing it makes every saved library look empty. If it ever must change, migrate the old key.
 - **The relay stays narrow.** `api/mangadex.js` forwards GET only, only to `https://api.mangadex.org` (checked with `new URL()`, not string prefixes), and only for same-site requests. Never turn it into an open proxy, add CORS headers, or relay image hosts or other sites. No secrets or hardcoded site addresses in the repo.
 - **Sources policy.** The built-in reader is only for sources with an API that allows it (MangaDex, under its API rules). Everything else is link-only: the user pastes a chapter link and the app reads the chapter number. For unlicensed scanlation sites the app may know a site's name and main address (for example to prefill a link), and may open the site's own page, but it must never fetch, scrape, mirror, proxy or hotlink their pages or images, and never read their chapters inside the app's reader.
 - **Original artwork only.** Do not add real covers, characters or logos. Cover art in `assets/` is original.
-- **Mobile first.** Check at about 390px wide. Keep visible focus states, keep touch targets large, respect `prefers-reduced-motion`.
+- **Mobile first.** Check at about 390px wide. Keep visible focus states, keep touch targets at least 44px, keep inputs at 16px text (iOS zooms in on smaller ones), respect `prefers-reduced-motion`. Do not block browser zoom; only the reader's pages have their own pinch zoom.
 - **Failure messages say what failed and what to do.** Do not swallow errors silently.
 
 ## Planned
-- Likely direction, not decided: split `index.html` into plain ES modules and a CSS file first, and move to Vite only if a build step starts to pay off (offline support, TypeScript, tests).
+- Possibly: offline support (a service worker).
