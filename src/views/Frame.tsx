@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp, type View } from '../context';
 import { pasteChapterLink } from '../lib/actions';
 import { fmt, host } from '../lib/links';
 import { setLast, useStore } from '../lib/store';
+import { FZ_STEPS, getFrameZoom, setFrameZoom, stepZoom } from '../lib/frameZoom';
 
 type FrameView = Extract<View, { name: 'frame' }>;
-const small = { width: 'auto', padding: '0 10px', fontSize: 13 } as const;
 
 /** A link-only source's own page, shown in the app. InkNexus never reads or copies its content. */
 export function Frame({ view }: { view: FrameView }) {
@@ -13,6 +13,8 @@ export function Frame({ view }: { view: FrameView }) {
   const { lib } = useStore();
   const x = lib.find((s) => s.id === view.id);
   const l = x?.links[view.i];
+  const site = host(view.url || l?.url || '');
+  const [fz, setFz] = useState(() => getFrameZoom(site));
 
   useEffect(() => {
     if (!l) navigate({ name: 'library' }, true);
@@ -26,6 +28,12 @@ export function Frame({ view }: { view: FrameView }) {
     toast(`Chapter ${fmt(view.ch)} marked read`);
     navigate({ ...view, ch: n, url: (l.tpl || '').replace('{n}', String(n)) }, true);
   };
+  const zoom = (d: 1 | -1) => {
+    const z = stepZoom(fz, d);
+    setFz(z);
+    setFrameZoom(site, z);
+    toast(`Site zoom ${Math.round(z * 100)}%`);
+  };
   const plusOne = () => {
     const n = Math.floor(x.last || 0) + 1;
     setLast(x.id, n);
@@ -34,28 +42,43 @@ export function Frame({ view }: { view: FrameView }) {
 
   return (
     <>
-      <div className="rbar">
+      <div className="rbar fbar">
         <button aria-label="Back to series" onClick={() => navigate({ name: 'series', id: x.id, src: view.src })}>
           ‹
         </button>
         <b>{l.label || host(l.url)}</b>
         {view.ch && l.tpl ? (
-          <button aria-label="Mark read and open next chapter" style={small} onClick={next}>
+          <button aria-label="Mark read and open next chapter" className="sm" onClick={next}>
             Next ›
           </button>
         ) : (
-          <button aria-label="Mark next chapter read" style={small} onClick={plusOne}>
+          <button aria-label="Mark next chapter read" className="sm" onClick={plusOne}>
             +1 ch
           </button>
         )}
-        <button aria-label="Update chapter from copied link" style={small} onClick={() => void pasteChapterLink(x.id, view.i, toast)}>
+        <button aria-label="Update chapter from copied link" className="sm" onClick={() => void pasteChapterLink(x.id, view.i, toast)}>
           Paste
         </button>
-        <a className="btn sm" href={u} target="_blank" rel="noopener noreferrer">
-          Browser
+        <button className="fz" aria-label="Zoom the site out" disabled={fz <= FZ_STEPS[0]} onClick={() => zoom(-1)}>
+          −
+        </button>
+        <button className="fz" aria-label="Zoom the site in" disabled={fz >= FZ_STEPS[FZ_STEPS.length - 1]!} onClick={() => zoom(1)}>
+          +
+        </button>
+        <a className="btn sm" href={u} target="_blank" rel="noopener noreferrer" aria-label="Open in browser" style={{ padding: '7px 10px' }}>
+          Open ↗
         </a>
       </div>
-      <iframe className="frame" src={u} sandbox="allow-scripts allow-same-origin allow-forms" referrerPolicy="no-referrer" title={x.title} />
+      <div className="fwrap">
+        <iframe
+          className="frame"
+          style={{ '--fz': fz } as React.CSSProperties}
+          src={u}
+          sandbox="allow-scripts allow-same-origin allow-forms"
+          referrerPolicy="no-referrer"
+          title={x.title}
+        />
+      </div>
     </>
   );
 }

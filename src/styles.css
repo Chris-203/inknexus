@@ -56,7 +56,15 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
 .rbar button{background:var(--surface);border:1px solid var(--line);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;padding:0}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-iframe.frame{display:block;width:100%;height:calc(100dvh - 110px);border:0;background:#fff}
+/* in-app site view: the − / + buttons render the site narrower (--fz) and scale it back up to fill the screen,
+   like the browser's text zoom; pinching over another site's page cannot be caught by the app */
+.fwrap{--fh:calc(100dvh - 59px - env(safe-area-inset-top,0px));height:var(--fh);overflow:hidden;touch-action:pan-x pan-y}
+body.nonav{padding-bottom:0}
+.rbar.fbar{gap:6px}
+.rbar.fbar b{font-size:14px}
+.rbar.fbar .sm{width:auto;padding:0 8px;font-size:13px}
+.rbar .fz{width:32px;font-size:17px}
+iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc(var(--fh) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:36px;min-height:36px;padding:0;vertical-align:middle}
