@@ -7,6 +7,7 @@ import { Search } from './views/Search';
 import { Series } from './views/Series';
 import { Reader } from './views/Reader';
 import { Frame } from './views/Frame';
+import { ResetZoom } from './components/ResetZoom';
 
 const isView = (v: unknown): v is View => !!v && typeof (v as View).name === 'string';
 
@@ -84,6 +85,7 @@ export function App() {
         {message.text}
       </div>
       <input ref={fileRef} type="file" accept="application/json" hidden onChange={onImport} />
+      <ResetZoom />
     </AppContext.Provider>
   );
 }
