@@ -142,7 +142,7 @@ const Sources={
     async chapters(ref){
       let out=[],off=0,total=1;
       while(off<total&&off<3000){
-        const r=await api(`${MD}/manga/${ref}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=500&offset=${off}&includeExternalUrl=1&includes[]=scanlation_group${RATING}`);
+        const r=await api(`${MD}/manga/${ref}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=500&offset=${off}&includes[]=scanlation_group${RATING}`);
         const j=await r.json();
         total=j.total||0;off+=500;out.push(...(j.data||[]));
       }
