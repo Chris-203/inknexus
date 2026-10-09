@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" font-family="Bricolage Grotesque, DejaVu Sans, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#18203a"/><stop offset="1" stop-color="#0a0c13"/></linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3a99"/><stop offset="0.6" stop-color="#7d5fc4"/><stop offset="1" stop-color="#f29a72"/></linearGradient>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1b4d"/><stop offset="1" stop-color="#101223"/></linearGradient>
+    <linearGradient id="storm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f3a4d"/><stop offset="1" stop-color="#16162b"/></linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101218" stop-opacity="0"/><stop offset="1" stop-color="#101218" stop-opacity="0.95"/></linearGradient>
+    <linearGradient id="c1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6c8cff"/><stop offset="1" stop-color="#2c2a7a"/></linearGradient>
+    <linearGradient id="c2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a76"/><stop offset="1" stop-color="#7a2a5a"/></linearGradient>
+    <linearGradient id="c3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fe0b8"/><stop offset="1" stop-color="#14566a"/></linearGradient>
+    <clipPath id="screen"><rect x="854" y="56" width="262" height="528" rx="30"/></clipPath>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000" flood-opacity="0.55"/></filter>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <g stroke="#9db8ff" stroke-linecap="round">
+    <line x1="560" y1="-20" x2="520" y2="300" stroke-opacity="0.10" stroke-width="3"/>
+    <line x1="700" y1="-30" x2="660" y2="190" stroke-opacity="0.07" stroke-width="2"/>
+    <line x1="1180" y1="300" x2="1150" y2="680" stroke-opacity="0.09" stroke-width="3"/>
+    <line x1="1240" y1="-10" x2="1210" y2="260" stroke-opacity="0.07" stroke-width="2"/>
+    <line x1="40" y1="420" x2="10" y2="700" stroke-opacity="0.08" stroke-width="2"/>
+  </g>
+
+  <!-- nexus mark: three linked nodes -->
+  <g transform="translate(82,92)">
+    <line x1="14" y1="40" x2="46" y2="12" stroke="#9db8ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="46" y1="12" x2="78" y2="40" stroke="#9db8ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="14" y1="40" x2="78" y2="40" stroke="#9db8ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.5"/>
+    <circle cx="14" cy="40" r="9" fill="#6c8cff"/><circle cx="46" cy="12" r="9" fill="#f0c36a"/><circle cx="78" cy="40" r="9" fill="#5fe0b8"/>
+  </g>
+
+  <text x="76" y="262" font-size="104" font-weight="800" fill="#f1effa" letter-spacing="-2">InkNexus</text>
+  <rect x="84" y="286" width="150" height="8" rx="4" fill="#f0c36a"/>
+  <text x="82" y="354" font-size="38" font-weight="700" fill="#d3d6ea">Every series. One place.</text>
+  <text x="82" y="396" font-size="21" fill="#8d92a6">Read, track your chapters, switch sources.</text>
+  <g font-size="16" font-weight="700">
+    <rect x="82" y="446" width="104" height="38" rx="19" fill="#1d2234" stroke="#2f3750"/><text x="134" y="470" text-anchor="middle" fill="#e9e7f2">Library</text>
+    <rect x="198" y="446" width="140" height="38" rx="19" fill="#1d2234" stroke="#2f3750"/><text x="268" y="470" text-anchor="middle" fill="#e9e7f2">Multi-source</text>
+    <rect x="350" y="446" width="172" height="38" rx="19" fill="#1d2234" stroke="#2f3750"/><text x="436" y="470" text-anchor="middle" fill="#e9e7f2">Chapter tracking</text>
+  </g>
+
+  <!-- library cards (original art) -->
+  <g transform="translate(618,96) rotate(-8)" filter="url(#shadow)">
+    <rect width="150" height="225" rx="10" fill="url(#c1)"/>
+    <circle cx="100" cy="64" r="26" fill="#f6e7b4" opacity="0.95"/>
+    <polygon points="0,225 0,150 52,108 96,150 128,126 150,150 150,225" fill="#14143a" opacity="0.85"/>
+    <rect x="10" y="10" width="68" height="24" rx="12" fill="#f0c36a"/><text x="44" y="27" text-anchor="middle" font-size="13" font-weight="800" fill="#1b1500">Ch. 191</text>
+  </g>
+  <g transform="translate(676,292) rotate(5)" filter="url(#shadow)">
+    <rect width="150" height="225" rx="10" fill="url(#c2)"/>
+    <circle cx="75" cy="92" r="34" fill="#2a1030" opacity="0.8"/>
+    <path d="M30 225 Q75 120 120 225 Z" fill="#2a1030" opacity="0.8"/>
+    <circle cx="64" cy="90" r="5" fill="#ffd88a"/><circle cx="86" cy="90" r="5" fill="#ffd88a"/>
+    <rect x="10" y="10" width="62" height="24" rx="12" fill="#f0c36a"/><text x="41" y="27" text-anchor="middle" font-size="13" font-weight="800" fill="#1b1500">Ch. 76</text>
+  </g>
+
+  <!-- phone reader -->
+  <g filter="url(#shadow)"><rect x="840" y="42" width="290" height="556" rx="42" fill="#1b1f2a" stroke="#3a4364" stroke-width="2"/></g>
+  <g clip-path="url(#screen)">
+    <rect x="854" y="56" width="262" height="528" fill="#101218"/>
+    <rect x="854" y="56" width="262" height="46" fill="#171b26"/>
+    <path d="M880 72 l-8 8 l8 8" fill="none" stroke="#9db8ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="896" y="85" font-size="15" font-weight="700" fill="#e9e7f2">Ch. 76</text>
+    <rect x="854" y="106" width="262" height="168" fill="url(#sky)"/>
+    <circle cx="1040" cy="150" r="22" fill="#fff1c9"/><circle cx="1050" cy="144" r="20" fill="#7d5fc4" opacity="0.9"/>
+    <polygon points="854,274 854,222 920,170 976,230 1030,196 1116,260 1116,274" fill="#1b1b4a"/>
+    <polygon points="854,274 854,246 900,214 952,256 1008,230 1116,274" fill="#10102f"/>
+    <rect x="872" y="122" width="132" height="42" rx="21" fill="#fff"/><polygon points="900,162 918,162 906,178" fill="#fff"/>
+    <rect x="890" y="138" width="96" height="6" rx="3" fill="#c3c8e6"/><rect x="890" y="150" width="64" height="6" rx="3" fill="#c3c8e6"/>
+    <rect x="854" y="280" width="262" height="160" fill="url(#night)"/>
+    <path d="M920 440 Q930 340 985 318 Q1040 340 1050 440 Z" fill="#0b0b18"/>
+    <path d="M948 372 Q985 330 1022 372 Q1018 402 985 410 Q952 402 948 372 Z" fill="#05050c"/>
+    <path d="M962 376 l16 4 l-16 6 Z" fill="#f0c36a"/><path d="M1008 376 l-16 4 l16 6 Z" fill="#f0c36a"/>
+    <g stroke="#9db8ff" stroke-opacity="0.35" stroke-width="2"><line x1="880" y1="292" x2="872" y2="330"/><line x1="1080" y1="300" x2="1070" y2="344"/><line x1="1100" y1="360" x2="1094" y2="396"/></g>
+    <rect x="854" y="446" width="262" height="150" fill="url(#storm)"/>
+    <g fill="#08121c"><rect x="860" y="520" width="34" height="76"/><rect x="900" y="494" width="40" height="102"/><rect x="946" y="534" width="30" height="62"/><rect x="982" y="506" width="44" height="90"/><rect x="1032" y="528" width="34" height="68"/><rect x="1072" y="498" width="44" height="98"/></g>
+    <polygon points="1000,452 976,508 998,508 984,548 1030,490 1006,490 1022,452" fill="#f0c36a"/>
+    <rect x="854" y="500" width="262" height="84" fill="url(#fade)"/>
+  </g>
+  <rect x="940" y="574" width="90" height="5" rx="2.5" fill="#3a4364"/>
+
+  <!-- marked-read toast, sized to its text and kept left of the phone's story panel -->
+  <g transform="translate(560,540)" filter="url(#shadow)">
+    <rect width="270" height="50" rx="25" fill="#f0c36a"/>
+    <circle cx="26" cy="25" r="12" fill="#1b1500"/>
+    <path d="M20 25 l5 5 l9 -10" fill="none" stroke="#f0c36a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="48" y="31" font-size="15" font-weight="800" fill="#1b1500">Chapter 76 marked read</text>
+  </g>
+
+  <g stroke="#9db8ff" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="1190" y1="150" x2="1190" y2="440" stroke-width="3" stroke-dasharray="2 14" stroke-opacity="0.7"/>
+    <path d="M1176 424 l14 16 l14 -16" stroke-width="4"/>
+  </g>
+  <text transform="translate(1226,300) rotate(90)" text-anchor="middle" font-size="14" font-weight="700" letter-spacing="3" fill="#9db8ff" fill-opacity="0.75">KEEP SCROLLING</text>
+</svg>
