@@ -52,6 +52,7 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(-
 details.manual{margin:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
 details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .empty{text-align:center;padding:60px 24px;color:var(--muted)}
+.empty .restore{max-width:34ch;margin:28px auto 12px;font-size:14px}
 #nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
 #nav button{flex:1;background:none;border:0;padding:14px;color:var(--muted);font-weight:700;cursor:pointer}
 #nav button.on{color:var(--accent)}
@@ -224,7 +225,9 @@ function vLibrary(){
     ${x.cover?`<img src="${esc(x.cover)}" loading="lazy" alt="">`:`<div class="cover"></div>`}
     <span class="badge">Ch. ${fmt(x.last||0)}</span><span class="ct">${esc(x.title)}</span></button>`).join('')}</div>
     <div class="row" style="margin-top:12px"><button class="btn ghost sm" data-a="export">Export backup</button><button class="btn ghost sm" data-a="import">Import backup</button></div>`
-  :`<div class="empty"><p>Your library is empty.</p><button class="btn" data-a="tab" data-id="search">Find a series</button></div>`);
+  :`<div class="empty"><p>Your library is empty.</p><button class="btn" data-a="tab" data-id="search">Find a series</button>
+    <p class="restore">Used InkNexus before, in another browser or on another device? Each one keeps its own library. Import the backup file you exported there.</p>
+    <button class="btn ghost" data-a="import">Import backup</button></div>`);
 }
 
 function resList(r){
