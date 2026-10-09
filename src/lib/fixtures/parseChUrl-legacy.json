@@ -1,0 +1,90 @@
+[
+  [
+    "https://asurascans.com/comics/solo-leveling-8a1b2c3d/chapter/12",
+    {
+      "num": 12,
+      "tpl": "https://asurascans.com/comics/solo-leveling-8a1b2c3d/chapter/{n}",
+      "series": "https://asurascans.com/comics/solo-leveling-8a1b2c3d",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://en-thunderscans.com/the-hero-returns-chapter-45/",
+    {
+      "num": 45,
+      "tpl": "https://en-thunderscans.com/the-hero-returns-chapter-{n}/",
+      "series": "https://en-thunderscans.com",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://comix.to/title/abcd-some-series/12345-chapter-7",
+    {
+      "num": 7,
+      "tpl": "",
+      "series": "https://comix.to/title/abcd-some-series",
+      "idPrefixed": true
+    }
+  ],
+  [
+    "https://toonily.com/webtoon/my-series/chapter-102-5/",
+    {
+      "num": 102.5,
+      "tpl": "https://toonily.com/webtoon/my-series/chapter-{n}/",
+      "series": "https://toonily.com/webtoon/my-series",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://tapas.io/episode/1234567",
+    {
+      "num": 1234567,
+      "tpl": "https://tapas.io/episode/{n}",
+      "series": "https://tapas.io",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://mangaplus.shueisha.co.jp/viewer/1000486",
+    null
+  ],
+  [
+    "https://example.com/read/series-name/ch-3",
+    {
+      "num": 3,
+      "tpl": "https://example.com/read/series-name/ch-{n}",
+      "series": "https://example.com/read/series-name",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://example.com/read?series=x&chapter=19",
+    null
+  ],
+  [
+    "https://example.com/manga/one/c12.5",
+    {
+      "num": 12.5,
+      "tpl": "https://example.com/manga/one/c{n}",
+      "series": "https://example.com/manga/one",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://example.com/series/two/ep_8",
+    {
+      "num": 8,
+      "tpl": "https://example.com/series/two/ep_{n}",
+      "series": "https://example.com/series/two",
+      "idPrefixed": false
+    }
+  ],
+  [
+    "https://example.com/no-number-here/",
+    null
+  ],
+  [
+    "not a url",
+    null
+  ]
+]

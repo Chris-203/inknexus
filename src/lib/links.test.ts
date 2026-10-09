@@ -1,25 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { fmt, host, norm, parseChUrl } from './links';
-
-// The original parseChUrl from the single-file app, so the port can be checked against it.
-const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-const src = html.match(/function parseChUrl\(u\)\{[\s\S]*?\n\}/)?.[0];
-const original = src ? (new Function(`${src};return parseChUrl`)() as typeof parseChUrl) : null;
-
-const corpus = [
-  'https://asurascans.com/comics/solo-leveling-8a1b2c3d/chapter/12',
-  'https://en-thunderscans.com/the-hero-returns-chapter-45/',
-  'https://comix.to/title/abcd-some-series/12345-chapter-7',
-  'https://toonily.com/webtoon/my-series/chapter-102-5/',
-  'https://tapas.io/episode/1234567',
-  'https://mangaplus.shueisha.co.jp/viewer/1000486',
-  'https://example.com/read/series-name/ch-3',
-  'https://example.com/read?series=x&chapter=19',
-  'https://example.com/manga/one/c12.5',
-  'https://example.com/series/two/ep_8',
-  'https://example.com/no-number-here/',
-  'not a url',
-];
+// What the original single-file app's parseChUrl returned for these links, recorded before it was removed.
+import legacy from './fixtures/parseChUrl-legacy.json';
 
 describe('parseChUrl', () => {
   it('reads the chapter number and learns the URL pattern', () => {
@@ -43,8 +24,9 @@ describe('parseChUrl', () => {
     expect(parseChUrl('https://example.com/no-number-here/')).toBeNull();
     expect(parseChUrl('not a url')).toBeNull();
   });
-  it.runIf(original)('matches the original implementation on every sample link', () => {
-    for (const u of corpus) expect(parseChUrl(u), u).toEqual(original!(u));
+  it('matches the original implementation on every sample link', () => {
+    expect(legacy.length).toBe(12);
+    for (const [u, want] of legacy as [string, unknown][]) expect(parseChUrl(u), u).toEqual(want);
   });
 });
 
