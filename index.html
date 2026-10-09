@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#101218">
 <title>InkNexus</title>
@@ -23,6 +23,9 @@
 :root{--bg:#101218;--surface:#191d27;--line:#2a3040;--text:#e9e7f2;--muted:#8d92a6;--accent:#9db8ff;--amber:#f0c36a;
 --head:'Bricolage Grotesque',system-ui,sans-serif;--body:system-ui,-apple-system,'Segoe UI',sans-serif}
 *,*::before,*::after{box-sizing:border-box}
+html,body{overscroll-behavior:none}
+/* the app itself never pinch-zooms or double-tap-zooms; the reader zooms its pages instead */
+body{touch-action:pan-x pan-y}
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 button,input{font:inherit;color:inherit}
@@ -42,7 +45,7 @@ header h1{font-size:28px}
 .btn.danger{background:transparent;color:#ff9a9a;border:1px solid #4a2a2f}
 .row{display:flex;gap:8px;padding:4px 16px 12px}
 .row input{flex:1;min-width:0}
-input{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+input{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;font-size:16px} /* 16px stops iOS zooming in on focus */
 input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .stack{display:flex;flex-direction:column;gap:8px;padding:8px 16px 16px}
 .res{display:flex;gap:12px;padding:10px 16px;border-top:1px solid var(--line);align-items:center}
@@ -75,13 +78,28 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
 .rbar button{background:var(--surface);border:1px solid var(--line);border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;padding:0}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-iframe.frame{display:block;width:100%;height:calc(100dvh - 110px);border:0;background:#fff}
+/* in-app site view: the − / + buttons render the site narrower (--fz) and scale it back up to fill the screen,
+   like the browser's text zoom; pinching over another site's page cannot be caught by the app */
+.fwrap{--fh:calc(100dvh - 59px - env(safe-area-inset-top,0px));height:var(--fh);overflow:hidden;touch-action:pan-x pan-y}
+body.nonav{padding-bottom:0}
+.rbar.fbar{gap:6px}
+.rbar.fbar b{font-size:14px}
+iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc(var(--fh) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
+.rbar .fz{width:32px;font-size:17px}
+.opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--muted);cursor:pointer}
+.opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
+/* shown only while the whole app is zoomed (iPhone Safari over a site view); kept at normal size in the corner */
+#unzoom{position:fixed;left:0;top:0;transform-origin:0 0;z-index:30;display:none;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#unzoom.on{display:block}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:36px;min-height:36px;padding:0;vertical-align:middle}
 .ch b.nm{font-weight:600;overflow-wrap:anywhere}
 .tag{font-size:11px;color:var(--accent);border:1px solid var(--line);border-radius:99px;padding:0 7px;margin-left:6px;vertical-align:middle;font-weight:400}
 #strip{max-width:820px;margin:0 auto}
+/* reader zoom: only the pages scale (see zoomable()); the wrapper scrolls sideways when zoomed */
+#zwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x pan-y}
+#pages{--z:1;width:calc(var(--z) * 100%)}
 #strip img{width:100%;display:block;min-height:240px;background:var(--surface)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
@@ -233,6 +251,7 @@ const fmt=n=>Number.isInteger(n)?n:+n.toFixed(1);
 /* ---------- views ---------- */
 function render(){
   $('#nav').style.display=(V.name==='reader'||V.name==='frame')?'none':'flex';
+  document.body.classList.toggle('nonav',V.name==='frame');
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.id===(V.name==='search'?'search':'library')));
   ({library:vLibrary,search:vSearch,series:vSeries,reader:vReader,frame:vFrame})[V.name]();
 }
@@ -298,11 +317,12 @@ function vSeries(){
     body+=`<p class="credit">Chapters and data from MangaDex. Scanlation groups are credited on each chapter. <a href="https://mangadex.org/title/${esc(x.md)}" target="_blank" rel="noopener noreferrer">View on MangaDex ↗</a></p>`;
   }else if(V.src[0]==='l'){
     const i=+V.src.slice(1),l=x.links[i];
-    if(l){const nx=Math.floor(x.last||0)+1;body=`<div class="pad">${l.resume?`<button class="btn" data-a="frame" data-i="${i}" data-resume="1">Resume ch. ${fmt(l.rn||0)} (saved link)</button>`:''}${l.tpl?`<button id="cont" class="btn" data-a="frame" data-cont="1" data-i="${i}" data-n="${nx}">Continue with ch. ${nx}</button>`:''}
-      <button class="btn ${(l.tpl||l.resume)?'ghost':''}" data-a="frame" data-i="${i}">Open the series page in app</button>
+    if(l){const nx=Math.floor(x.last||0)+1,h=host(l.url),ob=obGet(h);body=`<div class="pad">${l.resume?`<button class="btn" data-a="frame" data-i="${i}" data-resume="1">Resume ch. ${fmt(l.rn||0)} (saved link)</button>`:''}${l.tpl?`<button id="cont" class="btn" data-a="frame" data-cont="1" data-i="${i}" data-n="${nx}">Continue with ch. ${nx}</button>`:''}
+      <button class="btn ${(l.tpl||l.resume)?'ghost':''}" data-a="frame" data-i="${i}">Open the series page${ob?' ↗':' in app'}</button>
       <button class="btn ghost" data-a="paste" data-i="${i}">Update chapter from a link</button>
       <a class="btn ghost" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open in browser</a>
-      <p class="hint" style="padding:0">Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. If the in-app view is blank, the site blocks embedding: use Open in browser.</p>
+      <label class="opt"><input type="checkbox" class="obt" data-h="${esc(h)}" ${ob?'checked':''}> Open ${esc(h)} in the browser instead of in the app</label>
+      <p class="hint" style="padding:0">Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. If the site is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser${ob?'. After reading there, come back and tap + or Update':''}.</p>
       <button class="btn danger sm" data-a="rmlink" data-i="${i}">Remove this source</button></div>`}
   }else body=all.length?'<p class="hint">All sources are hidden. Bring one back with + Source.</p>':'<p class="hint">No sources yet. Add one with + Source.</p>';
   app.innerHTML=`<div class="rbar" style="position:static;background:none;border:0;backdrop-filter:none;margin:0;padding-bottom:0"><button data-a="tab" data-id="library" aria-label="Back">‹</button></div>
@@ -326,24 +346,91 @@ async function vReader(){
     if(V.tok!==tok)return;
     const prev=[...chs].reverse().find(k=>k.num<V.n),next=chs.find(k=>k.num>V.n);
     const credit=`<p class="credit">${c.grp?`Scanlation by ${esc(c.grp)}`:'No scanlation group credited'} · via MangaDex. <a href="https://mangadex.org/chapter/${esc(c.id)}" target="_blank" rel="noopener noreferrer">Read on MangaDex ↗</a></p>`;
-    $('#strip').innerHTML=credit+pages.map(u=>`<img src="${esc(u.a)}" data-b="${esc(u.b)}" referrerpolicy="no-referrer" loading="lazy" alt="Page failed to load">`).join('')+
+    $('#strip').innerHTML=credit+`<div id="zwrap"><div id="pages">`+pages.map(u=>`<img src="${esc(u.a)}" data-b="${esc(u.b)}" referrerpolicy="no-referrer" loading="lazy" alt="Page failed to load">`).join('')+`</div></div>`+
       `<div id="end" class="endbar">${prev?`<button class="btn ghost" data-a="read" data-n="${prev.num}">‹ Ch. ${fmt(prev.num)}</button>`:''}
        ${next?`<button class="btn" data-a="read" data-n="${next.num}">Ch. ${fmt(next.num)} ›</button>`:`<button class="btn" data-a="back">Back to series</button>`}</div>`+credit;
     new IntersectionObserver((en,ob)=>{
       if(en[0].isIntersecting){ob.disconnect();
         if(V.n>(x.last||0)){x.last=V.n;x.t=Date.now();save();toast(`Chapter ${fmt(V.n)} marked read`)}}
     },{threshold:.6}).observe($('#end'));
+    zoomable($('#zwrap'),$('#pages'));
   }catch(e){if(V.tok===tok)$('#strip').innerHTML='<p class="hint">Could not load this chapter ('+esc(why(e))+'). Try again, or switch to a different source.</p>'}
 }
 
+/* Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
+   Zooming widens #pages, so normal scrolling pans up, down and sideways; it never shrinks below the screen width. */
+function zoomable(wrap,pages){
+  let z=1,pinch=null,tap=null,last=null,raf=0;
+  const set=(nz,cx,cy)=>{
+    nz=Math.min(4,Math.max(1,nz));if(Math.abs(nz-z)<.001)return;
+    const r=nz/z,top=pages.getBoundingClientRect().top+scrollY,ox=cx-wrap.getBoundingClientRect().left;
+    const px=wrap.scrollLeft+ox,py=scrollY+cy-top;
+    z=nz;pages.style.setProperty('--z',z);
+    wrap.scrollLeft=px*r-ox;window.scrollTo(0,top+py*r-cy);
+  };
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  wrap.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){pinch={d:dist(e.touches)||1,z};tap=null}
+    else if(e.touches.length===1&&!pinch){const t=e.touches[0];tap={x:t.clientX,y:t.clientY,at:Date.now()}}
+  },{passive:true});
+  wrap.addEventListener('touchmove',e=>{
+    if(tap){const t=e.touches[0];if(Math.hypot(t.clientX-tap.x,t.clientY-tap.y)>10)tap=null}
+    if(!pinch||e.touches.length!==2)return;
+    e.preventDefault();
+    const t=e.touches,nz=pinch.z*dist(t)/pinch.d,cx=(t[0].clientX+t[1].clientX)/2,cy=(t[0].clientY+t[1].clientY)/2;
+    cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>set(nz,cx,cy));
+  },{passive:false});
+  wrap.addEventListener('touchend',e=>{
+    if(pinch){if(!e.touches.length)pinch=null;return}
+    if(!tap||e.touches.length||Date.now()-tap.at>250){tap=null;return}
+    const now=Date.now();
+    if(last&&now-last.at<320&&Math.hypot(tap.x-last.x,tap.y-last.y)<30){e.preventDefault();set(z>1.05?1:2.5,tap.x,tap.y);last=null}
+    else last={...tap,at:now};
+    tap=null;
+  });
+}
+/* Safari tabs can still pinch the whole page despite touch-action. Blocking its gesture events stops that;
+   the reader's own pinch uses touch events, which still arrive. */
+for(const g of ['gesturestart','gesturechange'])document.addEventListener(g,e=>e.preventDefault(),{passive:false});
+
+/* Sites to open in the browser instead of in the app, kept on this device only (not in the library or backups).
+   For sites that block being shown in the app, or that iPhone Safari zooms the whole app over. */
+const OB_KEY='inknexus-open-in-browser';
+const obList=()=>{try{return JSON.parse(localStorage.getItem(OB_KEY)||'[]')}catch(e){return []}};
+const obGet=h=>obList().includes(h);
+const obSet=(h,on)=>{try{const l=obList().filter(k=>k!==h);if(on)l.push(h);localStorage.setItem(OB_KEY,JSON.stringify(l))}catch(e){}};
+/* Site-view zoom per site, kept on this device only (not in the library or backups). */
+const FZ_KEY='inknexus-frame-zoom',FZ_STEPS=[1,1.25,1.5,1.75,2];
+const fzGet=h=>{try{return JSON.parse(localStorage.getItem(FZ_KEY)||'{}')[h]||1}catch(e){return 1}};
+const fzSet=(h,z)=>{try{const m=JSON.parse(localStorage.getItem(FZ_KEY)||'{}');m[h]=z;localStorage.setItem(FZ_KEY,JSON.stringify(m))}catch(e){}};
+/* iPhone Safari zooms the whole app when you pinch over another site shown in the app, and the app cannot block
+   that. While the app is zoomed, show Reset zoom; it re-applies the viewport, which snaps Safari back to 100%
+   where it can, and otherwise says to pinch out. */
+(function(){
+  const vv=window.visualViewport;if(!vv)return;
+  const btn=document.createElement('button');btn.id='unzoom';btn.className='btn';btn.textContent='Reset zoom';document.body.appendChild(btn);
+  const place=()=>{
+    const on=vv.scale>1.05;btn.classList.toggle('on',on);
+    if(on)btn.style.transform=`translate(${vv.offsetLeft+vv.width-12/vv.scale}px,${vv.offsetTop+vv.height-80/vv.scale}px) scale(${1/vv.scale}) translate(-100%,-100%)`;
+    else btn.textContent='Reset zoom';
+  };
+  vv.addEventListener('resize',place);vv.addEventListener('scroll',place);
+  btn.addEventListener('click',()=>{
+    const m=document.querySelector('meta[name=viewport]'),c=m.content;
+    m.content=c.replace('initial-scale=1,','initial-scale=1.01,');
+    setTimeout(()=>{m.content=c;setTimeout(()=>{if(vv.scale>1.05)btn.textContent='Pinch out to zoom back'},400)},60);
+  });
+})();
+
 function vFrame(){
   const x=find(V.id),l=x&&x.links[V.i];if(!l)return go({name:'library'});
-  const u=V.url||l.url;
-  app.innerHTML=`<div class="rbar"><button data-a="fback" aria-label="Back to series">‹</button><b>${esc(l.label||host(l.url))}</b>
-  ${V.ch&&l.tpl?`<button data-a="fnext" aria-label="Mark read and open next chapter" style="width:auto;padding:0 10px;font-size:13px">Next ›</button>`:`<button data-a="finc" aria-label="Mark next chapter read" style="width:auto;padding:0 10px;font-size:13px">+1 ch</button>`}
-  <button data-a="paste" data-i="${V.i}" aria-label="Update chapter from copied link" style="width:auto;padding:0 10px;font-size:13px">Paste</button>
-  <a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">Browser</a></div>
-  <iframe class="frame" src="${esc(u)}" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer" title="${esc(x.title)}"></iframe>`;
+  const u=V.url||l.url,fz=fzGet(host(u));
+  app.innerHTML=`<div class="rbar fbar"><button data-a="fback" aria-label="Back to series">‹</button><b>${esc(l.label||host(l.url))}</b>
+  ${V.ch&&l.tpl?`<button data-a="fnext" aria-label="Mark read and open next chapter" style="width:auto;padding:0 8px;font-size:13px">Next ›</button>`:`<button data-a="finc" aria-label="Mark next chapter read" style="width:auto;padding:0 8px;font-size:13px">+1 ch</button>`}
+  <button data-a="paste" data-i="${V.i}" aria-label="Update chapter from copied link" style="width:auto;padding:0 8px;font-size:13px">Paste</button>
+  <button class="fz" data-a="fzoom" data-d="-1" aria-label="Zoom the site out" ${fz<=FZ_STEPS[0]?'disabled':''}>−</button><button class="fz" data-a="fzoom" data-d="1" aria-label="Zoom the site in" ${fz>=FZ_STEPS[FZ_STEPS.length-1]?'disabled':''}>+</button>
+  <a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer" aria-label="Open in browser" style="padding:7px 10px">Open ↗</a></div>
+  <div class="fwrap"><iframe class="frame" style="--fz:${fz}" src="${esc(u)}" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer" title="${esc(x.title)}"></iframe></div>`;
 }
 
 /* ---------- events ---------- */
@@ -368,6 +455,8 @@ document.addEventListener('click',async e=>{
     const l=x.links[+b.dataset.i];let n=b.dataset.n?+b.dataset.n:0;
     if(b.dataset.cont)n=Math.floor(x.last||0)+1;
     if(b.dataset.resume)n=l.rn||0;
+    const fu=b.dataset.resume?l.resume:(n&&l.tpl?l.tpl.replace('{n}',n):'');
+    if(obGet(host(l.url))){window.open(fu||l.url,'_blank','noopener');toast(n?`Opened chapter ${fmt(n)} in the browser`:'Opened in the browser');return}
     go({name:'frame',id:V.id,i:+b.dataset.i,src:V.src,ch:n,url:b.dataset.resume?l.resume:(n&&l.tpl?l.tpl.replace('{n}',n):'')});
   }
   else if(a==='fnext'){
@@ -386,6 +475,13 @@ document.addEventListener('click',async e=>{
     if(V.name!=='frame')render();
   }
   else if(a==='fback')go({name:'series',id:V.id,src:V.src});
+  else if(a==='fzoom'){
+    /* change the zoom in place so the site keeps its scroll position */
+    const f=$('iframe.frame'),h=host(f.getAttribute('src')),i=FZ_STEPS.indexOf(fzGet(h)),z=FZ_STEPS[Math.min(FZ_STEPS.length-1,Math.max(0,(i<0?0:i)+(+b.dataset.d)))];
+    fzSet(h,z);f.style.setProperty('--fz',z);
+    document.querySelectorAll('[data-a=fzoom]').forEach(k=>k.disabled=(+k.dataset.d<0?z<=FZ_STEPS[0]:z>=FZ_STEPS[FZ_STEPS.length-1]));
+    toast(`Site zoom ${Math.round(z*100)}%`);
+  }
   else if(a==='finc'){x.last=Math.floor(x.last||0)+1;x.t=Date.now();save();toast('Now on chapter '+x.last)}
   else if(a==='src'){V.src=id;x.src=id;save();render()}
   else if(a==='hide'){
@@ -510,6 +606,7 @@ function syncLast(e){
 }
 document.addEventListener('input',e=>{if(e.target.id==='last')syncLast(e)});
 document.addEventListener('change',e=>{
+  if(e.target.classList.contains('obt')){obSet(e.target.dataset.h,e.target.checked);render();toast(e.target.checked?`${e.target.dataset.h} will open in the browser`:`${e.target.dataset.h} will open in the app`);return}
   if(e.target.id==='last'){syncLast(e);if(!$('#cont')&&V.src==='md')render()}
   if(e.target.id==='imp'){
     const file=e.target.files[0];if(!file)return;
