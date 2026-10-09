@@ -86,6 +86,11 @@ body.nonav{padding-bottom:0}
 .rbar.fbar b{font-size:14px}
 iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc(var(--fh) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
 .rbar .fz{width:32px;font-size:17px}
+.opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--muted);cursor:pointer}
+.opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
+/* shown only while the whole app is zoomed (iPhone Safari over a site view); kept at normal size in the corner */
+#unzoom{position:fixed;left:0;top:0;transform-origin:0 0;z-index:30;display:none;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#unzoom.on{display:block}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:36px;min-height:36px;padding:0;vertical-align:middle}
@@ -312,11 +317,12 @@ function vSeries(){
     body+=`<p class="credit">Chapters and data from MangaDex. Scanlation groups are credited on each chapter. <a href="https://mangadex.org/title/${esc(x.md)}" target="_blank" rel="noopener noreferrer">View on MangaDex ↗</a></p>`;
   }else if(V.src[0]==='l'){
     const i=+V.src.slice(1),l=x.links[i];
-    if(l){const nx=Math.floor(x.last||0)+1;body=`<div class="pad">${l.resume?`<button class="btn" data-a="frame" data-i="${i}" data-resume="1">Resume ch. ${fmt(l.rn||0)} (saved link)</button>`:''}${l.tpl?`<button id="cont" class="btn" data-a="frame" data-cont="1" data-i="${i}" data-n="${nx}">Continue with ch. ${nx}</button>`:''}
-      <button class="btn ${(l.tpl||l.resume)?'ghost':''}" data-a="frame" data-i="${i}">Open the series page in app</button>
+    if(l){const nx=Math.floor(x.last||0)+1,h=host(l.url),ob=obGet(h);body=`<div class="pad">${l.resume?`<button class="btn" data-a="frame" data-i="${i}" data-resume="1">Resume ch. ${fmt(l.rn||0)} (saved link)</button>`:''}${l.tpl?`<button id="cont" class="btn" data-a="frame" data-cont="1" data-i="${i}" data-n="${nx}">Continue with ch. ${nx}</button>`:''}
+      <button class="btn ${(l.tpl||l.resume)?'ghost':''}" data-a="frame" data-i="${i}">Open the series page${ob?' ↗':' in app'}</button>
       <button class="btn ghost" data-a="paste" data-i="${i}">Update chapter from a link</button>
       <a class="btn ghost" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open in browser</a>
-      <p class="hint" style="padding:0">Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. If the in-app view is blank, the site blocks embedding: use Open in browser.</p>
+      <label class="opt"><input type="checkbox" class="obt" data-h="${esc(h)}" ${ob?'checked':''}> Open ${esc(h)} in the browser instead of in the app</label>
+      <p class="hint" style="padding:0">Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. If the site is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser${ob?'. After reading there, come back and tap + or Update':''}.</p>
       <button class="btn danger sm" data-a="rmlink" data-i="${i}">Remove this source</button></div>`}
   }else body=all.length?'<p class="hint">All sources are hidden. Bring one back with + Source.</p>':'<p class="hint">No sources yet. Add one with + Source.</p>';
   app.innerHTML=`<div class="rbar" style="position:static;background:none;border:0;backdrop-filter:none;margin:0;padding-bottom:0"><button data-a="tab" data-id="library" aria-label="Back">‹</button></div>
@@ -387,10 +393,35 @@ function zoomable(wrap,pages){
    the reader's own pinch uses touch events, which still arrive. */
 for(const g of ['gesturestart','gesturechange'])document.addEventListener(g,e=>e.preventDefault(),{passive:false});
 
+/* Sites to open in the browser instead of in the app, kept on this device only (not in the library or backups).
+   For sites that block being shown in the app, or that iPhone Safari zooms the whole app over. */
+const OB_KEY='inknexus-open-in-browser';
+const obList=()=>{try{return JSON.parse(localStorage.getItem(OB_KEY)||'[]')}catch(e){return []}};
+const obGet=h=>obList().includes(h);
+const obSet=(h,on)=>{try{const l=obList().filter(k=>k!==h);if(on)l.push(h);localStorage.setItem(OB_KEY,JSON.stringify(l))}catch(e){}};
 /* Site-view zoom per site, kept on this device only (not in the library or backups). */
 const FZ_KEY='inknexus-frame-zoom',FZ_STEPS=[1,1.25,1.5,1.75,2];
 const fzGet=h=>{try{return JSON.parse(localStorage.getItem(FZ_KEY)||'{}')[h]||1}catch(e){return 1}};
 const fzSet=(h,z)=>{try{const m=JSON.parse(localStorage.getItem(FZ_KEY)||'{}');m[h]=z;localStorage.setItem(FZ_KEY,JSON.stringify(m))}catch(e){}};
+/* iPhone Safari zooms the whole app when you pinch over another site shown in the app, and the app cannot block
+   that. While the app is zoomed, show Reset zoom; it re-applies the viewport, which snaps Safari back to 100%
+   where it can, and otherwise says to pinch out. */
+(function(){
+  const vv=window.visualViewport;if(!vv)return;
+  const btn=document.createElement('button');btn.id='unzoom';btn.className='btn';btn.textContent='Reset zoom';document.body.appendChild(btn);
+  const place=()=>{
+    const on=vv.scale>1.05;btn.classList.toggle('on',on);
+    if(on)btn.style.transform=`translate(${vv.offsetLeft+vv.width-12/vv.scale}px,${vv.offsetTop+vv.height-80/vv.scale}px) scale(${1/vv.scale}) translate(-100%,-100%)`;
+    else btn.textContent='Reset zoom';
+  };
+  vv.addEventListener('resize',place);vv.addEventListener('scroll',place);
+  btn.addEventListener('click',()=>{
+    const m=document.querySelector('meta[name=viewport]'),c=m.content;
+    m.content=c.replace('initial-scale=1,','initial-scale=1.01,');
+    setTimeout(()=>{m.content=c;setTimeout(()=>{if(vv.scale>1.05)btn.textContent='Pinch out to zoom back'},400)},60);
+  });
+})();
+
 function vFrame(){
   const x=find(V.id),l=x&&x.links[V.i];if(!l)return go({name:'library'});
   const u=V.url||l.url,fz=fzGet(host(u));
@@ -424,6 +455,8 @@ document.addEventListener('click',async e=>{
     const l=x.links[+b.dataset.i];let n=b.dataset.n?+b.dataset.n:0;
     if(b.dataset.cont)n=Math.floor(x.last||0)+1;
     if(b.dataset.resume)n=l.rn||0;
+    const fu=b.dataset.resume?l.resume:(n&&l.tpl?l.tpl.replace('{n}',n):'');
+    if(obGet(host(l.url))){window.open(fu||l.url,'_blank','noopener');toast(n?`Opened chapter ${fmt(n)} in the browser`:'Opened in the browser');return}
     go({name:'frame',id:V.id,i:+b.dataset.i,src:V.src,ch:n,url:b.dataset.resume?l.resume:(n&&l.tpl?l.tpl.replace('{n}',n):'')});
   }
   else if(a==='fnext'){
@@ -573,6 +606,7 @@ function syncLast(e){
 }
 document.addEventListener('input',e=>{if(e.target.id==='last')syncLast(e)});
 document.addEventListener('change',e=>{
+  if(e.target.classList.contains('obt')){obSet(e.target.dataset.h,e.target.checked);render();toast(e.target.checked?`${e.target.dataset.h} will open in the browser`:`${e.target.dataset.h} will open in the app`);return}
   if(e.target.id==='last'){syncLast(e);if(!$('#cont')&&V.src==='md')render()}
   if(e.target.id==='imp'){
     const file=e.target.files[0];if(!file)return;
