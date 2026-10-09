@@ -27,6 +27,8 @@ export function App() {
   }, []);
 
   useLayoutEffect(() => window.scrollTo(0, 0), [view]);
+  // The site view fills the screen; drop the bottom space kept for the (hidden) nav.
+  useEffect(() => void document.body.classList.toggle('nonav', view.name === 'frame'), [view.name]);
 
   const navigate = useCallback((v: View, replace = false) => {
     if (replace) history.replaceState(v, '');
