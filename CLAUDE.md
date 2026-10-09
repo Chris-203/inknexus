@@ -8,6 +8,13 @@ A static web app: no build step, no framework. Deployed on Vercel at https://ink
 - Each PR gets a Vercel preview. Check the change there, at phone width, before merging.
 - Keep PRs small and single-purpose. Refactors that change no behavior get their own PR.
 
+## Commits and PRs
+- Branch names start with `chris/`, for example `chris/fix-add-link-overflow`.
+- No `Co-Authored-By` trailer or other attribution lines in commit messages.
+- PR bodies are plain text, no markdown. Four parts: what changed, why, how to test, how it was tested.
+- No mention of Claude Code, sessions or session links in commits or PR bodies.
+- Include screenshots or other media of the change in the PR body when there is anything visible to show.
+
 ## Check before committing
 The whole app lives in one inline script, so a syntax error blanks the page. Run:
 
