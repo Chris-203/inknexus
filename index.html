@@ -60,7 +60,8 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 .top .cover{width:96px;flex:none}
 .top h2{font-size:22px;line-height:1.15}
 .step{display:flex;align-items:center;gap:8px;margin-top:10px}
-.step input{width:78px;text-align:center}
+.step input{width:78px;text-align:center;-moz-appearance:textfield;appearance:textfield}
+.step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .step button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:20px;padding:0}
 .chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto}
 .chip{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 14px;cursor:pointer;color:var(--muted)}
