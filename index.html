@@ -77,6 +77,8 @@ details.manual summary{padding:12px 14px;cursor:pointer;font-weight:700}
 iframe.frame{display:block;width:100%;height:calc(100dvh - 110px);border:0;background:#fff}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
+.ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:36px;min-height:36px;padding:0;vertical-align:middle}
+.ch b.nm{font-weight:600;overflow-wrap:anywhere}
 .tag{font-size:11px;color:var(--accent);border:1px solid var(--line);border-radius:99px;padding:0 7px;margin-left:6px;vertical-align:middle;font-weight:400}
 #strip{max-width:820px;margin:0 auto}
 #strip img{width:100%;display:block;min-height:240px;background:var(--surface)}
@@ -125,6 +127,15 @@ const api=async u=>{
 };
 const why=e=>(e&&e.message)||'unknown error';
 const RATING='&contentRating[]=safe&contentRating[]=suggestive';
+/* Every name MangaDex has for a series, English first, then romanized, then the rest. */
+const mdNames=a=>{
+  const out=[],seen=new Set(),add=(l,n)=>{n=(n||'').trim();if(n&&!seen.has(n.toLowerCase())){seen.add(n.toLowerCase());out.push({l,n})}};
+  for(const [l,n] of Object.entries(a.title||{}))add(l,n);
+  for(const t of a.altTitles||[])for(const [l,n] of Object.entries(t))add(l,n);
+  const rank=l=>l==='en'?0:/-ro$/.test(l)?1:2;
+  return out.sort((p,q)=>rank(p.l)-rank(q.l));
+};
+const langName=l=>{try{const n=new Intl.DisplayNames(['en'],{type:'language'});return /-ro$/.test(l)?n.of(l.slice(0,-3))+' (romanized)':n.of(l)}catch(e){return l}};
 const Sources={
   mangadex:{
     name:'MangaDex',
@@ -133,9 +144,8 @@ const Sources={
       const j=await r.json();
       return (j.data||[]).map(m=>{
         const c=(m.relationships.find(x=>x.type==='cover_art')||{}).attributes;
-        const t=m.attributes.title||{};
         const d=(m.attributes.description||{}).en||'';
-        return {src:'md',ref:m.id,title:t.en||Object.values(t)[0]||'Untitled',desc:d,
+        return {src:'md',ref:m.id,title:(mdNames(m.attributes)[0]||{}).n||'Untitled',desc:d,
           cover:c?`https://uploads.mangadex.org/covers/${m.id}/${c.fileName}.256.jpg`:''};
       });
     },
@@ -293,7 +303,7 @@ function vSeries(){
   }else body=all.length?'<p class="hint">All sources are hidden. Bring one back with + Source.</p>':'<p class="hint">No sources yet. Add one with + Source.</p>';
   app.innerHTML=`<div class="rbar" style="position:static;background:none;border:0;backdrop-filter:none;margin:0;padding-bottom:0"><button data-a="tab" data-id="library" aria-label="Back">‹</button></div>
   <div class="top">${x.cover?`<img class="cover" src="${esc(x.cover)}" alt="">`:`<div class="cover"></div>`}
-  <div style="flex:1;min-width:0"><h2>${esc(x.title)}</h2><div class="sub" style="margin-top:6px">Last chapter read</div>
+  <div style="flex:1;min-width:0"><h2>${esc(x.title)} <button class="ren" data-a="names" aria-label="Change name">✎</button></h2><div class="sub" style="margin-top:6px">Last chapter read</div>
   <div class="step"><button data-a="dec" aria-label="Previous chapter">−</button><input id="last" type="number" step="any" min="0" value="${x.last||0}"><button data-a="inc" aria-label="Next chapter">+</button></div></div></div>
   ${cta}
   <div class="chips">${vis.map(q=>`<button class="chip ${V.src===q.k?'on':''}" data-a="src" data-id="${q.k}">${esc(q.n)}</button>`).join('')}<button class="chip" data-a="addsrc">+ Source</button></div>
@@ -405,6 +415,20 @@ document.addEventListener('click',async e=>{
       <button class="btn ghost" data-a="close">Close</button>`);
   }
   else if(a==='close')closeModal();
+  else if(a==='names'){
+    modal(`<h2>Change name</h2><div id="nres">${x.md?'<p class="hint">Loading names from MangaDex…</p>':''}</div>
+      <form id="nf" class="stack"><input name="title" value="${esc(x.title)}" required aria-label="Name"><button class="btn" style="margin:0;width:100%">Save this name</button></form>
+      <button class="btn ghost" data-a="close">Close</button>`);
+    if(x.md){
+      let html;
+      try{const j=await (await api(`${MD}/manga/${x.md}`)).json();V.names=mdNames(j.data.attributes);
+        html=V.names.length?`<p class="hint">Pick a name, or type your own below.</p>`+V.names.map((o,i)=>`<button class="ch" data-a="pickname" data-i="${i}"><b class="nm">${esc(o.n)}${o.n===x.title?' ✓':''}</b><span>${esc(langName(o.l))}</span></button>`).join('')
+          :'<p class="hint">MangaDex lists no other names. Type your own below.</p>'}
+      catch(err){html=`<p class="hint">Could not load names from MangaDex (${esc(why(err))}). Type a name below, or try again later.</p>`}
+      if($('#nres'))$('#nres').innerHTML=html;
+    }
+  }
+  else if(a==='pickname'){x.title=V.names[+b.dataset.i].n;save();closeModal();render();toast('Name changed')}
   else if(a==='preset'){b.closest('form').querySelector('[name=label]').value=b.dataset.n}
   else if(a==='findal'){
     $('#mres').innerHTML='<p class="hint">Searching…</p>';
@@ -453,6 +477,9 @@ document.addEventListener('submit',async e=>{
     if(r&&r.idPrefixed)url=r.series;
     const n=addItem({title:d.get('title').trim(),links:[{label:d.get('label').trim(),url,tpl:r?r.tpl:'',resume:r?d.get('url').trim():'',rn:r?r.num:0}],last:given||(r?r.num:0)});
     toast(r&&!given?`Added. Detected chapter ${fmt(r.num)} from the link`:'Added to library');go({name:'series',id:n.id});
+  }else if(f.id==='nf'){
+    const t=new FormData(f).get('title').trim(),x=find(V.id);
+    if(t){x.title=t;save();closeModal();render();toast('Name changed')}
   }else if(f.id==='lf'){
     const d=new FormData(f),x=find(V.id);
     let url=d.get('url').trim();const r=parseChUrl(url);
