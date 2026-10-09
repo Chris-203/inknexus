@@ -11,6 +11,7 @@ import { removeSeries, setLast, toggleSort, updateSeries, useStore } from '../li
 import type { SearchResult, Series as SeriesT } from '../lib/types';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
+import { opensInBrowser, setOpensInBrowser } from '../lib/openInBrowser';
 
 type SeriesView = Extract<View, { name: 'series' }>;
 interface Src {
@@ -31,6 +32,7 @@ export function Series({ view }: { view: SeriesView }) {
   const [chosen, setChosen] = useState(view.src ?? x?.src ?? '');
   const [sheet, setSheet] = useState<'addsrc' | 'names' | null>(null);
   const [lastText, setLastText] = useState(String(x?.last || 0));
+  const [, rerender] = useState(0);
 
   const all = x ? sourcesOf(x) : [];
   const vis = all.filter((q) => !q.h);
@@ -76,6 +78,10 @@ export function Series({ view }: { view: SeriesView }) {
     if (!l) return;
     const n = mode === 'cont' ? Math.floor(last) + 1 : mode === 'resume' ? l.rn || 0 : 0;
     const url = mode === 'resume' ? l.resume || '' : n && l.tpl ? l.tpl.replace('{n}', String(n)) : '';
+    if (opensInBrowser(host(l.url))) {
+      window.open(url || l.url, '_blank', 'noopener');
+      return toast(n ? `Opened chapter ${fmt(n)} in the browser` : 'Opened in the browser');
+    }
     navigate({ name: 'frame', id: x.id, i, src: cur, ch: n, url });
   };
 
@@ -153,6 +159,8 @@ export function Series({ view }: { view: SeriesView }) {
     const i = +cur.slice(1);
     const l = x.links[i];
     const nx = Math.floor(last) + 1;
+    const site = l ? host(l.url) : '';
+    const ob = !!l && opensInBrowser(site);
     body = l && (
       <div className="pad">
         {l.resume && (
@@ -166,7 +174,7 @@ export function Series({ view }: { view: SeriesView }) {
           </button>
         )}
         <button className={`btn ${l.tpl || l.resume ? 'ghost' : ''}`} onClick={() => openFrame(i, 'page')}>
-          Open the series page in app
+          Open the series page{ob ? ' ↗' : ' in app'}
         </button>
         <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
           Update chapter from a link
@@ -174,9 +182,23 @@ export function Series({ view }: { view: SeriesView }) {
         <a className="btn ghost" href={l.url} target="_blank" rel="noopener noreferrer">
           Open in browser
         </a>
+        <label className="opt">
+          <input
+            type="checkbox"
+            className="obt"
+            checked={ob}
+            onChange={(e) => {
+              setOpensInBrowser(site, e.target.checked);
+              rerender((n) => n + 1);
+              toast(e.target.checked ? `${site} will open in the browser` : `${site} will open in the app`);
+            }}
+          />{' '}
+          Open {site} in the browser instead of in the app
+        </label>
         <p className="hint" style={{ padding: 0 }}>
           Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so
-          Continue works. If the in-app view is blank, the site blocks embedding: use Open in browser.
+          Continue works. If the site is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
+          {ob ? '. After reading there, come back and tap + or Update' : ''}.
         </p>
         <button
           className="btn danger sm"
