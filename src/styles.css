@@ -65,6 +65,11 @@ body.nonav{padding-bottom:0}
 .rbar.fbar b{font-size:14px}
 .rbar.fbar .sm{width:auto;padding:0 8px;font-size:13px}
 .rbar .fz{width:32px;font-size:17px}
+.opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--muted);cursor:pointer}
+.opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
+/* shown only while the whole app is zoomed (iPhone Safari over a site view); kept at normal size in the corner */
+#unzoom{position:fixed;left:0;top:0;transform-origin:0 0;z-index:30;display:none;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#unzoom.on{display:block}
 iframe.frame{--fz:1;display:block;width:calc(100% / var(--fz));height:calc(var(--fh) / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff;touch-action:pan-x pan-y}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
