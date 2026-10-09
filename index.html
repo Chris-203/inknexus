@@ -208,8 +208,11 @@ function addItem(o){
   S.lib.push(x);save();return x;
 }
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
-const PRESETS=['Asura Scans','Thunder Scans','comix.to','Tapas','MANGA Plus'];
-const presetHtml=()=>`<div class="presets">${PRESETS.map(n=>`<button type="button" class="chip" data-a="preset" data-n="${n}">${n}</button>`).join('')}</div>`;
+/* Link-only sites: a name and the site's main address, prefilled so you only add the series path.
+   Sites move domains often; edit the address here when one changes. */
+const PRESETS=[['Asura Scans','https://asuracomic.net/'],['Thunder Scans','https://en-thunderscans.com/'],['Comix','https://comix.to/'],
+  ['Tapas','https://tapas.io/'],['MANGA Plus','https://mangaplus.shueisha.co.jp/']];
+const presetHtml=()=>`<div class="presets">${PRESETS.map(([n],i)=>`<button type="button" class="chip" data-a="preset" data-i="${i}">${n}</button>`).join('')}</div>`;
 function parseChUrl(u){
   let o;try{o=new URL(u)}catch(e){return null}
   const rest=u.slice(o.origin.length);
@@ -430,7 +433,12 @@ document.addEventListener('click',async e=>{
     }
   }
   else if(a==='pickname'){x.title=V.names[+b.dataset.i].n;save();closeModal();render();toast('Name changed')}
-  else if(a==='preset'){b.closest('form').querySelector('[name=label]').value=b.dataset.n}
+  else if(a==='preset'){
+    const [n,u]=PRESETS[+b.dataset.i],f=b.closest('form'),url=f.querySelector('[name=url]');
+    f.querySelector('[name=label]').value=n;
+    /* fill the address unless a real link was already pasted */
+    if(!url.value.trim()||PRESETS.some(p=>p[1]===url.value.trim())){url.value=u;url.focus();try{url.setSelectionRange(u.length,u.length)}catch(e){}}
+  }
   else if(a==='findal'){
     $('#mres').innerHTML='<p class="hint">Searching…</p>';
     try{V.mres=await Sources.anilist.search(x.title);

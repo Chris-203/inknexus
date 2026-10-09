@@ -26,7 +26,7 @@ Where things are in `index.html`: `Sources` (MangaDex and AniList), `api()` and 
 ## Rules
 - **Storage key stays `longstrip`.** It predates the rename. Changing it makes every saved library look empty. If it ever must change, migrate the old key.
 - **The relay stays narrow.** `api/mangadex.js` forwards GET only, only to `https://api.mangadex.org` (checked with `new URL()`, not string prefixes), and only for same-site requests. Never turn it into an open proxy, add CORS headers, or relay image hosts or other sites. No secrets or hardcoded site addresses in the repo.
-- **Sources policy.** The built-in reader is only for sources with an API that allows it (MangaDex, under its API rules). Everything else is link-only: the user pastes a chapter link and the app reads the chapter number. Do not scrape, mirror or hotlink pages or images from unlicensed scanlation sites, and do not hardcode their domains.
+- **Sources policy.** The built-in reader is only for sources with an API that allows it (MangaDex, under its API rules). Everything else is link-only: the user pastes a chapter link and the app reads the chapter number. For unlicensed scanlation sites the app may know a site's name and main address (for example to prefill a link), and may open the site's own page, but it must never fetch, scrape, mirror, proxy or hotlink their pages or images, and never read their chapters inside the app's reader.
 - **Original artwork only.** Do not add real covers, characters or logos. Cover art in `assets/` is original.
 - **Mobile first.** Check at about 390px wide. Keep visible focus states, keep touch targets large, respect `prefers-reduced-motion`.
 - **Failure messages say what failed and what to do.** Do not swallow errors silently.
