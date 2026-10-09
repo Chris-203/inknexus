@@ -156,7 +156,9 @@ const Sources={
         const grp=(c.relationships||[]).filter(r=>r.type==='scanlation_group'&&r.attributes).map(r=>r.attributes.name).join(' & ');
         byNum.set(n,{id:c.id,num:n,title:c.attributes.title||'',ext,grp});
       }
-      return [...byNum.values()].sort((a,b)=>a.num-b.num);
+      const res=[...byNum.values()].sort((a,b)=>a.num-b.num);
+      res.listed=out.length; // English chapters MangaDex returned, before dropping unreadable ones
+      return res;
     },
     async pages(id){
       const j=await (await api(`${MD}/at-home/server/${id}`)).json();
@@ -184,7 +186,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return 'Link'}};
 const find=id=>S.lib.find(x=>x.id===id);
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());
-const cache={};
+const cache={},chErr={};
 let V={name:'library'};
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),3200)}
 function go(v){V=v;render();window.scrollTo(0,0)}
@@ -263,10 +265,13 @@ function vSeries(){
     const chs=cache[x.md];
     if(!chs){
       body='<p class="hint">Loading chapters…</p>';
-      Sources.mangadex.chapters(x.md).then(c=>{cache[x.md]=c}).catch(e=>{cache[x.md]=[];toast('Could not load chapters from MangaDex ('+why(e)+')')})
+      Sources.mangadex.chapters(x.md).then(c=>{cache[x.md]=c;delete chErr[x.md]}).catch(e=>{cache[x.md]=[];chErr[x.md]=why(e)})
         .finally(()=>{if(V.name==='series'&&V.id===x.id)render()});
+    }else if(chErr[x.md]){
+      body=`<p class="hint">Could not load chapters from MangaDex (${esc(chErr[x.md])}).</p><div class="pad"><button class="btn ghost" data-a="retrych">Try again</button></div>`;
     }else if(!chs.length){
-      body='<p class="hint">No readable English chapters here. Switch to another source.</p>';
+      body=chs.listed?`<p class="hint">MangaDex lists ${chs.listed} English chapter${chs.listed===1?'':'s'} for this title, but none can be read here (removed or hosted elsewhere). Add an official link with + Source.</p>`
+        :'<p class="hint">MangaDex has no English chapters for this title. Add an official link with + Source, or switch to another source.</p>';
     }else{
       const next=chs.find(c=>c.num>(x.last||0));
       cta=next?`<div class="pad"><button id="cont" class="btn" data-a="read" data-cont="1" data-n="${next.num}">${x.last?'Continue':'Start'} with ch. ${fmt(next.num)}</button></div>`
@@ -385,6 +390,7 @@ document.addEventListener('click',async e=>{
     V.tok=0;closeModal();go({name:'reader',id:V.id,n});
   }
   else if(a==='sort'){S.sort=S.sort==='asc'?'desc':'asc';save();render()}
+  else if(a==='retrych'){delete cache[x.md];delete chErr[x.md];render()}
   else if(a==='back')go({name:'series',id:V.id,src:'md'});
   else if(a==='inc'||a==='dec'){x.last=Math.max(0,Math.floor(x.last||0)+(a==='inc'?1:-1));x.t=Date.now();save();render()}
   else if(a==='rm'){if(confirm('Remove this series from your library?')){S.lib=S.lib.filter(k=>k.id!==x.id);save();go({name:'library'})}}
