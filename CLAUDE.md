@@ -1,7 +1,7 @@
 # InkNexus
 
 Every series. One place. A mobile-first webtoon and manhwa tracker and reader.
-Plain TypeScript, no framework, bundled by Vite. Deployed on Vercel at https://inknexus-psi.vercel.app.
+TypeScript and React, bundled by Vite. Deployed on Vercel at https://inknexus-psi.vercel.app.
 
 ## Workflow
 - `main` is protected. Every change goes through a branch and a pull request. Do not push to `main`.
@@ -27,11 +27,12 @@ npm run build
 Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm run dev` serves the page without the relay, so MangaDex fails there.
 
 ## Layout
-- `index.html`: page shell and meta tags; loads `src/main.ts`
-- `src/main.ts`: event handlers: one delegated click handler keyed on `data-a` attributes, form submits, the last-chapter field, backup import
-- `src/views.ts`: navigation (`go()`, `goBack()`; views live in browser history so the phone back gesture works) and the views `vLibrary`, `vSearch`, `vSeries`, `vReader`, `vFrame`
-- `src/state.ts`: the library `S`, saved on every change. `src/ui.ts`: `$`, `esc`, `toast`, the bottom sheet
-- `src/lib/`: `api.ts` (`api()` and `RELAY`), `links.ts` (`parseChUrl()`, `linkFrom()`, `isWebUrl()`, `PRESETS`), `storage.ts` (the `longstrip` key; `toState()` checks saved and imported data), `chapters.ts` (session chapter cache, one load at a time), `updates.ts` (library "new" badges), `names.ts`, `zoom.ts` (reader pinch and double-tap), `types.ts`
+- `index.html`: page shell and meta tags; loads `src/main.tsx`
+- `src/App.tsx`: navigation (`navigate()`, `goBack()`; views live in browser history so the phone back gesture works), the bottom nav, the toast, backup import. `src/context.ts`: the `View` type and `useApp()`
+- `src/views/`: one file per screen: `Library`, `Search`, `Series` (with the Add-a-source and Change-name sheets), `Reader`, `Frame` (the in-app site view). `shared.tsx`: `ResultRow`, `NOT_WEB`
+- `src/components/`: `Sheet` (bottom sheet dialog), `LinkFields` (site presets with name and link fields), `ResetZoom`
+- `src/lib/store.ts`: the library, saved on every change and read with `useStore()`; `setLast()`, `updateSeries()`, `sourcesOf()`, `setHidden()`
+- `src/lib/`: `api.ts` (`api()` and `RELAY`), `links.ts` (`parseChUrl()`, `linkFrom()`, `isWebUrl()`, `stepChapter()`, `PRESETS`), `storage.ts` (the `longstrip` key; `toState()` checks saved and imported data), `chapters.ts` (`useChapters()`: session chapter cache, one load at a time), `updates.ts` (`useUpdates()`: library "new" badges), `actions.ts` (update a chapter from a copied link), `frameZoom.ts` and `openInBrowser.ts` (per-site settings kept on the device, not in backups), `names.ts`, `zoom.ts` (reader pinch and double-tap), `types.ts`
 - `src/sources/`: `mangadex.ts` (`toChapterList()` is the chapter filter) and `anilist.ts`
 - `*.test.ts`: Vitest tests next to the code they test
 - `src/styles.css`: all styles
@@ -44,8 +45,8 @@ Library data uses the field names in `src/lib/types.ts`. They match what is alre
 
 ## Code
 - **Keep styling consistent.** Use the existing classes and the color tokens in `:root`. Add a class rather than an inline `style`.
-- **Do not recreate existing logic.** Look for a helper before writing one (`why()`, `linkFrom()`, `resRow()`, `sourcesOf()`, `stepChapter()`), and extend it rather than copy it.
-- **No unnecessary complexity.** Pick the simplest thing that works. No framework, layer or workaround the problem does not need.
+- **Do not recreate existing logic.** Look for a helper or component before writing one (`why()`, `linkFrom()`, `sourcesOf()`, `stepChapter()`, `useChapters()`, `ResultRow`, `Sheet`), and extend it rather than copy it.
+- **No unnecessary complexity.** Pick the simplest thing that works. React is the only UI library; shared state lives in small stores in `src/lib/` read with `useSyncExternalStore`. No other library, layer or workaround the problem does not need.
 - **No filler.** Comments explain why, not what. UI text, commit messages and PR bodies say what changed in plain sentences, without padding.
 
 ## Rules

@@ -10,14 +10,14 @@ A mobile-friendly webtoon and manhwa tracker and reader.
 - **Multiple sources per series**: switch between them, hide the ones you don't use, and the app remembers your pick
 - **Built-in reader** (vertical scroll) for MangaDex chapters, with sort, official-site chapters marked, and pinch or double-tap zoom on the pages
 - **AniList search** for metadata and official English reading links
-- **Link-only sources** for any other site: paste a chapter link and the app reads the chapter number, learns the URL pattern where possible, and offers Continue / Next
+- **Link-only sources** for any other site: paste a chapter link and the app reads the chapter number, learns the URL pattern where possible, and offers Continue / Next. The site opens in the app, with its own zoom, or in the browser if you choose
 - Export and import your library as JSON
 
 InkNexus does not host, scrape or copy chapter images from sites that don't offer an API. Other sites are added as links you open yourself.
 
 ## Run it
 
-Plain TypeScript in `src/`, bundled by Vite, plus the MangaDex relay in `api/`.
+TypeScript and React in `src/`, bundled by Vite, plus the MangaDex relay in `api/`.
 
 ```
 npm install
