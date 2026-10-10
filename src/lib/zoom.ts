@@ -69,10 +69,16 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
   wrap.addEventListener('touchstart', start, { passive: true });
   wrap.addEventListener('touchmove', move, { passive: false });
   wrap.addEventListener('touchend', end);
+  // Safari can still pinch the whole page over the pages despite touch-action; its gesture events stop that here only.
+  const gesture = (e: Event) => e.preventDefault();
+  wrap.addEventListener('gesturestart', gesture);
+  wrap.addEventListener('gesturechange', gesture);
   return () => {
     cancelAnimationFrame(raf);
     wrap.removeEventListener('touchstart', start);
     wrap.removeEventListener('touchmove', move);
     wrap.removeEventListener('touchend', end);
+    wrap.removeEventListener('gesturestart', gesture);
+    wrap.removeEventListener('gesturechange', gesture);
   };
 }

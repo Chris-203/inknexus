@@ -1,3 +1,4 @@
+import { useEffect, useSyncExternalStore } from 'react';
 import { statusOf, why } from './api';
 import { cachedChapters } from './chapters';
 import type { Latest, Series } from './types';
@@ -36,9 +37,19 @@ export function newCount(l: Latest | undefined, last: number): { n: number; more
 }
 
 export const updates = { checking: false, failed: [] as { title: string; error: string }[] };
+const listeners = new Set<() => void>();
+let version = 0;
+function emit() {
+  version++;
+  listeners.forEach((l) => l());
+}
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => void listeners.delete(l);
+};
 
-/** Check the started MangaDex series that are due (all of them with `force`), then call `done`. */
-export function checkUpdates(lib: Series[], force: boolean, done: () => void) {
+/** Check the started MangaDex series that are due (all of them with `force`). */
+export function checkUpdates(lib: Series[], force: boolean) {
   if (updates.checking) return;
   const now = Date.now();
   const due = (md: string) => force || now - Math.max(saved[md]?.at ?? 0, tried.get(md) ?? 0) > TTL;
@@ -47,6 +58,7 @@ export function checkUpdates(lib: Series[], force: boolean, done: () => void) {
   for (const x of queue) tried.set(x.md!, now);
   updates.checking = true;
   updates.failed = [];
+  emit();
   const worker = async () => {
     for (let x = queue.shift(); x; x = queue.shift()) {
       try {
@@ -65,6 +77,13 @@ export function checkUpdates(lib: Series[], force: boolean, done: () => void) {
       /* storage full or blocked: the results still show for this visit */
     }
     updates.checking = false;
-    done();
+    emit();
   });
+}
+
+/** Run the due checks for a library and re-render when they finish. */
+export function useUpdates(lib: Series[]) {
+  useSyncExternalStore(subscribe, () => version);
+  useEffect(() => checkUpdates(lib, false), [lib]);
+  return updates;
 }

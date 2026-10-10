@@ -72,7 +72,14 @@ details.more .pad{padding:0 12px 12px}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* in-app site view: the bar, then the site filling the rest of the screen */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
-iframe.frame{display:block;width:100%;flex:1;min-height:0;border:0;background:#fff}
+/* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
+.fview .rbar{gap:6px}
+.fwrap{flex:1;min-height:0;position:relative;overflow:hidden}
+iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));height:calc(100% / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff}
+/* shown only while iPhone Safari has zoomed the whole app over a site view; kept at normal size in the corner */
+#unzoom{position:fixed;left:0;top:0;transform-origin:0 0;z-index:30;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--muted);cursor:pointer}
+.opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:44px;min-height:44px;padding:0;vertical-align:middle}
