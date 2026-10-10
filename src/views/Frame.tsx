@@ -1,34 +1,26 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useApp, type View } from '../context';
 import { ResetZoom } from '../components/ResetZoom';
-import { pasteChapterLink } from '../lib/actions';
-import { getFrameZoom, nextZoom, setFrameZoom } from '../lib/frameZoom';
-import { fmt, host, nextWhole } from '../lib/links';
-import { setLast, useStore } from '../lib/store';
-
-type FrameView = Extract<View, { name: 'frame' }>;
+import { fmt } from '../lib/format';
+import { chapterLink, host, linkName, nextWhole } from '../lib/links';
+import { pasteChapterLink } from '../lib/pasteLink';
+import { getFrameZoom, nextZoom, setFrameZoom } from '../lib/siteSettings';
+import { setLast } from '../lib/store';
+import type { Series } from '../lib/types';
 
 /** A link-only source's own page, shown in the app. InkNexus never reads or copies its content. */
-export function Frame({ view }: { view: FrameView }) {
+export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'frame' }> }) {
   const { navigate, goBack, toast } = useApp();
-  const { lib } = useStore();
-  const x = lib.find((s) => s.id === view.id);
-  const l = x?.links[view.i];
-  const u = view.url || l?.url || '';
+  const l = x.links[view.i]!;
+  const u = view.url || l.url;
   const site = host(u);
   const [fz, setFz] = useState(() => getFrameZoom(site));
 
-  useEffect(() => {
-    if (!l) navigate({ name: 'library' }, true);
-  }, [l, navigate]);
-  if (!x || !l) return null;
-
   const next = () => {
     if (!l.tpl) return;
-    const n = view.ch + 1;
     setLast(x.id, Math.max(x.last || 0, view.ch));
     toast(`Chapter ${fmt(view.ch)} marked read`);
-    navigate({ ...view, ch: n, url: l.tpl.replace('{n}', String(n)) }, true);
+    navigate({ ...view, ch: view.ch + 1, url: chapterLink(l.tpl, view.ch + 1) }, true);
   };
   const plusOne = () => {
     const n = nextWhole(x.last || 0);
@@ -50,7 +42,7 @@ export function Frame({ view }: { view: FrameView }) {
         <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
           ‹
         </button>
-        <b>{l.label || host(l.url)}</b>
+        <b>{linkName(l)}</b>
         {view.ch && l.tpl ? (
           <button className="ibtn txt" aria-label="Mark read and open next chapter" onClick={next}>
             Next ›

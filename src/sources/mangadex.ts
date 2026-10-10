@@ -6,7 +6,9 @@ import type { Chapter, ChapterList, Latest, Page, SearchResult } from '../lib/ty
 const RATING = '&contentRating[]=safe&contentRating[]=suggestive';
 
 /** A series' English chapter feed, with scanlation groups. No includeExternalUrl: '=1' means only external chapters. */
-const feedUrl = (ref: string, q: string) => `${MD}/manga/${ref}/feed?translatedLanguage[]=en&includes[]=scanlation_group${RATING}&${q}`;
+function feedUrl(ref: string, q: string): string {
+  return `${MD}/manga/${ref}/feed?translatedLanguage[]=en&includes[]=scanlation_group${RATING}&${q}`;
+}
 
 interface Rel {
   id: string;
@@ -101,5 +103,10 @@ export async function names(ref: string): Promise<Name[]> {
   return mdNames(j.data.attributes);
 }
 
-export const mangaUrl = (ref: string) => `https://mangadex.org/title/${ref}`;
-export const chapterUrl = (id: string) => `https://mangadex.org/chapter/${id}`;
+export function mangaUrl(ref: string): string {
+  return `https://mangadex.org/title/${ref}`;
+}
+
+export function chapterUrl(id: string): string {
+  return `https://mangadex.org/chapter/${id}`;
+}

@@ -13,7 +13,9 @@ export function ResetZoom() {
     if (!vv) return;
     const place = () => {
       if (vv.scale > 1.05)
-        setPos(`translate(${vv.offsetLeft + vv.width - 12 / vv.scale}px,${vv.offsetTop + vv.height - 80 / vv.scale}px) scale(${1 / vv.scale}) translate(-100%,-100%)`);
+        setPos(
+          `translate(${vv.offsetLeft + vv.width - 12 / vv.scale}px,${vv.offsetTop + vv.height - 80 / vv.scale}px) scale(${1 / vv.scale}) translate(-100%,-100%)`,
+        );
       else {
         setPos(null);
         setFailed(false);

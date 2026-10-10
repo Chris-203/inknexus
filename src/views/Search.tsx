@@ -1,20 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { useApp } from '../context';
 import { LinkFields } from '../components/LinkFields';
+import { ResultRow } from '../components/ResultRow';
 import { why } from '../lib/api';
-import { fmt, linkFrom, norm } from '../lib/links';
+import { fmt, norm } from '../lib/format';
+import { linkFrom, NOT_WEB } from '../lib/links';
 import { addSeries, updateSeries, useStore } from '../lib/store';
 import type { SearchResult } from '../lib/types';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
-import { NOT_WEB, ResultRow } from './shared';
 
 export function Search() {
   const { navigate, toast, search, setSearch } = useApp();
   const { lib } = useStore();
   const [q, setQ] = useState(search.q);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
-  const [adding, setAdding] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const onSearch = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,11 +30,10 @@ export function Search() {
     if (al.status === 'rejected') toast(`AniList failed (${why(al.reason)}). Showing MangaDex only.`);
   };
 
-  const existing = (o: SearchResult) =>
-    o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
+  const existing = (o: SearchResult) => (o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title)));
 
-  const add = async (o: SearchResult, key: string) => {
-    setAdding(key);
+  const add = async (o: SearchResult) => {
+    setAdding(true);
     const n = addSeries({ title: o.title, cover: o.cover, md: o.src === 'md' ? String(o.ref) : null, al: o.src === 'al' ? o.ref : null, links: o.links || [] });
     let msg = 'Added to library';
     if (o.src === 'al') {
@@ -44,7 +44,7 @@ export function Search() {
           msg = 'Added. Found it on MangaDex too';
         }
       } catch {
-        /* MangaDex is optional here: the series is added with its AniList links either way */
+        // MangaDex is optional here: the series is added with its AniList links either way.
       }
     }
     toast(msg);
@@ -65,22 +65,31 @@ export function Search() {
 
   let results;
   if (status === 'busy') results = <p className="hint">Searching…</p>;
-  else if (status === 'failed') results = <p className="hint">Could not reach MangaDex or AniList. Check your connection and try again, or add the series by link.</p>;
+  else if (status === 'failed')
+    results = <p className="hint">Could not reach MangaDex or AniList. Check your connection and try again, or add the series by link.</p>;
   else if (!search.res)
     results = <p className="hint">MangaDex gives you a built-in reader. AniList adds official reading links. For any other site, add it by link.</p>;
   else if (!search.res.length) results = <p className="hint">No matches. Try another spelling, or add it by link below.</p>;
   else
     results = search.res.map((o) => {
-      const key = `${o.src}:${o.ref}`;
       const ex = existing(o);
       return (
-        <ResultRow key={key} o={o} extra={<><span className="tag">{o.src === 'md' ? 'MangaDex' : 'AniList'}</span><p>{o.desc}</p></>}>
+        <ResultRow
+          key={`${o.src}:${o.ref}`}
+          o={o}
+          extra={
+            <>
+              <span className="tag">{o.src === 'md' ? 'MangaDex' : 'AniList'}</span>
+              <p>{o.desc}</p>
+            </>
+          }
+        >
           {ex ? (
             <button className="btn sm" onClick={() => navigate({ name: 'series', id: ex.id })}>
               Open
             </button>
           ) : (
-            <button className="btn sm" disabled={adding !== null} onClick={() => void add(o, key)}>
+            <button className="btn sm" disabled={adding} onClick={() => void add(o)}>
               Add
             </button>
           )}

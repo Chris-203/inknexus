@@ -1,4 +1,4 @@
-import { fmt, host, isWebUrl, linkFrom, norm, parseChUrl, stepChapter } from './links';
+import { chapterLink, host, isWebUrl, linkFrom, linkName, parseChUrl, stepChapter } from './links';
 // What the original single-file app's parseChUrl returned for these links, recorded before it was removed.
 import legacy from './fixtures/parseChUrl-legacy.json';
 
@@ -69,10 +69,9 @@ describe('helpers', () => {
     expect(host('https://www.tapas.io/x')).toBe('tapas.io');
     expect(host('nope')).toBe('Link');
   });
-  it('norm keeps letters and digits only', () => expect(norm('Solo Leveling: Ragnarok!')).toBe('sololevelingragnarok'));
-  it('fmt shows whole and one-decimal chapters', () => {
-    expect(fmt(12)).toBe(12);
-    expect(fmt(12.5)).toBe(12.5);
-    expect(fmt(12.55)).toBe(12.6);
+  it('linkName prefers the label, then the site', () => {
+    expect(linkName({ label: 'Tapas', url: 'https://tapas.io/x' })).toBe('Tapas');
+    expect(linkName({ label: '', url: 'https://www.tapas.io/x' })).toBe('tapas.io');
   });
+  it('chapterLink fills the chapter number into a pattern', () => expect(chapterLink('https://s.example/ch-{n}', 13)).toBe('https://s.example/ch-13'));
 });

@@ -2,7 +2,13 @@ import { langName, mdNames, pickTitle } from './names';
 
 const necro: { title: Record<string, string>; altTitles: Record<string, string>[] } = {
   title: { 'zh-ro': 'Siling Fashi Wo Ji Shi Tianzai' },
-  altTitles: [{ zh: '死灵法师！我即是天灾' }, { en: 'Necromancer, the Ultimate Scourge!' }, { 'ko-ro': 'Necromancer' }, { en: 'necromancer, the ultimate scourge!' }, { ko: '네크로맨서' }],
+  altTitles: [
+    { zh: '死灵法师！我即是天灾' },
+    { en: 'Necromancer, the Ultimate Scourge!' },
+    { 'ko-ro': 'Necromancer' },
+    { en: 'necromancer, the ultimate scourge!' },
+    { ko: '네크로맨서' },
+  ],
 };
 
 describe('mdNames', () => {

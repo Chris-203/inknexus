@@ -24,6 +24,10 @@ export async function api(url: string): Promise<Response> {
   return r;
 }
 
-export const why = (e: unknown): string => (e instanceof Error && e.message) || 'unknown error';
+export function why(e: unknown): string {
+  return (e instanceof Error && e.message) || 'unknown error';
+}
 
-export const statusOf = (e: unknown): number | undefined => (e as { status?: number } | null)?.status;
+export function statusOf(e: unknown): number | undefined {
+  return (e as { status?: number } | null)?.status;
+}

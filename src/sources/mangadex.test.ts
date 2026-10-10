@@ -74,7 +74,13 @@ describe('MangaDex requests', () => {
   });
   it('search uses the English title and the cover', async () => {
     relay(() => ({
-      data: [{ id: 'm1', attributes: { title: { 'ko-ro': 'Jeonjijeok Dokja Sijeom' }, altTitles: [{ en: "Omniscient Reader's Viewpoint" }], description: { en: 'd' } }, relationships: [{ id: 'c', type: 'cover_art', attributes: { fileName: 'f.jpg' } }] }],
+      data: [
+        {
+          id: 'm1',
+          attributes: { title: { 'ko-ro': 'Jeonjijeok Dokja Sijeom' }, altTitles: [{ en: "Omniscient Reader's Viewpoint" }], description: { en: 'd' } },
+          relationships: [{ id: 'c', type: 'cover_art', attributes: { fileName: 'f.jpg' } }],
+        },
+      ],
     }));
     expect(await search('orv')).toEqual([
       { src: 'md', ref: 'm1', title: "Omniscient Reader's Viewpoint", desc: 'd', cover: 'https://uploads.mangadex.org/covers/m1/f.jpg.256.jpg' },

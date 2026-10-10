@@ -11,7 +11,16 @@ describe('storage', () => {
   it('uses the old longstrip key so existing libraries keep loading', () => expect(STORAGE_KEY).toBe('longstrip'));
   it('loads a saved library unchanged', () => {
     const lib = [
-      { id: 'a', title: 'T', cover: '', md: MDID, al: null, links: [{ label: 'Site', url: 'https://site.example/s', tpl: 'https://site.example/s/ch-{n}', resume: '', rn: 0 }], last: 3, t: 1 },
+      {
+        id: 'a',
+        title: 'T',
+        cover: '',
+        md: MDID,
+        al: null,
+        links: [{ label: 'Site', url: 'https://site.example/s', tpl: 'https://site.example/s/ch-{n}', resume: '', rn: 0 }],
+        last: 3,
+        t: 1,
+      },
     ];
     const st = fakeStore({ longstrip: JSON.stringify({ lib, sort: 'asc' }) });
     expect(loadState(st)).toEqual({ lib, sort: 'asc' });
@@ -39,7 +48,14 @@ describe('storage', () => {
     const s = parseBackup(
       JSON.stringify({
         lib: [
-          { id: 'a', title: 'T', last: '12', md: 'not-an-id', cover: 'javascript:x', links: [{ url: 'javascript:alert(1)' }, { label: 'ok', url: 'https://ok.example' }] },
+          {
+            id: 'a',
+            title: 'T',
+            last: '12',
+            md: 'not-an-id',
+            cover: 'javascript:x',
+            links: [{ url: 'javascript:alert(1)' }, { label: 'ok', url: 'https://ok.example' }],
+          },
           { title: 'No links field' },
           'junk',
         ],

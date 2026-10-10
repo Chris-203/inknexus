@@ -1,5 +1,5 @@
 import { useApp } from '../context';
-import { fmt } from '../lib/links';
+import { fmt } from '../lib/format';
 import { getState, useStore } from '../lib/store';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 

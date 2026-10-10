@@ -27,7 +27,9 @@ export function mdNames(a: Titled): Name[] {
 }
 
 /** The name to show for a series: English when MangaDex has one. */
-export const pickTitle = (a: Titled): string => mdNames(a)[0]?.n || 'Untitled';
+export function pickTitle(a: Titled): string {
+  return mdNames(a)[0]?.n || 'Untitled';
+}
 
 /** 'ko-ro' -> 'Korean (romanized)', 'zh' -> 'Chinese'. Falls back to the code. */
 export function langName(l: string): string {

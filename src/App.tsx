@@ -1,21 +1,35 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { parseBackup } from './lib/storage';
-import { getState, replaceState } from './lib/store';
+import { findSeries, getState, replaceState, useStore } from './lib/store';
+import type { Series as SeriesT } from './lib/types';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
 import { Series } from './views/Series';
 import { Reader } from './views/Reader';
 import { Frame } from './views/Frame';
 
-/* Views live in browser history as { v, back }, so the phone's back gesture moves through the app.
-   `back` says there is an in-app view behind this one. */
+// Views live in browser history as { v, back }, so the phone's back gesture moves through the app.
+// `back` says there is an in-app view behind this one.
 const NAMES = ['library', 'search', 'series', 'reader', 'frame'];
-const viewOf = (st: unknown): View | null => {
+
+function viewOf(st: unknown): View | null {
   const v = (st as { v?: View } | null)?.v;
   return v && NAMES.includes(v.name) ? v : null;
-};
-const hasBack = () => !!(history.state as { back?: boolean } | null)?.back;
+}
+
+function hasBack(): boolean {
+  return !!(history.state as { back?: boolean } | null)?.back;
+}
+
+/** The series a view shows, or undefined when it is gone (removed, or its MangaDex source or link is). */
+function seriesFor(view: View): SeriesT | undefined {
+  if (!('id' in view)) return undefined;
+  const x = findSeries(view.id);
+  if (view.name === 'reader' && !x?.md) return undefined;
+  if (view.name === 'frame' && !x?.links[view.i]) return undefined;
+  return x;
+}
 
 export function App() {
   const [view, setView] = useState<View>(() => viewOf(history.state) || { name: 'library' });
@@ -23,6 +37,9 @@ export function App() {
   const [message, setMessage] = useState({ text: '', on: false });
   const toastTimer = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  useStore(); // re-render when the library changes
+  const x = seriesFor(view);
+  const gone = 'id' in view && !x;
 
   useEffect(() => {
     history.replaceState({ v: view, back: hasBack() }, '');
@@ -33,6 +50,7 @@ export function App() {
   }, []);
 
   useLayoutEffect(() => window.scrollTo(0, 0), [view]);
+
   const full = view.name === 'reader' || view.name === 'frame';
   useEffect(() => void document.body.classList.toggle('nonav', full), [full]);
 
@@ -41,6 +59,10 @@ export function App() {
     else history.pushState({ v, back: true }, '');
     setView(v);
   }, []);
+
+  useEffect(() => {
+    if (gone) navigate({ name: 'library' }, true);
+  }, [gone, navigate]);
 
   const goBack = useCallback(
     (fallback: View) => {
@@ -83,9 +105,9 @@ export function App() {
       <div id="app">
         {view.name === 'library' && <Library />}
         {view.name === 'search' && <Search />}
-        {view.name === 'series' && <Series key={view.id} view={view} />}
-        {view.name === 'reader' && <Reader key={`${view.id}:${view.n}`} view={view} />}
-        {view.name === 'frame' && <Frame key={`${view.id}:${view.i}:${view.url}`} view={view} />}
+        {x && view.name === 'series' && <Series key={x.id} x={x} />}
+        {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
+        {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
       </div>
       <nav id="nav" hidden={full}>
         <button aria-current={tab === 'library' || undefined} onClick={() => view.name !== 'library' && navigate({ name: 'library' })}>

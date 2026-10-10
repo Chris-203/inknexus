@@ -16,9 +16,10 @@ TypeScript and React, bundled by Vite. Deployed on Vercel at https://inknexus-ps
 - Include screenshots or other media of the change in the PR body when there is anything visible to show.
 
 ## Check before committing
-Run all three. The GitHub "Check" action runs them on every PR too.
+Run all four. The GitHub "Check" action runs them on every PR too. `npm run format` fixes formatting.
 
 ```
+npm run format:check
 npm run typecheck
 npm test
 npm run build
@@ -29,10 +30,10 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 ## Layout
 - `index.html`: page shell and meta tags; loads `src/main.tsx`
 - `src/App.tsx`: navigation (`navigate()`, `goBack()`; views live in browser history so the phone back gesture works), the bottom nav, the toast, backup import. `src/context.ts`: the `View` type and `useApp()`
-- `src/views/`: one file per screen: `Library`, `Search`, `Series` (with the Add-a-source and Change-name sheets), `Reader`, `Frame` (the in-app site view). `shared.tsx`: `ResultRow`, `NOT_WEB`
-- `src/components/`: `Sheet` (bottom sheet dialog), `LinkFields` (site presets with name and link fields), `ResetZoom`
+- `src/views/`: one file per screen, each given its series by `App`: `Library`, `Search`, `Series` (with its source panels and the Add-a-source and Change-name sheets), `Reader`, `Frame` (the in-app site view)
+- `src/components/`: `Sheet` (bottom sheet dialog), `LinkFields` (site presets with name and link fields), `ResultRow` (a search result), `ResetZoom`
 - `src/lib/store.ts`: the library, saved on every change and read with `useStore()`; `setLast()`, `updateSeries()`, `sourcesOf()`, `setHidden()`
-- `src/lib/`: `api.ts` (`api()` and `RELAY`), `links.ts` (`parseChUrl()`, `linkFrom()`, `isWebUrl()`, `stepChapter()`, `PRESETS`), `storage.ts` (the `longstrip` key; `toState()` checks saved and imported data), `chapters.ts` (`useChapters()`: session chapter cache, one load at a time), `updates.ts` (`useUpdates()`: library "new" badges), `actions.ts` (update a chapter from a copied link), `frameZoom.ts` and `openInBrowser.ts` (per-site settings kept on the device, not in backups), `names.ts`, `zoom.ts` (reader pinch and double-tap), `types.ts`
+- `src/lib/`: `api.ts` (`api()`, `RELAY`, `why()`), `links.ts` (`parseChUrl()`, `linkFrom()`, `isWebUrl()`, `linkName()`, `chapterLink()`, `stepChapter()`, `PRESETS`), `format.ts` (`fmt()`, `plural()`, `norm()`), `storage.ts` (the `longstrip` key; `toState()` checks saved and imported data; `readJson()` and `writeJson()` for every other key), `changes.ts` (`createChanges()`: the change notifier every store uses), `useLoad.ts` (load something once per key, with busy and error states), `chapters.ts` (`useChapters()`: session chapter cache, one load at a time), `updates.ts` (`useUpdates()`: library "new" badges), `siteSettings.ts` (site zoom and open-in-browser, kept on the device, not in backups), `pasteLink.ts` (update a chapter from a copied link), `names.ts`, `zoom.ts` (reader pinch and double-tap), `types.ts`
 - `src/sources/`: `mangadex.ts` (`toChapterList()` is the chapter filter) and `anilist.ts`
 - `*.test.ts`: Vitest tests next to the code they test
 - `src/styles.css`: all styles
@@ -44,10 +45,15 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 Library data uses the field names in `src/lib/types.ts`. They match what is already saved in people's browsers, so do not rename them without a migration.
 
 ## Code
-- **Keep styling consistent.** Use the existing classes and the color tokens in `:root`. Add a class rather than an inline `style`.
-- **Do not recreate existing logic.** Look for a helper or component before writing one (`why()`, `linkFrom()`, `sourcesOf()`, `stepChapter()`, `useChapters()`, `ResultRow`, `Sheet`), and extend it rather than copy it.
-- **No unnecessary complexity.** Pick the simplest thing that works. React is the only UI library; shared state lives in small stores in `src/lib/` read with `useSyncExternalStore`. No other library, layer or workaround the problem does not need.
+Follow these on every change. Before committing, re-read your own diff against each one and fix what does not fit.
+- **One code style.** Prettier formats all TypeScript and JavaScript, so never hand-format around it. Module-level functions are `function` declarations; arrow functions are only for callbacks and for handlers inside components. Doc comments use `/** */`; every other comment uses `//`.
+- **One file structure.** Screens go in `src/views/` and reusable components in `src/components/`, one component per PascalCase file (a screen may keep its own sheets and panels in its file). Everything else goes in camelCase files in `src/lib/` (app logic and stores) or `src/sources/` (MangaDex and AniList). Tests sit next to the code as `*.test.ts`.
+- **One CSS style.** All styles live in `src/styles.css`, one rule per line, using the existing classes and the color tokens in `:root`. Add a class rather than an inline `style`; inline styles are only for values computed at runtime.
+- **No duplicate code.** Before writing a helper, component or pattern, search for an existing one and reuse or extend it: `why()`, `linkFrom()`, `linkName()`, `chapterLink()`, `stepChapter()`, `fmt()`, `plural()`, `sourcesOf()`, `setLast()`, `readJson()` / `writeJson()`, `createChanges()`, `useLoad()`, `useChapters()`, `ResultRow`, `Sheet`. When the same logic would appear a second time, move it into one place and use it from both.
+- **Keep it short.** Write the simplest code that does the job. Once it works, check each part for a shorter way to get the same result, and use it. No library, layer or workaround the problem does not need: React is the only UI library, and shared state is a small store in `src/lib/` built on `createChanges()`.
+- **Name things for what they are.** Follow the names already in use (`x` for a series, `l` for a link, `n` for a chapter number), and keep the field names in `types.ts` as they are.
 - **No filler.** Comments explain why, not what. UI text, commit messages and PR bodies say what changed in plain sentences, without padding.
+- **Tests.** Add or update a test for each new helper or fixed bug in `src/lib/` or `src/sources/`.
 
 ## Rules
 - **Storage key stays `longstrip`.** It predates the rename. Changing it makes every saved library look empty. If it ever must change, migrate the old key.

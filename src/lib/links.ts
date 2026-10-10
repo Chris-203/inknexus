@@ -49,25 +49,35 @@ export function linkFrom(raw: string, label: string): { link: Link; r: ParsedCha
   return { r, link: { label: label.trim(), url: r?.idPrefixed ? r.series : url, tpl: r?.tpl || '', resume: r ? url : '', rn: r?.num || 0 } };
 }
 
-export const host = (u: string): string => {
+export function host(u: string): string {
   try {
     return new URL(u).hostname.replace(/^www\./, '');
   } catch {
     return 'Link';
   }
-};
+}
 
-/** Loose title match: lowercase letters and digits only. */
-export const norm = (s: unknown): string => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+/** What a link source is called: its label, or its site. */
+export function linkName(l: Link): string {
+  return l.label || host(l.url);
+}
 
-/** Chapter number for display: 12 or 12.5. */
-export const fmt = (n: number): number => (Number.isInteger(n) ? n : +n.toFixed(1));
+/** The URL of chapter `n` from a learned pattern. */
+export function chapterLink(tpl: string, n: number): string {
+  return tpl.replace('{n}', String(n));
+}
 
 /** The next whole chapter after `n`: 12 and 12.5 both give 13. */
-export const nextWhole = (n: number): number => Math.floor(n) + 1;
+export function nextWhole(n: number): number {
+  return Math.floor(n) + 1;
+}
 
 /** One step from a chapter number with − / +: 12.5 goes up to 13 or down to 12. Never below 0. */
-export const stepChapter = (n: number, d: 1 | -1): number => (d > 0 ? nextWhole(n) : Math.max(0, Math.ceil(n) - 1));
+export function stepChapter(n: number, d: 1 | -1): number {
+  return d > 0 ? nextWhole(n) : Math.max(0, Math.ceil(n) - 1);
+}
+
+export const NOT_WEB = 'That is not a web link. Paste a link that starts with https://';
 
 /**
  * Link-only sites: a name and the site's main address, prefilled so you only add the series path.

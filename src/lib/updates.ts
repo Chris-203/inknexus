@@ -1,6 +1,8 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { statusOf, why } from './api';
+import { createChanges } from './changes';
 import { cachedChapters } from './chapters';
+import { isObj, readJson, writeJson } from './storage';
 import type { Latest, Series } from './types';
 import { latest } from '../sources/mangadex';
 
@@ -12,14 +14,8 @@ const KEY = 'inknexus-updates';
 const TTL = 30 * 60 * 1000;
 const CONCURRENCY = 2;
 
-const load = (): Record<string, Latest> => {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || '{}') || {};
-  } catch {
-    return {};
-  }
-};
-const saved = load();
+const stored = readJson(KEY);
+const saved: Record<string, Latest> = isObj(stored) ? (stored as Record<string, Latest>) : {};
 /** When each series was last tried this session, so a failed check is not retried on every render. */
 const tried = new Map<string, number>();
 
@@ -37,16 +33,7 @@ export function newCount(l: Latest | undefined, last: number): { n: number; more
 }
 
 export const updates = { checking: false, failed: [] as { title: string; error: string }[] };
-const listeners = new Set<() => void>();
-let version = 0;
-function emit() {
-  version++;
-  listeners.forEach((l) => l());
-}
-const subscribe = (l: () => void) => {
-  listeners.add(l);
-  return () => void listeners.delete(l);
-};
+const changes = createChanges();
 
 /** Check the started MangaDex series that are due (all of them with `force`). */
 export function checkUpdates(lib: Series[], force: boolean) {
@@ -58,7 +45,7 @@ export function checkUpdates(lib: Series[], force: boolean) {
   for (const x of queue) tried.set(x.md!, now);
   updates.checking = true;
   updates.failed = [];
-  emit();
+  changes.emit();
   const worker = async () => {
     for (let x = queue.shift(); x; x = queue.shift()) {
       try {
@@ -71,19 +58,15 @@ export function checkUpdates(lib: Series[], force: boolean) {
     }
   };
   void Promise.all(Array.from({ length: CONCURRENCY }, worker)).then(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(saved));
-    } catch {
-      /* storage full or blocked: the results still show for this visit */
-    }
+    writeJson(KEY, saved);
     updates.checking = false;
-    emit();
+    changes.emit();
   });
 }
 
 /** Run the due checks for a library and re-render when they finish. */
 export function useUpdates(lib: Series[]) {
-  useSyncExternalStore(subscribe, () => version);
+  useSyncExternalStore(changes.subscribe, changes.version);
   useEffect(() => checkUpdates(lib, false), [lib]);
   return updates;
 }

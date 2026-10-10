@@ -14,11 +14,43 @@ function defaultStore(): KV | undefined {
   }
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
-const str = (v: unknown): string => (typeof v === 'string' ? v : '');
-const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0);
-const web = (v: unknown): string => (isWebUrl(str(v)) ? str(v) : '');
-const uid = () => (typeof globalThis.crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Date.now()) + Math.random());
+/** The JSON saved under `key`, or undefined when nothing readable is there. */
+export function readJson(key: string, store: KV | undefined = defaultStore()): unknown {
+  try {
+    return JSON.parse(store?.getItem(key) || 'null') ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Save `value` as JSON under `key`. When storage is full or blocked, it still works for this visit. */
+export function writeJson(key: string, value: unknown, store: KV | undefined = defaultStore()) {
+  try {
+    store?.setItem(key, JSON.stringify(value));
+  } catch {
+    // Nothing else to do: the value stays in memory until the page closes.
+  }
+}
+
+export function isObj(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function str(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
+function num(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0;
+}
+
+function web(v: unknown): string {
+  return isWebUrl(str(v)) ? str(v) : '';
+}
+
+function uid(): string {
+  return typeof globalThis.crypto?.randomUUID === 'function' ? crypto.randomUUID() : String(Date.now()) + Math.random();
+}
 
 function toLink(v: unknown): Link | null {
   if (!isObj(v) || !web(v.url)) return null;
@@ -56,24 +88,15 @@ export function toState(v: unknown): State | null {
 }
 
 export function loadState(store: KV | undefined = defaultStore()): State {
-  let raw: unknown = null;
-  try {
-    raw = JSON.parse(store?.getItem(STORAGE_KEY) || '');
-  } catch {
-    /* nothing saved yet, or unreadable: start empty */
-  }
+  const raw = readJson(STORAGE_KEY, store);
   const s = toState(raw) || { lib: [] };
   // An old #proxy= setup link saved a worker address here; MangaDex now goes through /api/mangadex.
   if (isObj(raw) && 'proxy' in raw) saveState(s, store);
   return s;
 }
 
-export function saveState(s: State, store: KV | undefined = defaultStore()): void {
-  try {
-    store?.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {
-    /* storage full or blocked: the in-memory state still works for this session */
-  }
+export function saveState(s: State, store: KV | undefined = defaultStore()) {
+  writeJson(STORAGE_KEY, s, store);
 }
 
 /** Parse an exported backup. Throws if the text is not an InkNexus backup. */

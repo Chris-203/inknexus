@@ -22,7 +22,8 @@ export async function search(q: string): Promise<SearchResult[]> {
   } catch {
     throw new Error('network error; check your connection and try again');
   }
-  if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.status === 429 ? 'AniList is rate-limiting, wait a minute and try again' : 'AniList failed, try again later'}`);
+  if (!r.ok)
+    throw new Error(`HTTP ${r.status}: ${r.status === 429 ? 'AniList is rate-limiting, wait a minute and try again' : 'AniList failed, try again later'}`);
   const j: { data?: { Page?: { media?: AlMedia[] } } } = await r.json();
   const media = j.data?.Page?.media;
   if (!media) throw new Error('AniList sent an unexpected answer, try again later');
