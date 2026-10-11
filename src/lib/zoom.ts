@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 /**
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
@@ -81,4 +83,33 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
     wrap.removeEventListener('gesturestart', gesture);
     wrap.removeEventListener('gesturechange', gesture);
   };
+}
+
+/** The browser's own zoom of the whole page: its scale, and where the part on screen starts and how big it is, in CSS pixels. */
+export type PageZoom = { scale: number; left: number; top: number; width: number; height: number };
+
+/** The browser's zoom of the whole page, or null when it is at about 100%. */
+export function pageZoom(vv: VisualViewport): PageZoom | null {
+  return vv.scale > 1.05 ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height } : null;
+}
+
+/**
+ * Pinching over another site shown in the app zooms the whole app, and the app can neither block that nor see the
+ * touches. Following the zoom lets the site view keep its own controls at normal size on screen.
+ */
+export function usePageZoom(): PageZoom | null {
+  const [z, setZ] = useState<PageZoom | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setZ(pageZoom(vv));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+  return z;
 }

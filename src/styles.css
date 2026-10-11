@@ -73,7 +73,7 @@ details.more .pad{padding:0 12px 12px}
 /* in-app site view: the bar, then the site filling the rest of the screen */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
 /* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
-.fview .rbar{gap:6px}
+.fview .rbar{gap:6px;transform-origin:0 0}
 .fwrap{flex:1;min-height:0;position:relative;overflow:hidden}
 iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));height:calc(100% / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff}
 /* shown only while iPhone Safari has zoomed the whole app over a site view; kept at normal size in the corner */
