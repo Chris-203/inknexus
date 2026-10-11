@@ -1,0 +1,8 @@
+dist/
+package-lock.json
+src/lib/fixtures/
+# One rule per line, kept compact on purpose.
+src/styles.css
+# Markdown and the page shell are hand-written.
+*.md
+index.html

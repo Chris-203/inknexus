@@ -16,7 +16,11 @@ function send(res, status, body, headers = {}) {
 function target(raw) {
   if (typeof raw !== 'string' || !raw) return null;
   let u;
-  try { u = new URL(raw); } catch (e) { return null; }
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
   if (u.protocol !== 'https:' || u.hostname !== UPSTREAM_HOST) return null;
   if (u.port || u.username || u.password) return null;
   return u;
@@ -24,14 +28,21 @@ function target(raw) {
 
 function hostOf(v) {
   if (!v) return '';
-  try { return new URL(v).host.toLowerCase(); } catch (e) { return ''; }
+  try {
+    return new URL(v).host.toLowerCase();
+  } catch {
+    return '';
+  }
 }
 
 // Only pages on this same site may use the relay.
 function sameSite(req) {
   const h = req.headers;
   if (h['sec-fetch-site'] === 'same-origin') return true;
-  const self = String(h['x-forwarded-host'] || h.host || '').split(',')[0].trim().toLowerCase();
+  const self = String(h['x-forwarded-host'] || h.host || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
   if (!self) return false;
   return hostOf(h.origin) === self || hostOf(h.referer) === self;
 }
@@ -39,8 +50,7 @@ function sameSite(req) {
 // Short shared cache for search and chapter lists only. Never for at-home/server:
 // its page URLs carry short-lived tokens.
 function cacheFor(u) {
-  if (u.pathname === '/manga' || /^\/manga\/[0-9a-f-]{36}\/feed$/i.test(u.pathname))
-    return 'public, max-age=0, s-maxage=60, stale-while-revalidate=120';
+  if (u.pathname === '/manga' || /^\/manga\/[0-9a-f-]{36}\/feed$/i.test(u.pathname)) return 'public, max-age=0, s-maxage=60, stale-while-revalidate=120';
   return 'no-store';
 }
 
