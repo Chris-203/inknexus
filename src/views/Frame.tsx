@@ -1,13 +1,12 @@
 import { useState, type CSSProperties } from 'react';
 import { useApp, type View } from '../context';
-import { ResetZoom } from '../components/ResetZoom';
+import { TopBar } from '../components/TopBar';
 import { fmt } from '../lib/format';
 import { chapterLink, host, linkName, nextWhole } from '../lib/links';
 import { pasteChapterLink } from '../lib/pasteLink';
 import { getFrameZoom, nextZoom, setFrameZoom } from '../lib/siteSettings';
 import { setLast } from '../lib/store';
 import type { Series } from '../lib/types';
-import { usePageZoom } from '../lib/zoom';
 
 /** A link-only source's own page, shown in the app. InkNexus never reads or copies its content. */
 export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'frame' }> }) {
@@ -16,7 +15,6 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
   const u = view.url || l.url;
   const site = host(u);
   const [fz, setFz] = useState(() => getFrameZoom(site));
-  const pz = usePageZoom();
 
   const next = () => {
     if (!l.tpl) return;
@@ -37,13 +35,10 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
     toast(`Site zoom ${Math.round(z * 100)}%`);
   };
   const pct = Math.round(fz * 100);
-  // Pinching over the site zooms the whole app, so the bar is scaled back down and kept at the top of the screen,
-  // as in the reader, where pinching zooms only the pages. It hides while the zoom is changing (see followPageZoom).
-  const unzoom = pz ? { transform: `translate(${pz.left}px,${pz.top}px) scale(${1 / pz.scale})` } : undefined;
 
   return (
     <div className="fview">
-      <div className={pz?.moving ? 'rbar moving' : 'rbar'} style={unzoom}>
+      <TopBar>
         <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
           ‹
         </button>
@@ -66,7 +61,7 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
         <a className="ibtn" href={u} target="_blank" rel="noopener noreferrer" aria-label="Open in browser" title="Open in browser">
           ↗
         </a>
-      </div>
+      </TopBar>
       <div className="fwrap">
         <iframe
           className="frame"
@@ -77,7 +72,6 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
           title={x.title}
         />
       </div>
-      {pz && <ResetZoom z={pz} />}
     </div>
   );
 }

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { PageZoom } from '../lib/zoom';
 
 /**
- * Shown while the browser has zoomed the whole app in the site view: Reset zoom at normal size in the corner. It
- * re-applies the viewport, which snaps Safari back to 100% where it can, and otherwise says to pinch out.
+ * Shown while the browser has zoomed the whole app in the reader or site view: Reset zoom at normal size in the
+ * corner. It re-applies the viewport, which snaps Safari back to 100% where it can, and otherwise says to pinch out.
  */
 export function ResetZoom({ z }: { z: PageZoom }) {
   const [failed, setFailed] = useState(false);

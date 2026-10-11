@@ -128,7 +128,8 @@ export function followPageZoom(vv: VisualViewport, set: (z: PageZoom | null) => 
 
 /**
  * Pinching over another site shown in the app zooms the whole app, and the app can neither block that nor see the
- * touches. Following the zoom lets the site view keep its own controls at normal size on screen.
+ * touches; iPhone Safari also does it over the reader's pages when a scroll is still moving. Following the zoom lets
+ * the top bar stay at normal size on screen (see TopBar).
  */
 export function usePageZoom(): PageZoom | null {
   const [z, setZ] = useState<PageZoom | null>(null);

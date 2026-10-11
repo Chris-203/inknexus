@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode, type SyntheticEvent } from 'react';
 import { useApp } from '../context';
+import { TopBar } from '../components/TopBar';
 import { useChapters } from '../lib/chapters';
 import { fmt } from '../lib/format';
 import { findSeries, setLast } from '../lib/store';
@@ -110,14 +111,14 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   return (
     <>
-      <div className="rbar">
+      <TopBar>
         <button className="ibtn" aria-label="Back to series" onClick={toSeries}>
           ‹
         </button>
         <b>
           {x.title} · Ch. {fmt(n)}
         </b>
-      </div>
+      </TopBar>
       <div id="strip">{content}</div>
     </>
   );
