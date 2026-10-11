@@ -1,14 +1,17 @@
 /**
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
- * and it never shrinks below the screen width. Returns a function that removes the listeners.
+ * and it never shrinks below the screen width. A single tap or click calls `onTap`.
+ * Returns `zoomBy`, which zooms around the middle of the screen and returns the new zoom, and `stop`, which removes the listeners.
  */
-export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
+export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => void): { zoomBy: (d: number) => number; stop: () => void } {
   let z = 1;
   let pinch: { d: number; z: number } | null = null;
   let tap: { x: number; y: number; at: number } | null = null;
   let last: { x: number; y: number; at: number } | null = null;
   let raf = 0;
+  let single = 0;
+  let touchedAt = 0;
 
   const set = (target: number, cx: number, cy: number) => {
     const nz = Math.min(4, Math.max(1, target));
@@ -49,6 +52,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
     raf = requestAnimationFrame(() => set(nz, cx, cy));
   };
   const end = (e: TouchEvent) => {
+    touchedAt = Date.now();
     if (pinch) {
       if (!e.touches.length) pinch = null;
       return;
@@ -60,25 +64,43 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
     const now = Date.now();
     if (last && now - last.at < 320 && Math.hypot(tap.x - last.x, tap.y - last.y) < 30) {
       e.preventDefault();
+      clearTimeout(single);
       set(z > 1.05 ? 1 : 2.5, tap.x, tap.y);
       last = null;
-    } else last = { ...tap, at: now };
+    } else {
+      last = { ...tap, at: now };
+      // Wait out a possible second tap, so a double tap only zooms.
+      single = window.setTimeout(onTap, 320);
+    }
     tap = null;
+  };
+  // Mouse clicks; the click a touch also fires is already handled above.
+  const click = () => {
+    if (Date.now() - touchedAt > 800) onTap();
   };
 
   wrap.addEventListener('touchstart', start, { passive: true });
   wrap.addEventListener('touchmove', move, { passive: false });
   wrap.addEventListener('touchend', end);
+  wrap.addEventListener('click', click);
   // Safari can still pinch the whole page over the pages despite touch-action; its gesture events stop that here only.
   const gesture = (e: Event) => e.preventDefault();
   wrap.addEventListener('gesturestart', gesture);
   wrap.addEventListener('gesturechange', gesture);
-  return () => {
-    cancelAnimationFrame(raf);
-    wrap.removeEventListener('touchstart', start);
-    wrap.removeEventListener('touchmove', move);
-    wrap.removeEventListener('touchend', end);
-    wrap.removeEventListener('gesturestart', gesture);
-    wrap.removeEventListener('gesturechange', gesture);
+  return {
+    zoomBy: (d) => {
+      set(z + d, innerWidth / 2, innerHeight / 2);
+      return z;
+    },
+    stop: () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(single);
+      wrap.removeEventListener('touchstart', start);
+      wrap.removeEventListener('touchmove', move);
+      wrap.removeEventListener('touchend', end);
+      wrap.removeEventListener('click', click);
+      wrap.removeEventListener('gesturestart', gesture);
+      wrap.removeEventListener('gesturechange', gesture);
+    },
   };
 }

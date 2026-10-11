@@ -1,4 +1,4 @@
-import { getFrameZoom, nextZoom, opensInBrowser, setFrameZoom, setOpensInBrowser } from './siteSettings';
+import { getFrameZoom, opensInBrowser, setFrameZoom, setOpensInBrowser, stepZoom } from './siteSettings';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -8,11 +8,12 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('site settings', () => {
-  it('nextZoom steps up through 100%–200%, then back to 100%', () => {
-    expect(nextZoom(1)).toBe(1.25);
-    expect(nextZoom(1.75)).toBe(2);
-    expect(nextZoom(2)).toBe(1);
-    expect(nextZoom(1.1)).toBe(1.25);
+  it('stepZoom steps up and down through 100%–200% and stops at either end', () => {
+    expect(stepZoom(1, 1)).toBe(1.25);
+    expect(stepZoom(1.75, 1)).toBe(2);
+    expect(stepZoom(1.5, -1)).toBe(1.25);
+    expect(stepZoom(2, 1)).toBe(2);
+    expect(stepZoom(1, -1)).toBe(1);
   });
   it('remembers zoom per site and ignores bad saved values', () => {
     setFrameZoom('a.example', 1.5);

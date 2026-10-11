@@ -3,8 +3,7 @@ import { useApp, type View } from '../context';
 import { ResetZoom } from '../components/ResetZoom';
 import { fmt } from '../lib/format';
 import { chapterLink, host, linkName, nextWhole } from '../lib/links';
-import { pasteChapterLink } from '../lib/pasteLink';
-import { getFrameZoom, nextZoom, setFrameZoom } from '../lib/siteSettings';
+import { getFrameZoom, setFrameZoom, stepZoom, ZOOM_STEPS } from '../lib/siteSettings';
 import { setLast } from '../lib/store';
 import type { Series } from '../lib/types';
 
@@ -28,13 +27,12 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
     toast(`Now on chapter ${fmt(n)}`);
   };
   // The site is laid out narrower and scaled back up to fill the screen, like the browser's text zoom.
-  const zoom = () => {
-    const z = nextZoom(fz);
+  const zoom = (d: number) => {
+    const z = stepZoom(fz, d);
     setFz(z);
     setFrameZoom(site, z);
     toast(`Site zoom ${Math.round(z * 100)}%`);
   };
-  const pct = Math.round(fz * 100);
 
   return (
     <div className="fview">
@@ -52,11 +50,11 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
             +1 ch
           </button>
         )}
-        <button className="ibtn txt" aria-label="Update chapter from copied link" onClick={() => void pasteChapterLink(x.id, view.i, toast)}>
-          Paste
+        <button className="ibtn" aria-label="Zoom out" disabled={fz === ZOOM_STEPS[0]} onClick={() => zoom(-1)}>
+          −
         </button>
-        <button className="ibtn txt" aria-label={`Site zoom ${pct}%, tap for ${Math.round(nextZoom(fz) * 100)}%`} onClick={zoom}>
-          {pct}%
+        <button className="ibtn" aria-label="Zoom in" disabled={fz === ZOOM_STEPS.at(-1)} onClick={() => zoom(1)}>
+          +
         </button>
         <a className="ibtn" href={u} target="_blank" rel="noopener noreferrer" aria-label="Open in browser" title="Open in browser">
           ↗

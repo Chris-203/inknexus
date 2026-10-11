@@ -38,15 +38,14 @@ export function Series({ x }: { x: SeriesT }) {
     setLastText(String(shown));
   };
 
-  // The next chapter to read: on MangaDex once its list is loaded; link sources have their own Continue.
+  // The next chapter to read on MangaDex, once its list is loaded. A link source has Continue once it knows its chapter link pattern.
   const next = cur === 'md' && chs?.status === 'ready' ? chs.list.chapters.find((c) => c.num > shown) : undefined;
+  const i = cur.startsWith('l') ? +cur.slice(1) : -1;
+  const l = x.links[i];
   let body: ReactNode;
   if (cur === 'md') body = <MangaDexSource x={x} chs={chs} shown={shown} />;
-  else if (cur.startsWith('l')) {
-    const i = +cur.slice(1);
-    const l = x.links[i];
-    body = l && <LinkSource x={x} l={l} i={i} shown={shown} />;
-  } else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
+  else if (l) body = <LinkSource x={x} l={l} i={i} shown={shown} />;
+  else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
 
   return (
     <>
@@ -93,6 +92,7 @@ export function Series({ x }: { x: SeriesT }) {
         </div>
       )}
       {cur === 'md' && chs?.status === 'ready' && chs.list.chapters.length > 0 && !next && <p className="hint">You're caught up on this source.</p>}
+      {l?.tpl && <LinkContinue x={x} l={l} i={i} shown={shown} />}
       <div className="chips">
         {vis.map((q) => (
           <button key={q.k} className={`chip${cur === q.k ? ' on' : ''}`} aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
@@ -210,13 +210,11 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
   );
 }
 
-/** A link-only source: open it in the app or the browser, update the chapter from a copied link, and its settings under More. */
-function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
+/** Opens link source `l` in the app, or in the browser for sites set to that: its series page, the chapter after `shown`, or the saved link. */
+function useOpenLink(x: SeriesT, l: Link, i: number, shown: number) {
   const { navigate, toast } = useApp();
-  const site = host(l.url);
-  const ob = useOpensInBrowser(site);
-
-  const open = (mode: 'page' | 'cont' | 'resume') => {
+  return (mode: 'page' | 'cont' | 'resume') => {
+    const site = host(l.url);
     const n = mode === 'cont' ? nextWhole(shown) : mode === 'resume' ? l.rn || 0 : 0;
     const url = mode === 'resume' ? l.resume || '' : n && l.tpl ? chapterLink(l.tpl, n) : '';
     if (opensInBrowser(site)) {
@@ -225,17 +223,32 @@ function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown:
     }
     navigate({ name: 'frame', id: x.id, i, ch: n, url });
   };
+}
+
+/** A link source's Continue, shown above the source chips like MangaDex's. */
+function LinkContinue({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
+  const open = useOpenLink(x, l, i, shown);
+  return (
+    <div className="pad">
+      <button className="btn" onClick={() => open('cont')}>
+        Continue with ch. {nextWhole(shown)}
+      </button>
+    </div>
+  );
+}
+
+/** A link-only source: open it in the app or the browser, update the chapter from a copied link, and its settings under More. */
+function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
+  const { toast } = useApp();
+  const site = host(l.url);
+  const ob = useOpensInBrowser(site);
+  const open = useOpenLink(x, l, i, shown);
 
   return (
     <div className="pad">
       {l.resume && (
         <button className="btn" onClick={() => open('resume')}>
           Resume ch. {fmt(l.rn || 0)} (saved link)
-        </button>
-      )}
-      {l.tpl && (
-        <button className="btn" onClick={() => open('cont')}>
-          Continue with ch. {nextWhole(shown)}
         </button>
       )}
       <button className={`btn${l.tpl || l.resume ? ' ghost' : ''}`} onClick={() => open('page')}>
