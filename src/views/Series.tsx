@@ -95,27 +95,26 @@ export function Series({ x }: { x: SeriesT }) {
       {l?.tpl && <LinkContinue x={x} l={l} i={i} shown={shown} />}
       <div className="chips">
         {vis.map((q) => (
-          <button key={q.k} className={`chip${cur === q.k ? ' on' : ''}`} aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
-            {q.n}
-          </button>
+          <span key={q.k} className={`chip src${cur === q.k ? ' on' : ''}`}>
+            <button
+              className="hide"
+              aria-label={`Hide ${q.n}`}
+              onClick={() => {
+                setHidden(x.id, q.k, true);
+                toast('Hidden. Bring it back from + Source');
+              }}
+            >
+              ×
+            </button>
+            <button aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
+              {q.n}
+            </button>
+          </span>
         ))}
         <button className="chip" onClick={() => setSheet('addsrc')}>
           + Source
         </button>
       </div>
-      {cur && (
-        <div className="row tight">
-          <button
-            className="btn ghost sm"
-            onClick={() => {
-              setHidden(x.id, cur, true);
-              toast('Hidden. Bring it back from + Source');
-            }}
-          >
-            Hide this source
-          </button>
-        </div>
-      )}
       {body}
       <div className="pad end">
         <button
