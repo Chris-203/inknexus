@@ -38,8 +38,6 @@ export function Series({ x }: { x: SeriesT }) {
     setLastText(String(shown));
   };
 
-  // The next chapter to read: on MangaDex once its list is loaded; link sources have their own Continue.
-  const next = cur === 'md' && chs?.status === 'ready' ? chs.list.chapters.find((c) => c.num > shown) : undefined;
   let body: ReactNode;
   if (cur === 'md') body = <MangaDexSource x={x} chs={chs} shown={shown} />;
   else if (cur.startsWith('l')) {
@@ -85,14 +83,6 @@ export function Series({ x }: { x: SeriesT }) {
           </div>
         </div>
       </div>
-      {next && (
-        <div className="pad">
-          <ReadButton x={x} c={next} className="btn">
-            {shown ? 'Continue' : 'Start'} with ch. {fmt(next.num)}
-          </ReadButton>
-        </div>
-      )}
-      {cur === 'md' && chs?.status === 'ready' && chs.list.chapters.length > 0 && !next && <p className="hint">You're caught up on this source.</p>}
       <div className="chips">
         {vis.map((q) => (
           <button key={q.k} className={`chip${cur === q.k ? ' on' : ''}`} aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
@@ -148,7 +138,7 @@ function ReadButton({ x, c, className, children }: { x: SeriesT; c: Chapter; cla
   );
 }
 
-/** The MangaDex source: its chapter list, with the ones up to `shown` marked read. */
+/** The MangaDex source: Continue, then its chapter list, with the ones up to `shown` marked read. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
   const { sort } = useStore();
   let list: ReactNode;
@@ -177,8 +167,19 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
     const all = chs.list.chapters;
     const asc = sort === 'asc';
     const first = all[0]!;
+    // Continue sits under the source chips, like a link source's.
+    const next = all.find((c) => c.num > shown);
     list = (
       <>
+        {next ? (
+          <div className="pad">
+            <ReadButton x={x} c={next} className="btn">
+              {shown ? 'Continue' : 'Start'} with ch. {fmt(next.num)}
+            </ReadButton>
+          </div>
+        ) : (
+          <p className="hint">You're caught up on this source.</p>
+        )}
         <div className="row mid">
           <button className="btn ghost sm" onClick={toggleSort}>
             Sort: {asc ? 'oldest first' : 'newest first'}
