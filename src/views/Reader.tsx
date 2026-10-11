@@ -23,6 +23,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const failedOnce = useRef(false);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
+  const [toTop, setToTop] = useState(false);
+  // Where the bar was last shown or scrolling last turned upward; scrolling 30px down from there hides the bar.
+  const base = useRef(0);
 
   // Reaching the end of the chapter marks it read.
   useEffect(() => {
@@ -44,17 +47,38 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   useEffect(() => {
     if (!done || !wrap.current || !pagesRef.current) return;
-    const z = zoomable(wrap.current, pagesRef.current, () => setBar((b) => !b));
+    const z = zoomable(wrap.current, pagesRef.current, () => {
+      base.current = scrollY;
+      setBar((b) => !b);
+    });
     zoom.current = z;
     return z.stop;
   }, [done]);
 
+  useEffect(() => {
+    const onScroll = () => {
+      if (scrollY - base.current > 30) {
+        setBar(false);
+        base.current = scrollY;
+      } else if (scrollY < base.current) base.current = scrollY;
+      setToTop(scrollY > innerHeight);
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    return () => removeEventListener('scroll', onScroll);
+  }, []);
+
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = list.find((k) => k.num > n);
   const toSeries = () => goBack({ name: 'series', id: x.id });
+  const backToTop = () => {
+    setBar(true);
+    scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
   const toChapter = (to: number) => navigate({ name: 'reader', id: x.id, n: to }, true);
   const zoomBy = (d: number) => {
     const z = zoom.current?.zoomBy(d);
+    // Zooming scrolls to keep the middle in place; that is not the reader scrolling on.
+    base.current = scrollY;
     if (z) toast(`Zoom ${Math.round(z * 100)}%`);
   };
 
@@ -137,6 +161,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         )}
       </div>
       <div id="strip">{content}</div>
+      {toTop && (
+        <button id="totop" className="ibtn" aria-label="Back to top" onClick={backToTop}>
+          ↑
+        </button>
+      )}
     </>
   );
 }
