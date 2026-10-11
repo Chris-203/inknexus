@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type SyntheticEvent } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import { useApp } from '../context';
 import { useChapters } from '../lib/chapters';
 import { fmt } from '../lib/format';
@@ -21,6 +21,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const pagesRef = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
   const failedOnce = useRef(false);
+  const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
+  const [bar, setBar] = useState(true);
 
   // Reaching the end of the chapter marks it read.
   useEffect(() => {
@@ -42,13 +44,19 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   useEffect(() => {
     if (!done || !wrap.current || !pagesRef.current) return;
-    return zoomable(wrap.current, pagesRef.current);
+    const z = zoomable(wrap.current, pagesRef.current, () => setBar((b) => !b));
+    zoom.current = z;
+    return z.stop;
   }, [done]);
 
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = list.find((k) => k.num > n);
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const toChapter = (to: number) => navigate({ name: 'reader', id: x.id, n: to }, true);
+  const zoomBy = (d: number) => {
+    const z = zoom.current?.zoomBy(d);
+    if (z) toast(`Zoom ${Math.round(z * 100)}%`);
+  };
 
   // Data-saver image first; on error try full quality once, then say so once for this chapter.
   const onImgError = (e: SyntheticEvent<HTMLImageElement>, b: string) => {
@@ -110,13 +118,23 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   return (
     <>
-      <div className="rbar">
+      <div className={bar ? 'rbar' : 'rbar off'}>
         <button className="ibtn" aria-label="Back to series" onClick={toSeries}>
           ‹
         </button>
         <b>
           {x.title} · Ch. {fmt(n)}
         </b>
+        {done && (
+          <>
+            <button className="ibtn" aria-label="Zoom out" onClick={() => zoomBy(-0.5)}>
+              −
+            </button>
+            <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
+              +
+            </button>
+          </>
+        )}
       </div>
       <div id="strip">{content}</div>
     </>

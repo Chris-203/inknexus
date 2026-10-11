@@ -39,7 +39,8 @@ export function setFrameZoom(site: string, z: number) {
   writeJson(ZOOM_KEY, { ...(isObj(all) ? all : {}), [site]: z });
 }
 
-/** The next zoom step after `z`, back to 100% after 200%. One button steps through them, so the site bar fits a phone with 44px buttons. */
-export function nextZoom(z: number): number {
-  return ZOOM_STEPS.find((s) => s > z + 0.001) ?? ZOOM_STEPS[0]!;
+/** The zoom step `d` steps away from `z` (-1 smaller, 1 bigger), staying within 100%–200%. */
+export function stepZoom(z: number, d: number): number {
+  const i = ZOOM_STEPS.indexOf(z) + d;
+  return ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i))]!;
 }
