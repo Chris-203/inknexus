@@ -59,10 +59,10 @@ export function sourcesOf(x: Series) {
   return [...(x.md ? [{ k: 'md', n: 'MangaDex', h: !!x.mdh }] : []), ...x.links.map((l, i) => ({ k: 'l' + i, n: linkName(l), h: !!l.h }))];
 }
 
-/** Hide or show source `k` of a series. Showing it also selects it; hiding it clears the selection only if it was selected. */
+/** Hide or show source `k` of a series. Showing it also selects it; hiding clears the selection. */
 export function setHidden(id: string, k: string, h: boolean) {
   updateSeries(id, (x) => ({
     ...(k === 'md' ? { mdh: h } : { links: x.links.map((l, i) => ('l' + i === k ? { ...l, h } : l)) }),
-    src: h ? (x.src === k ? '' : x.src) : k,
+    src: h ? '' : k,
   }));
 }

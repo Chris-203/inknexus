@@ -96,16 +96,18 @@ export function Series({ x }: { x: SeriesT }) {
       <div className="chips">
         {vis.map((q) => (
           <span key={q.k} className={`chip src${cur === q.k ? ' on' : ''}`}>
-            <button
-              className="hide"
-              aria-label={`Hide ${q.n}`}
-              onClick={() => {
-                setHidden(x.id, q.k, true);
-                toast('Hidden. Bring it back from + Source');
-              }}
-            >
-              ×
-            </button>
+            {cur === q.k && (
+              <button
+                className="hide"
+                aria-label={`Hide ${q.n}`}
+                onClick={() => {
+                  setHidden(x.id, q.k, true);
+                  toast('Hidden. Bring it back from + Source');
+                }}
+              >
+                ×
+              </button>
+            )}
             <button aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
               {q.n}
             </button>
