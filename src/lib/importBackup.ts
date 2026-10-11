@@ -1,4 +1,5 @@
 import { norm } from './format';
+import { sourcesOf } from './store';
 import type { Series } from './types';
 
 /** A backup series that is already in the library. */
@@ -29,8 +30,20 @@ export function planImport(lib: Series[], incoming: Series[]): { fresh: Series[]
   return { fresh, dupes };
 }
 
-/** The library after an import: each duplicate marked in `useBackup` takes the backup's version (keeping the library's id), and new series are added. */
-export function mergeImport(lib: Series[], fresh: Series[], dupes: Duplicate[], useBackup: boolean[]): Series[] {
-  const swap = new Map(dupes.filter((_, i) => useBackup[i]).map((d) => [d.mine.id, { ...d.theirs, id: d.mine.id }]));
-  return [...lib.map((x) => swap.get(x.id) ?? x), ...fresh];
+/** Only duplicates whose last chapter read differs need a choice; the rest merge on their own. */
+export function chaptersDiffer(d: Duplicate): boolean {
+  return d.mine.last !== d.theirs.last;
+}
+
+/** One series from both versions: reading progress from the chosen one, sources from whichever has more (the library's on a tie), and the library's id. */
+export function mergeSeries(mine: Series, theirs: Series, useBackup: boolean): Series {
+  const base = useBackup ? theirs : mine;
+  const src = sourcesOf(theirs).length > sourcesOf(mine).length ? theirs : mine;
+  return { ...base, id: mine.id, md: src.md, mdh: src.mdh, al: src.al, links: src.links, src: src.src };
+}
+
+/** The library after an import: every duplicate is merged, taking the backup's reading progress where it is in `fromBackup`, and new series are added. */
+export function mergeImport(lib: Series[], fresh: Series[], dupes: Duplicate[], fromBackup: Duplicate[]): Series[] {
+  const merged = new Map(dupes.map((d) => [d.mine.id, mergeSeries(d.mine, d.theirs, fromBackup.includes(d))]));
+  return [...lib.map((x) => merged.get(x.id) ?? x), ...fresh];
 }

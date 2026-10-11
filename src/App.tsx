@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { ImportSheet } from './components/ImportSheet';
-import { mergeImport, planImport } from './lib/importBackup';
+import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
@@ -86,12 +86,14 @@ export function App() {
     [navigate, goBack, toast, search],
   );
 
-  // New series are added; duplicates take the backup's version only where chosen.
-  const finishImport = (plan: ReturnType<typeof planImport>, useBackup: boolean[]) => {
-    replaceState({ ...getState(), lib: mergeImport(getState().lib, plan.fresh, plan.dupes, useBackup) });
+  // New series are added; duplicates are merged, taking the backup's reading progress only where chosen.
+  const finishImport = (plan: ReturnType<typeof planImport>, fromBackup: Duplicate[]) => {
+    const lib = getState().lib;
+    const next = mergeImport(lib, plan.fresh, plan.dupes, fromBackup);
+    replaceState({ ...getState(), lib: next });
     setImporting(null);
-    const replaced = useBackup.filter(Boolean).length;
-    const parts = [plan.fresh.length && `${plan.fresh.length} added`, replaced && `${replaced} replaced from the backup`].filter(Boolean);
+    const updated = lib.filter((x, i) => JSON.stringify(x) !== JSON.stringify(next[i])).length;
+    const parts = [plan.fresh.length && `${plan.fresh.length} added`, updated && `${updated} updated`].filter(Boolean);
     toast(parts.length ? `Backup imported: ${parts.join(', ')}` : 'Backup imported. Nothing changed');
   };
 
@@ -104,7 +106,7 @@ export function App() {
       .then(parseBackup)
       .then((next) => {
         const plan = planImport(getState().lib, next.lib);
-        if (plan.dupes.length) setImporting(plan);
+        if (plan.dupes.some(chaptersDiffer)) setImporting(plan);
         else finishImport(plan, []);
       })
       .catch(() => toast('That file is not an InkNexus backup'));
@@ -134,9 +136,9 @@ export function App() {
       <input ref={fileRef} type="file" accept="application/json" hidden onChange={onImport} />
       {importing && (
         <ImportSheet
-          dupes={importing.dupes}
+          dupes={importing.dupes.filter(chaptersDiffer)}
           added={importing.fresh.length}
-          onImport={(useBackup) => finishImport(importing, useBackup)}
+          onImport={(fromBackup) => finishImport(importing, fromBackup)}
           onClose={() => setImporting(null)}
         />
       )}
