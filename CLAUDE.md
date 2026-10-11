@@ -16,7 +16,7 @@ TypeScript and React, bundled by Vite. Deployed on Vercel at https://inknexus-ps
 - Include screenshots or other media of the change in the PR body when there is anything visible to show.
 
 ## Check before committing
-Run all four. The GitHub "Check" action runs them on every PR too. `npm run format` fixes formatting.
+Re-read the full diff against this file, then run all four. The GitHub "Check" action runs them on every PR too, format check included; `npm run format` fixes formatting. Fix what your change broke. Report any check that could not run and any failure that was already there, and never say a check passed unless it ran and passed.
 
 ```
 npm run format:check
@@ -45,15 +45,18 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 Library data uses the field names in `src/lib/types.ts`. They match what is already saved in people's browsers, so do not rename them without a migration.
 
 ## Code
-Follow these on every change. Before committing, re-read your own diff against each one and fix what does not fit.
+Follow these on every change, and check your diff against them before committing (see "Check before committing").
 - **One code style.** Prettier formats all TypeScript and JavaScript, so never hand-format around it. Module-level functions are `function` declarations; arrow functions are only for callbacks and for handlers inside components. Doc comments use `/** */`; every other comment uses `//`.
-- **One file structure.** Screens go in `src/views/` and reusable components in `src/components/`, one component per PascalCase file (a screen may keep its own sheets and panels in its file). Everything else goes in camelCase files in `src/lib/` (app logic and stores) or `src/sources/` (MangaDex and AniList). Tests sit next to the code as `*.test.ts`.
+- **One file structure.** Screens go in `src/views/` and reusable components in `src/components/`, one component per PascalCase file (a screen may keep its own sheets and panels in its file). Everything else goes in camelCase files in `src/lib/` (app logic and stores) or `src/sources/` (MangaDex and AniList).
 - **One CSS style.** All styles live in `src/styles.css`, one rule per line, using the existing classes and the color tokens in `:root`. Add a class rather than an inline `style`; inline styles are only for values computed at runtime.
-- **No duplicate code.** Before writing a helper, component or pattern, search for an existing one and reuse or extend it: `why()`, `linkFrom()`, `linkName()`, `chapterLink()`, `stepChapter()`, `fmt()`, `plural()`, `sourcesOf()`, `setLast()`, `readJson()` / `writeJson()`, `createChanges()`, `useLoad()`, `useChapters()`, `ResultRow`, `Sheet`. When the same logic would appear a second time, move it into one place and use it from both.
-- **Keep it short.** Write the simplest code that does the job. Once it works, check each part for a shorter way to get the same result, and use it. No library, layer or workaround the problem does not need: React is the only UI library, and shared state is a small store in `src/lib/` built on `createChanges()`.
+- **No duplicate code.** Before writing new code, read the relevant code and search for an existing helper, component, store or pattern, and extend it rather than writing a parallel version: `why()`, `linkFrom()`, `linkName()`, `chapterLink()`, `stepChapter()`, `fmt()`, `plural()`, `sourcesOf()`, `setLast()`, `readJson()` / `writeJson()`, `createChanges()`, `useLoad()`, `useChapters()`, `ResultRow`, `Sheet`. When the same logic would appear a second time, move it into one place and use it from both. If existing code cannot support the change, say why in your reply; ask first only before replacing a whole module or changing saved data.
+- **Clear, then short.** Write code a reader can follow on the first read. Then tighten it: cut duplication, dead branches, needless variables and wrappers, and use an existing helper or built-in where it says the same thing in fewer lines. Stop when the shorter version would need a comment to explain it, packs several steps into one expression, or relies on a trick. Do not shorten working code outside the change. React is the only UI library, and shared state is a small store in `src/lib/` built on `createChanges()`; add no library, layer or option the problem does not need.
+- **Keep changes focused.** Make the smallest change that fully does the job. No unrelated refactors, renames, file moves or behavior changes; if a wider change is needed, say why in your reply.
+- **Preserve behavior.** Unless the request changes it, keep existing behavior, exported functions, data formats and conventions. Before changing shared code, check its callers and keep their cases working.
 - **Name things for what they are.** Follow the names already in use (`x` for a series, `l` for a link, `n` for a chapter number), and keep the field names in `types.ts` as they are.
 - **No filler.** Comments explain why, not what. UI text, commit messages and PR bodies say what changed in plain sentences, without padding.
-- **Tests.** Add or update a test for each new helper or fixed bug in `src/lib/` or `src/sources/`.
+- **Tests.** Add or update a `*.test.ts` next to the code for each new or changed helper and each fixed bug in `src/lib/` or `src/sources/`, including edge cases. For a bug fix, add a test that fails without the fix when practical. Check UI changes on the Vercel preview at 390px wide. Never weaken or delete a test to make it pass.
+- **Report back.** After code changes, say in your reply (not in the PR body, which follows "Commits and PRs"): what changed, which existing code you reused or extended, which checks ran and their results, and what is still limited or untested.
 
 ## Rules
 - **Storage key stays `longstrip`.** It predates the rename. Changing it makes every saved library look empty. If it ever must change, migrate the old key.
