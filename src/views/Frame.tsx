@@ -38,12 +38,12 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
   };
   const pct = Math.round(fz * 100);
   // Pinching over the site zooms the whole app, so the bar is scaled back down and kept at the top of the screen,
-  // as in the reader, where pinching zooms only the pages.
+  // as in the reader, where pinching zooms only the pages. It hides while the zoom is changing (see followPageZoom).
   const unzoom = pz ? { transform: `translate(${pz.left}px,${pz.top}px) scale(${1 / pz.scale})` } : undefined;
 
   return (
     <div className="fview">
-      <div className="rbar" style={unzoom}>
+      <div className={pz?.moving ? 'rbar moving' : 'rbar'} style={unzoom}>
         <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
           ‹
         </button>

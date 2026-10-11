@@ -19,7 +19,7 @@ export function ResetZoom({ z }: { z: PageZoom }) {
   };
   const pos = `translate(${z.left + z.width - 12 / z.scale}px,${z.top + z.height - 80 / z.scale}px) scale(${1 / z.scale}) translate(-100%,-100%)`;
   return (
-    <button id="unzoom" className="btn" style={{ transform: pos }} onClick={reset}>
+    <button id="unzoom" className={z.moving ? 'btn moving' : 'btn'} style={{ transform: pos }} onClick={reset}>
       {failed ? 'Pinch out to zoom back' : 'Reset zoom'}
     </button>
   );

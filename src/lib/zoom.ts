@@ -85,12 +85,45 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
   };
 }
 
-/** The browser's own zoom of the whole page: its scale, and where the part on screen starts and how big it is, in CSS pixels. */
-export type PageZoom = { scale: number; left: number; top: number; width: number; height: number };
+/**
+ * The browser's own zoom of the whole page: its scale, where the part on screen starts and how big it is, in CSS
+ * pixels, and whether it is still changing.
+ */
+export type PageZoom = { scale: number; left: number; top: number; width: number; height: number; moving: boolean };
 
 /** The browser's zoom of the whole page, or null when it is at about 100%. */
-export function pageZoom(vv: VisualViewport): PageZoom | null {
-  return vv.scale > 1.05 ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height } : null;
+export function pageZoom(vv: VisualViewport, moving: boolean): PageZoom | null {
+  return vv.scale > 1.05 ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, moving } : null;
+}
+
+/**
+ * Calls `set` with the browser's zoom of the whole page now and as it changes. The browser reports the zoom only
+ * after each step, so controls placed from it lag behind a pinch or pan: while it changes, `set` gets one zoom marked
+ * `moving` so they can hide, then the settled zoom a moment after the last change. Returns a function that stops.
+ */
+export function followPageZoom(vv: VisualViewport, set: (z: PageZoom | null) => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let moving = false;
+  const settle = () => {
+    moving = false;
+    set(pageZoom(vv, false));
+  };
+  const change = () => {
+    clearTimeout(timer);
+    const z = pageZoom(vv, true);
+    if (!z) return settle();
+    timer = setTimeout(settle, 200);
+    if (!moving) set(z);
+    moving = true;
+  };
+  settle();
+  vv.addEventListener('resize', change);
+  vv.addEventListener('scroll', change);
+  return () => {
+    clearTimeout(timer);
+    vv.removeEventListener('resize', change);
+    vv.removeEventListener('scroll', change);
+  };
 }
 
 /**
@@ -101,15 +134,7 @@ export function usePageZoom(): PageZoom | null {
   const [z, setZ] = useState<PageZoom | null>(null);
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setZ(pageZoom(vv));
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-    };
+    return vv ? followPageZoom(vv, setZ) : undefined;
   }, []);
   return z;
 }
