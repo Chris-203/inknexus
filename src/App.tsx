@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
+import { ImportSheet } from './components/ImportSheet';
+import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
@@ -35,6 +37,7 @@ export function App() {
   const [view, setView] = useState<View>(() => viewOf(history.state) || { name: 'library' });
   const [search, setSearch] = useState<SearchState>({ q: '', res: null });
   const [message, setMessage] = useState({ text: '', on: false });
+  const [importing, setImporting] = useState<ReturnType<typeof planImport> | null>(null);
   const toastTimer = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
   useStore(); // re-render when the library changes
@@ -83,6 +86,17 @@ export function App() {
     [navigate, goBack, toast, search],
   );
 
+  // New series are added; duplicates are merged, taking the backup's reading progress only where chosen.
+  const finishImport = (plan: ReturnType<typeof planImport>, fromBackup: Duplicate[]) => {
+    const lib = getState().lib;
+    const next = mergeImport(lib, plan.fresh, plan.dupes, fromBackup);
+    replaceState({ ...getState(), lib: next });
+    setImporting(null);
+    const updated = lib.filter((x, i) => JSON.stringify(x) !== JSON.stringify(next[i])).length;
+    const parts = [plan.fresh.length && `${plan.fresh.length} added`, updated && `${updated} updated`].filter(Boolean);
+    toast(parts.length ? `Backup imported: ${parts.join(', ')}` : 'Backup imported. Nothing changed');
+  };
+
   const onImport = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -91,10 +105,9 @@ export function App() {
       .text()
       .then(parseBackup)
       .then((next) => {
-        const n = getState().lib.length;
-        if (n && !confirm(`Replace your library (${n} series) with this backup (${next.lib.length} series)?`)) return;
-        replaceState(next);
-        toast('Backup imported');
+        const plan = planImport(getState().lib, next.lib);
+        if (plan.dupes.some(chaptersDiffer)) setImporting(plan);
+        else finishImport(plan, []);
       })
       .catch(() => toast('That file is not an InkNexus backup'));
   };
@@ -121,6 +134,14 @@ export function App() {
         {message.text}
       </div>
       <input ref={fileRef} type="file" accept="application/json" hidden onChange={onImport} />
+      {importing && (
+        <ImportSheet
+          dupes={importing.dupes.filter(chaptersDiffer)}
+          added={importing.fresh.length}
+          onImport={(fromBackup) => finishImport(importing, fromBackup)}
+          onClose={() => setImporting(null)}
+        />
+      )}
     </AppContext.Provider>
   );
 }
