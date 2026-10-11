@@ -71,7 +71,7 @@ details.more .pad{padding:0 12px 12px}
 .pad.end{margin-top:20px}
 .rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);transition:transform .2s,visibility .2s}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* reader: scrolling down or a tap on the pages hides the bar; a tap shows it */
+/* reader: scrolling down hides the bar and scrolling up shows it; a tap on the pages does either */
 .rbar.off{transform:translateY(-100%);visibility:hidden}
 /* in-app site view: the bar, then the site filling the rest of the screen */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}

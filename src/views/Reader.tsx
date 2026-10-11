@@ -24,7 +24,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
-  // Where the bar was last shown or scrolling last turned upward; scrolling 30px down from there hides the bar.
+  // Where the bar was last shown or hidden; scrolling 30px down from there hides it, and 30px up shows it.
   const base = useRef(0);
 
   // Reaching the end of the chapter marks it read.
@@ -57,10 +57,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   useEffect(() => {
     const onScroll = () => {
-      if (scrollY - base.current > 30) {
-        setBar(false);
+      const d = scrollY - base.current;
+      if (Math.abs(d) > 30) {
+        setBar(d < 0);
         base.current = scrollY;
-      } else if (scrollY < base.current) base.current = scrollY;
+      }
       setToTop(scrollY > innerHeight);
     };
     addEventListener('scroll', onScroll, { passive: true });
