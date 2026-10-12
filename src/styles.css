@@ -1,11 +1,16 @@
-:root{--bg:#101218;--surface:#191d27;--line:#2a3040;--text:#e9e7f2;--muted:#8d92a6;--accent:#9db8ff;--amber:#f0c36a;
---head:'Bricolage Grotesque',system-ui,sans-serif;--body:system-ui,-apple-system,'Segoe UI',sans-serif}
+/* Latin subsets of Dela Gothic One and M PLUS Rounded 1c (SIL Open Font License, see public/fonts) */
+@font-face{font-family:'Dela Gothic One';src:url(/fonts/dela-gothic-one-400.woff2) format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'M PLUS Rounded 1c';src:url(/fonts/m-plus-rounded-1c-400.woff2) format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'M PLUS Rounded 1c';src:url(/fonts/m-plus-rounded-1c-700.woff2) format('woff2');font-weight:700;font-display:swap}
+/* ink and newsprint, with a marker yellow for actions and a red-orange for what is new */
+:root{--bg:#14120f;--surface:#1f1c18;--line:#38332c;--text:#f4ede0;--muted:#a69e90;--accent:#ffcf3a;--on-accent:#16130e;--pop:#ff5a36;--on-pop:#1c0703;
+--head:'Dela Gothic One',system-ui,sans-serif;--body:'M PLUS Rounded 1c',system-ui,-apple-system,'Segoe UI',sans-serif}
 *,*::before,*::after{box-sizing:border-box}
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
-h1,h2{font-family:var(--head);margin:0}
+h1,h2{font-family:var(--head);font-weight:400;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;padding:18px 16px 10px}
 header h1{font-size:28px}
 .sub,.hint{color:var(--muted)}
@@ -15,11 +20,11 @@ header h1{font-size:28px}
 .card{background:none;border:0;padding:0;text-align:left;position:relative;cursor:pointer}
 .card img,.cover{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:var(--surface);display:block}
 .badges{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
-.badge{background:var(--amber);color:#1b1500;font-size:12px;font-weight:700;padding:1px 7px;border-radius:99px}
-.badge.new{background:var(--accent);color:#0c1330}
+.badge{background:var(--accent);color:var(--on-accent);font-size:12px;font-weight:700;padding:1px 7px;border-radius:99px}
+.badge.new{background:var(--pop);color:var(--on-pop)}
 .ct{display:block;margin-top:6px;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* touch targets stay at least 44px */
-.btn{background:var(--accent);color:#0c1330;border:0;border-radius:10px;padding:11px 16px;min-height:44px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:11px 16px;min-height:44px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
 .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
 .btn.sm{padding:7px 12px;font-size:13px}
 .btn.danger{background:transparent;color:#ff9a9a;border:1px solid #4a2a2f}
@@ -60,7 +65,7 @@ details.more .pad{padding:0 12px 12px}
 .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto}
 .chip{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 14px;min-height:44px;cursor:pointer;color:var(--muted)}
-.chip.on{background:var(--accent);color:#0c1330;border-color:var(--accent);font-weight:700}
+.chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
 /* a source chip: the name selects it; on the selected one, × on the left hides it */
 .chip.src{display:inline-flex;align-items:stretch;padding:0;cursor:default}
 .chip.src button{background:none;border:0;border-radius:99px;color:inherit;font:inherit;cursor:pointer;min-height:42px;padding:0 14px}
@@ -75,7 +80,7 @@ details.more .pad{padding:0 12px 12px}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}
 .pad.end{margin-top:20px}
-.rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);transition:transform .2s,visibility .2s}
+.rbar{position:sticky;top:0;z-index:4;background:rgba(20,18,15,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);transition:transform .2s,visibility .2s}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* reader: scrolling down hides the bar and scrolling up shows it; a tap on the pages does either */
 .rbar.off{transform:translateY(-100%);visibility:hidden}

@@ -39,7 +39,7 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 - `src/styles.css`: all styles
 - `api/mangadex.js`: Vercel Function that relays MangaDex API GETs (CORS workaround) at `/api/mangadex`, limited to `https://api.mangadex.org` and same-site requests
 - `assets/`: cover art (`cover.svg` is the source, `cover.png` is rendered from it)
-- `public/`: icons, copied as-is into the build
+- `public/`: icons, and the Latin font files with their licenses in `public/fonts/`, copied as-is into the build
 - `vercel.json`: builds with Vite into `dist/`
 
 Library data uses the field names in `src/lib/types.ts`. They match what is already saved in people's browsers, so do not rename them without a migration.
