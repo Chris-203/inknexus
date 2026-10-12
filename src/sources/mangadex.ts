@@ -88,9 +88,13 @@ export async function latest(ref: string): Promise<Latest> {
   return { nums: toChapterList(raw).chapters.map((c) => c.num), full: raw.length >= LATEST, at: Date.now() };
 }
 
-/** Image URLs for a chapter from MangaDex@Home: data-saver first, full quality as fallback. */
-export async function pages(id: string): Promise<Page[]> {
-  const j: { baseUrl: string; chapter: { hash: string; data: string[]; dataSaver: string[] } } = await (await api(`${MD}/at-home/server/${id}`)).json();
+/**
+ * Image URLs for a chapter from MangaDex@Home: data-saver first, full quality as fallback.
+ * `port443` asks for a server on the standard HTTPS port, which networks that block other ports can reach.
+ */
+export async function pages(id: string, port443 = false): Promise<Page[]> {
+  const url = `${MD}/at-home/server/${id}${port443 ? '?forcePort443=true' : ''}`;
+  const j: { baseUrl: string; chapter: { hash: string; data: string[]; dataSaver: string[] } } = await (await api(url)).json();
   return j.chapter.dataSaver.map((f, i) => ({
     a: `${j.baseUrl}/data-saver/${j.chapter.hash}/${f}`,
     b: j.chapter.data[i] ? `${j.baseUrl}/data/${j.chapter.hash}/${j.chapter.data[i]}` : '',

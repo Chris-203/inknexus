@@ -87,7 +87,13 @@ describe('MangaDex requests', () => {
     ]);
   });
   it('pages lists data-saver images with full-quality fallbacks', async () => {
-    relay(() => ({ baseUrl: 'https://node.example', chapter: { hash: 'h', data: ['1.png'], dataSaver: ['1.jpg'] } }));
+    const seen = relay(() => ({ baseUrl: 'https://node.example', chapter: { hash: 'h', data: ['1.png'], dataSaver: ['1.jpg'] } }));
     expect(await pages('c1')).toEqual([{ a: 'https://node.example/data-saver/h/1.jpg', b: 'https://node.example/data/h/1.png' }]);
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/c1']);
+  });
+  it('pages can ask for a server on port 443', async () => {
+    const seen = relay(() => ({ baseUrl: 'https://node.example', chapter: { hash: 'h', data: [], dataSaver: [] } }));
+    await pages('c1', true);
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/c1?forcePort443=true']);
   });
 });

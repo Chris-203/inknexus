@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { useChapters } from '../lib/chapters';
 import { fmt } from '../lib/format';
+import { chapterPages, preload } from '../lib/pages';
 import { findSeries, setLast } from '../lib/store';
 import type { Series } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
@@ -15,7 +16,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const list = chs?.status === 'ready' ? chs.list.chapters : [];
   const c = list.find((k) => k.num === n);
   const readable = c && !c.ext ? c : undefined;
-  const pages = useLoad(readable?.id ?? null, () => mangadex.pages(readable!.id));
+  const pages = useLoad(readable?.id ?? null, () => chapterPages(readable!.id));
   const done = pages?.state === 'done';
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -55,6 +56,15 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     return z.stop;
   }, [done]);
 
+  // Load this chapter's images and then the next two chapters' in the background, so they are ready when reached.
+  useEffect(() => {
+    if (!done) return;
+    const ac = new AbortController();
+    const ahead = list.filter((k) => k.num > n && !k.ext).slice(0, 2);
+    void preload([readable!.id, ...ahead.map((k) => k.id)], ac.signal);
+    return () => ac.abort();
+  }, [done, list, n]);
+
   useEffect(() => {
     const onScroll = () => {
       const d = scrollY - base.current;
@@ -83,13 +93,15 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (z) toast(`Zoom ${Math.round(z * 100)}%`);
   };
 
-  // Data-saver image first; on error try full quality once, then say so once for this chapter.
-  const onImgError = (e: SyntheticEvent<HTMLImageElement>, b: string) => {
-    const img = e.currentTarget;
-    if (!img.dataset.t && b) {
-      img.dataset.t = '1';
-      img.src = b;
-    } else if (!failedOnce.current) {
+  // All of a chapter's pages come from one MangaDex@Home server, and its links expire. So when page `i` fails,
+  // try it again from a fresh server, then in full quality from there, then say so once for this chapter.
+  const onImgError = async (img: HTMLImageElement, i: number) => {
+    const t = Number(img.dataset.t || 0);
+    img.dataset.t = String(t + 1);
+    const p = t < 2 ? (await chapterPages(readable!.id, true).catch(() => undefined))?.[i] : undefined;
+    const src = t === 0 ? p?.a : p?.b;
+    if (src) img.src = src;
+    else if (!failedOnce.current) {
       failedOnce.current = true;
       toast('Some pages failed to load. Try another chapter or source.');
     }
@@ -115,8 +127,15 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         {credit}
         <div id="zwrap" ref={wrap}>
           <div id="pages" ref={pagesRef}>
-            {pages.value.map((u) => (
-              <img key={u.a} src={u.a} referrerPolicy="no-referrer" loading="lazy" alt="Page failed to load" onError={(e) => onImgError(e, u.b)} />
+            {pages.value.map((u, i) => (
+              <img
+                key={u.a}
+                src={u.a}
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                alt="Page failed to load"
+                onError={(e) => void onImgError(e.currentTarget, i)}
+              />
             ))}
           </div>
         </div>
