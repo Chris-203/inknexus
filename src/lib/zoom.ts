@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
+
 /**
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
- * and it never shrinks below the screen width. A single tap or click calls `onTap`.
+ * and it never shrinks below the screen width. A single tap or click calls `onTap`. While the browser has zoomed the
+ * whole page anyway (iPhone Safari can, see TopBar), pinches and double-taps are left to the browser, so they can bring
+ * it back to 100%.
  * Returns `zoomBy`, which zooms around the middle of the screen and returns the new zoom, and `stop`, which removes the listeners.
  */
 export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => void): { zoomBy: (d: number) => number; stop: () => void } {
@@ -12,6 +16,14 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
   let raf = 0;
   let single = 0;
   let touchedAt = 0;
+  let browserZoomed = false;
+
+  // #zwrap.pagezoom drops touch-action: pan-x pan-y, which would also stop the browser zooming back out.
+  const onViewport = () => {
+    browserZoomed = isPageZoomed(window.visualViewport);
+    wrap.classList.toggle('pagezoom', browserZoomed);
+    if (browserZoomed) pinch = null;
+  };
 
   const set = (target: number, cx: number, cy: number) => {
     const nz = Math.min(4, Math.max(1, target));
@@ -29,6 +41,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
   const dist = (t: TouchList) => Math.hypot(t[0]!.clientX - t[1]!.clientX, t[0]!.clientY - t[1]!.clientY);
 
   const start = (e: TouchEvent) => {
+    if (browserZoomed) return;
     if (e.touches.length === 2) {
       pinch = { d: dist(e.touches) || 1, z };
       tap = null;
@@ -79,6 +92,8 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
     if (Date.now() - touchedAt > 800) onTap();
   };
 
+  onViewport();
+  window.visualViewport?.addEventListener('resize', onViewport);
   wrap.addEventListener('touchstart', start, { passive: true });
   wrap.addEventListener('touchmove', move, { passive: false });
   wrap.addEventListener('touchend', end);
@@ -91,10 +106,89 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
     stop: () => {
       cancelAnimationFrame(raf);
       clearTimeout(single);
+      window.visualViewport?.removeEventListener('resize', onViewport);
       wrap.removeEventListener('touchstart', start);
       wrap.removeEventListener('touchmove', move);
       wrap.removeEventListener('touchend', end);
       wrap.removeEventListener('click', click);
     },
   };
+}
+
+/**
+ * Keeps the whole app from zooming, like a native app; only the reader's pages zoom (see zoomable). touch-action on
+ * html stops pinch and double-tap zoom, and cancelling Safari's gesture events stops the pinches it still lets through.
+ * If the browser has zoomed the page anyway (over another site in the site view), both are lifted so it can get back
+ * to 100%.
+ */
+export function lockPageZoom(): void {
+  const vv = window.visualViewport;
+  const sync = () => document.documentElement.classList.toggle('pagezoom', isPageZoomed(vv));
+  const gesture = (e: Event) => {
+    if (!isPageZoomed(vv)) e.preventDefault();
+  };
+  sync();
+  vv?.addEventListener('resize', sync);
+  document.addEventListener('gesturestart', gesture);
+  document.addEventListener('gesturechange', gesture);
+}
+
+/**
+ * The browser's own zoom of the whole page: its scale, where the part on screen starts and how big it is, in CSS
+ * pixels, and whether it is still changing.
+ */
+export type PageZoom = { scale: number; left: number; top: number; width: number; height: number; moving: boolean };
+
+/** Whether the browser has zoomed the whole page in or out, more than about 5% away from 100%. */
+export function isPageZoomed(vv: VisualViewport | null | undefined): boolean {
+  return !!vv && Math.abs(vv.scale - 1) > 0.05;
+}
+
+/** The browser's zoom of the whole page, or null when it is at about 100%. */
+export function pageZoom(vv: VisualViewport, moving: boolean): PageZoom | null {
+  return isPageZoomed(vv) ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, moving } : null;
+}
+
+/**
+ * Calls `set` with the browser's zoom of the whole page now and as it changes. The browser reports the zoom only
+ * after each step, so controls placed from it lag behind a pinch or pan: while it changes, `set` gets one zoom marked
+ * `moving` so they can hide, then the settled zoom a moment after the last change. Returns a function that stops.
+ */
+export function followPageZoom(vv: VisualViewport, set: (z: PageZoom | null) => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let moving = false;
+  const settle = () => {
+    moving = false;
+    set(pageZoom(vv, false));
+  };
+  const change = () => {
+    clearTimeout(timer);
+    const z = pageZoom(vv, true);
+    if (!z) return settle();
+    timer = setTimeout(settle, 200);
+    if (!moving) set(z);
+    moving = true;
+  };
+  settle();
+  vv.addEventListener('resize', change);
+  vv.addEventListener('scroll', change);
+  return () => {
+    clearTimeout(timer);
+    vv.removeEventListener('resize', change);
+    vv.removeEventListener('scroll', change);
+  };
+}
+
+/**
+ * Pinching over another site shown in the app zooms the whole app, and the app can neither block that nor see the
+ * touches; iPhone Safari also does it over the reader's pages when a scroll is still moving. Following the zoom lets
+ * the top bar stay at normal size on screen (see TopBar).
+ */
+export function usePageZoom(): PageZoom | null {
+  const [z, setZ] = useState<PageZoom | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    return vv ? followPageZoom(vv, setZ) : undefined;
+  }, []);
+  return z;
 }
