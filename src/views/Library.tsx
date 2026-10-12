@@ -1,4 +1,5 @@
 import { useApp } from '../context';
+import { ThemePicker } from '../components/ThemePicker';
 import { fmt } from '../lib/format';
 import { getState, useStore } from '../lib/store';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
@@ -41,6 +42,7 @@ export function Library() {
             Import backup
           </button>
         </div>
+        <ThemePicker />
       </>
     );
 
@@ -91,6 +93,7 @@ export function Library() {
           Import backup
         </button>
       </div>
+      <ThemePicker />
     </>
   );
 }
