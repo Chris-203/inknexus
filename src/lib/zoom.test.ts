@@ -10,6 +10,10 @@ describe('pageZoom', () => {
   it('is null at about 100%', () => {
     expect(pageZoom(fakeViewport(1) as unknown as VisualViewport, false)).toBeNull();
     expect(pageZoom(fakeViewport(1.04) as unknown as VisualViewport, false)).toBeNull();
+    expect(pageZoom(fakeViewport(0.96) as unknown as VisualViewport, false)).toBeNull();
+  });
+  it('counts zooming out as zoomed too', () => {
+    expect(pageZoom(fakeViewport(0.6) as unknown as VisualViewport, true)).toMatchObject({ scale: 0.6, moving: true });
   });
   it('gives the scale and the part on screen when zoomed in', () => {
     expect(pageZoom(fakeViewport(2) as unknown as VisualViewport, true)).toEqual({ scale: 2, left: 30, top: 120, width: 195, height: 422, moving: true });
@@ -107,13 +111,18 @@ describe('zoomable', () => {
     expect(pages.style.setProperty).toHaveBeenCalledWith('--z', '2');
     expect(classes.has('pagezoom')).toBe(false);
   });
-  it('leaves pinches to the browser while it has zoomed the whole page, so it can zoom back out', () => {
+  it('leaves pinches to the browser while it has zoomed the whole page, so it can return to 100%', () => {
     const { wrap, pages, classes } = setup(2);
     expect(pinch(wrap).defaultPrevented).toBe(false);
     expect(pages.style.setProperty).not.toHaveBeenCalled();
     const gesture = new Event('gesturestart', { cancelable: true });
     wrap.dispatchEvent(gesture);
     expect(gesture.defaultPrevented).toBe(false);
+    expect(classes.has('pagezoom')).toBe(true);
+  });
+  it('leaves pinches to the browser while it has zoomed the whole page out', () => {
+    const { wrap, classes } = setup(0.7);
+    expect(pinch(wrap).defaultPrevented).toBe(false);
     expect(classes.has('pagezoom')).toBe(true);
   });
   it('takes pinches back once the browser is at 100% again', () => {

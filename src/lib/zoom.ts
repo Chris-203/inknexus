@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
  * and it never shrinks below the screen width. While the browser has zoomed the whole page anyway (iPhone Safari can,
- * see TopBar), pinches and double-taps are left to the browser, so they can zoom it back out.
+ * see TopBar), pinches and double-taps are left to the browser, so they can bring it back to 100%.
  * Returns a function that removes the listeners.
  */
 export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
@@ -17,7 +17,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
 
   // #zwrap.pagezoom drops touch-action: pan-x pan-y, which would also stop the browser zooming back out.
   const onViewport = () => {
-    browserZoomed = zoomedIn(window.visualViewport);
+    browserZoomed = isPageZoomed(window.visualViewport);
     wrap.classList.toggle('pagezoom', browserZoomed);
     if (browserZoomed) pinch = null;
   };
@@ -106,14 +106,14 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
  */
 export type PageZoom = { scale: number; left: number; top: number; width: number; height: number; moving: boolean };
 
-/** Whether the browser has zoomed the whole page in, past about 100%. */
-export function zoomedIn(vv: VisualViewport | null | undefined): boolean {
-  return !!vv && vv.scale > 1.05;
+/** Whether the browser has zoomed the whole page in or out, more than about 5% away from 100%. */
+export function isPageZoomed(vv: VisualViewport | null | undefined): boolean {
+  return !!vv && Math.abs(vv.scale - 1) > 0.05;
 }
 
 /** The browser's zoom of the whole page, or null when it is at about 100%. */
 export function pageZoom(vv: VisualViewport, moving: boolean): PageZoom | null {
-  return zoomedIn(vv) ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, moving } : null;
+  return isPageZoomed(vv) ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, moving } : null;
 }
 
 /**
