@@ -1,7 +1,8 @@
 :root{--bg:#101218;--surface:#191d27;--line:#2a3040;--text:#e9e7f2;--muted:#8d92a6;--accent:#9db8ff;--amber:#f0c36a;
 --head:'Bricolage Grotesque',system-ui,sans-serif;--body:system-ui,-apple-system,'Segoe UI',sans-serif}
 *,*::before,*::after{box-sizing:border-box}
-html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+/* the app never zooms as a whole, like a native app (see main.tsx); only the reader's pages have their own zoom */
+html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
