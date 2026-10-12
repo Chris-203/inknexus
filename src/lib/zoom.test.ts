@@ -1,4 +1,4 @@
-import { followPageZoom, pageZoom, type PageZoom } from './zoom';
+import { followPageZoom, pageZoom, zoomable, type PageZoom } from './zoom';
 
 afterEach(() => vi.useRealTimers());
 
@@ -57,5 +57,70 @@ describe('followPageZoom', () => {
     vv.dispatchEvent(new Event('resize'));
     vi.advanceTimersByTime(1000);
     expect(seen).toEqual([null]);
+  });
+});
+
+describe('zoomable', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function setup(pageScale: number) {
+    const vv = fakeViewport(pageScale);
+    vi.stubGlobal('window', { visualViewport: vv, scrollTo: vi.fn() });
+    vi.stubGlobal('scrollY', 0);
+    vi.stubGlobal('requestAnimationFrame', (f: () => void) => {
+      f();
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const classes = new Set<string>();
+    const rect = () => ({ left: 0, top: 0 });
+    const wrap = Object.assign(new EventTarget(), {
+      scrollLeft: 0,
+      getBoundingClientRect: rect,
+      classList: { toggle: (c: string, on: boolean) => (on ? classes.add(c) : classes.delete(c)) },
+    });
+    const pages = { getBoundingClientRect: rect, style: { setProperty: vi.fn() } };
+    zoomable(wrap as unknown as HTMLElement, pages as unknown as HTMLElement);
+    return { vv, wrap, pages, classes };
+  }
+  function touch(type: string, points: [number, number][]) {
+    return Object.assign(new Event(type, { cancelable: true }), { touches: points.map(([clientX, clientY]) => ({ clientX, clientY })) });
+  }
+  function pinch(wrap: EventTarget) {
+    wrap.dispatchEvent(
+      touch('touchstart', [
+        [100, 300],
+        [200, 300],
+      ]),
+    );
+    const move = touch('touchmove', [
+      [50, 300],
+      [250, 300],
+    ]);
+    wrap.dispatchEvent(move);
+    return move;
+  }
+
+  it('zooms the pages on a pinch and keeps the browser from zooming the page', () => {
+    const { wrap, pages, classes } = setup(1);
+    expect(pinch(wrap).defaultPrevented).toBe(true);
+    expect(pages.style.setProperty).toHaveBeenCalledWith('--z', '2');
+    expect(classes.has('pagezoom')).toBe(false);
+  });
+  it('leaves pinches to the browser while it has zoomed the whole page, so it can zoom back out', () => {
+    const { wrap, pages, classes } = setup(2);
+    expect(pinch(wrap).defaultPrevented).toBe(false);
+    expect(pages.style.setProperty).not.toHaveBeenCalled();
+    const gesture = new Event('gesturestart', { cancelable: true });
+    wrap.dispatchEvent(gesture);
+    expect(gesture.defaultPrevented).toBe(false);
+    expect(classes.has('pagezoom')).toBe(true);
+  });
+  it('takes pinches back once the browser is at 100% again', () => {
+    const { vv, wrap, classes } = setup(2);
+    vv.scale = 1;
+    vv.dispatchEvent(new Event('resize'));
+    expect(classes.has('pagezoom')).toBe(false);
+    expect(pinch(wrap).defaultPrevented).toBe(true);
   });
 });

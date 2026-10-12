@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 /**
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
- * and it never shrinks below the screen width. Returns a function that removes the listeners.
+ * and it never shrinks below the screen width. While the browser has zoomed the whole page anyway (iPhone Safari can,
+ * see TopBar), pinches and double-taps are left to the browser, so they can zoom it back out.
+ * Returns a function that removes the listeners.
  */
 export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
   let z = 1;
@@ -11,7 +13,14 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
   let tap: { x: number; y: number; at: number } | null = null;
   let last: { x: number; y: number; at: number } | null = null;
   let raf = 0;
+  let browserZoomed = false;
 
+  // #zwrap.pagezoom drops touch-action: pan-x pan-y, which would also stop the browser zooming back out.
+  const onViewport = () => {
+    browserZoomed = zoomedIn(window.visualViewport);
+    wrap.classList.toggle('pagezoom', browserZoomed);
+    if (browserZoomed) pinch = null;
+  };
   const set = (target: number, cx: number, cy: number) => {
     const nz = Math.min(4, Math.max(1, target));
     if (Math.abs(nz - z) < 0.001) return;
@@ -28,6 +37,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
   const dist = (t: TouchList) => Math.hypot(t[0]!.clientX - t[1]!.clientX, t[0]!.clientY - t[1]!.clientY);
 
   const start = (e: TouchEvent) => {
+    if (browserZoomed) return;
     if (e.touches.length === 2) {
       pinch = { d: dist(e.touches) || 1, z };
       tap = null;
@@ -68,15 +78,20 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
     tap = null;
   };
 
+  onViewport();
+  window.visualViewport?.addEventListener('resize', onViewport);
   wrap.addEventListener('touchstart', start, { passive: true });
   wrap.addEventListener('touchmove', move, { passive: false });
   wrap.addEventListener('touchend', end);
   // Safari can still pinch the whole page over the pages despite touch-action; its gesture events stop that here only.
-  const gesture = (e: Event) => e.preventDefault();
+  const gesture = (e: Event) => {
+    if (!browserZoomed) e.preventDefault();
+  };
   wrap.addEventListener('gesturestart', gesture);
   wrap.addEventListener('gesturechange', gesture);
   return () => {
     cancelAnimationFrame(raf);
+    window.visualViewport?.removeEventListener('resize', onViewport);
     wrap.removeEventListener('touchstart', start);
     wrap.removeEventListener('touchmove', move);
     wrap.removeEventListener('touchend', end);
@@ -91,9 +106,14 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement): () => void {
  */
 export type PageZoom = { scale: number; left: number; top: number; width: number; height: number; moving: boolean };
 
+/** Whether the browser has zoomed the whole page in, past about 100%. */
+export function zoomedIn(vv: VisualViewport | null | undefined): boolean {
+  return !!vv && vv.scale > 1.05;
+}
+
 /** The browser's zoom of the whole page, or null when it is at about 100%. */
 export function pageZoom(vv: VisualViewport, moving: boolean): PageZoom | null {
-  return vv.scale > 1.05 ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, moving } : null;
+  return zoomedIn(vv) ? { scale: vv.scale, left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, moving } : null;
 }
 
 /**
