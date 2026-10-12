@@ -18,54 +18,56 @@ const atHome = () => {
 };
 
 describe('chapterPages', () => {
-  it('reuses a chapter for 10 minutes, then asks again', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
+  it('asks MangaDex each time a chapter is opened', async () => {
     const seen = atHome();
     expect((await chapterPages('c1'))[0]!.a).toBe('https://node1.example/data-saver/h/1.jpg');
-    await chapterPages('c1');
-    expect(seen).toHaveLength(1);
-    vi.setSystemTime(Date.now() + 10 * 60_000);
     expect((await chapterPages('c1'))[0]!.a).toBe('https://node2.example/data-saver/h/1.jpg');
-  });
-
-  it('asks again once for fresh links when pages fail, and then reuses them', async () => {
-    const seen = atHome();
-    await chapterPages('c2');
-    const fresh = await Promise.all([chapterPages('c2', true), chapterPages('c2', true)]);
-    expect(fresh[0]![0]!.a).toBe('https://node2.example/data-saver/h/1.jpg');
-    expect(fresh[1]).toBe(fresh[0]);
-    expect(await chapterPages('c2')).toBe(fresh[0]);
-    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/c2', 'https://api.mangadex.org/at-home/server/c2']);
-  });
-
-  it('does not keep a failed request', async () => {
-    vi.stubGlobal('fetch', async () => new Response('', { status: 429 }));
-    await expect(chapterPages('c3')).rejects.toThrow('HTTP 429');
-    const seen = atHome();
-    await chapterPages('c3');
-    expect(seen).toHaveLength(1);
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/c1', 'https://api.mangadex.org/at-home/server/c1']);
   });
 });
 
 describe('retrySrc', () => {
   it('tries full quality from the same server, then fresh links, then gives up', async () => {
     const seen = atHome();
-    await chapterPages('c4');
+    await chapterPages('c2');
     const tries = [];
-    for (let t = 0; t < 4; t++) tries.push(await retrySrc('c4', 1, t));
+    for (let t = 0; t < 4; t++) tries.push(await retrySrc('c2', 1, t));
     expect(tries).toEqual(['https://node1.example/data/h/2.png', 'https://node2.example/data-saver/h/2.jpg', 'https://node2.example/data/h/2.png', '']);
     expect(seen).toHaveLength(2);
   });
 
-  it('gives up when fresh links cannot be had', async () => {
+  it('shares one request for fresh links between pages failing within a minute, then asks again', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const seen = atHome();
+    await chapterPages('c3');
+    await Promise.all([retrySrc('c3', 0, 1), retrySrc('c3', 1, 1), retrySrc('c3', 1, 2)]);
+    expect(seen).toHaveLength(2);
+    vi.setSystemTime(Date.now() + 60_000);
+    expect(await retrySrc('c3', 0, 1)).toBe('https://node3.example/data-saver/h/1.jpg');
+  });
+
+  it('asks for fresh links when the chapter is opened again after a retry', async () => {
+    const seen = atHome();
+    await chapterPages('c4');
+    await retrySrc('c4', 0, 1);
+    await chapterPages('c4');
+    expect(await retrySrc('c4', 0, 1)).toBe('https://node4.example/data-saver/h/1.jpg');
+    expect(seen).toHaveLength(4);
+  });
+
+  it('gives up when fresh links cannot be had, and asks again on the next failure', async () => {
     atHome();
     await chapterPages('c5');
     vi.stubGlobal('fetch', async () => new Response('', { status: 429 }));
     expect(await retrySrc('c5', 0, 1)).toBe('');
+    const seen = atHome();
+    expect(await retrySrc('c5', 1, 1)).toBe('https://node1.example/data-saver/h/2.jpg');
+    expect(seen).toHaveLength(1);
   });
 
   it('gives up on a page MangaDex no longer lists', async () => {
     atHome();
+    await chapterPages('c6');
     expect(await retrySrc('c6', 5, 0)).toBe('');
   });
 });

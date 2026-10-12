@@ -99,6 +99,11 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 #zwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x pan-y}
 #pages{--z:1;width:calc(var(--z) * 100%)}
 #pages img{width:100%;display:block;min-height:240px;background:var(--surface)}
+/* a page that is still loading or failed for good says so over its empty box */
+.pg{position:relative}
+.pg.failed img{visibility:hidden}
+.pgmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;padding:16px;text-align:center;color:var(--muted);font-size:14px;pointer-events:none}
+.pg.failed .pgmsg{color:var(--amber)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
 #totop{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}

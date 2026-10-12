@@ -25,6 +25,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
+  // Pages that loaded or failed for good; the rest are still loading.
+  const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
+  const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
   // Where the bar was last shown or hidden; scrolling 30px down from there hides it, and 30px up shows it.
   const base = useRef(0);
 
@@ -55,13 +58,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     zoom.current = z;
     return z.stop;
   }, [done]);
-
-  // Ask for the next two chapters' page links now (no images), so they open without waiting on MangaDex.
-  // A failure here is reported when that chapter is opened.
-  useEffect(() => {
-    if (!done) return;
-    for (const k of list.filter((k) => k.num > n && !k.ext).slice(0, 2)) void chapterPages(k.id);
-  }, [done, list, n]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -96,8 +92,12 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     const tries = Number(img.dataset.t || 0);
     img.dataset.t = String(tries + 1);
     const src = await retrySrc(readable!.id, i, tries);
-    if (src) img.src = src;
-    else if (!failedOnce.current) {
+    if (src) {
+      img.src = src;
+      return;
+    }
+    mark(i, 'failed');
+    if (!failedOnce.current) {
       failedOnce.current = true;
       toast('Some pages failed to load. Try another chapter or source.');
     }
@@ -124,14 +124,21 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         <div id="zwrap" ref={wrap}>
           <div id="pages" ref={pagesRef}>
             {pages.value.map((u, i) => (
-              <img
-                key={u.a}
-                src={u.a}
-                referrerPolicy="no-referrer"
-                loading="lazy"
-                alt="Page failed to load"
-                onError={(e) => void onImgError(e.currentTarget, i)}
-              />
+              <div key={u.a} className={`pg ${shown[i] || ''}`}>
+                <img
+                  src={u.a}
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  alt={`Page ${i + 1}`}
+                  onLoad={() => mark(i, 'done')}
+                  onError={(e) => void onImgError(e.currentTarget, i)}
+                />
+                {shown[i] !== 'done' && (
+                  <p className="pgmsg">
+                    {shown[i] === 'failed' ? `Page ${i + 1} failed to load. Open the chapter again, or read it on MangaDex.` : `Loading page ${i + 1}…`}
+                  </p>
+                )}
+              </div>
             ))}
           </div>
         </div>
