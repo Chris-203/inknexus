@@ -1,11 +1,19 @@
-:root{--bg:#101218;--surface:#191d27;--line:#2a3040;--text:#e9e7f2;--muted:#8d92a6;--accent:#9db8ff;--amber:#f0c36a;
---head:'Bricolage Grotesque',system-ui,sans-serif;--body:system-ui,-apple-system,'Segoe UI',sans-serif}
+/* Latin subsets of Bangers and Comic Neue (SIL Open Font License, see public/fonts) */
+@font-face{font-family:Bangers;src:url(/fonts/bangers-400.woff2) format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-400.woff2) format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-700.woff2) format('woff2');font-weight:700;font-display:swap}
+:root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
+/* color themes (lib/theme.ts); Deep Canvas is the default */
+:root,:root[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
+:root[data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
+:root[data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
+:root[data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
 *,*::before,*::after{box-sizing:border-box}
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
-h1,h2{font-family:var(--head);margin:0}
+h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;padding:18px 16px 10px}
 header h1{font-size:28px}
 .sub,.hint{color:var(--muted)}
@@ -15,17 +23,19 @@ header h1{font-size:28px}
 .card{background:none;border:0;padding:0;text-align:left;position:relative;cursor:pointer}
 .card img,.cover{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:var(--surface);display:block}
 .badges{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
-.badge{background:var(--amber);color:#1b1500;font-size:12px;font-weight:700;padding:1px 7px;border-radius:99px}
-.badge.new{background:var(--accent);color:#0c1330}
+.badge{background:var(--text);color:var(--bg);font-size:12px;font-weight:700;padding:1px 7px;border-radius:99px}
+.badge.new{background:var(--accent);color:var(--on-accent)}
 .ct{display:block;margin-top:6px;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* touch targets stay at least 44px */
-.btn{background:var(--accent);color:#0c1330;border:0;border-radius:10px;padding:11px 16px;min-height:44px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:11px 16px;min-height:44px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
 .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
 .btn.sm{padding:7px 12px;font-size:13px}
-.btn.danger{background:transparent;color:#ff9a9a;border:1px solid #4a2a2f}
+.btn.danger{background:transparent;color:var(--danger);border:1px solid currentColor}
 .btn:disabled{opacity:.5;cursor:default}
 .ibtn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;min-width:44px;height:44px;padding:0 10px;font-size:20px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:none}
-.ibtn.txt{font-size:13px;font-weight:700}
+.ibtn.txt{font-size:13px;font-weight:700;font-family:var(--body)}
+/* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
+.ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
 .ibtn:disabled{opacity:.5;cursor:default}
 .row{display:flex;gap:8px;padding:4px 16px 12px}
 .row input{flex:1;min-width:0}
@@ -59,8 +69,9 @@ details.more .pad{padding:0 12px 12px}
 .step input{width:78px;text-align:center;-moz-appearance:textfield;appearance:textfield}
 .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto}
+.chips.wrap{flex-wrap:wrap}
 .chip{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 14px;min-height:44px;cursor:pointer;color:var(--muted)}
-.chip.on{background:var(--accent);color:#0c1330;border-color:var(--accent);font-weight:700}
+.chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
 /* a source chip: the name selects it; on the selected one, × on the left hides it */
 .chip.src{display:inline-flex;align-items:stretch;padding:0;cursor:default}
 .chip.src button{background:none;border:0;border-radius:99px;color:inherit;font:inherit;cursor:pointer;min-height:42px;padding:0 14px}
@@ -75,7 +86,7 @@ details.more .pad{padding:0 12px 12px}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}
 .pad.end{margin-top:20px}
-.rbar{position:sticky;top:0;z-index:4;background:rgba(16,18,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);transform-origin:0 0;transition:transform .2s,visibility .2s,opacity .2s}
+.rbar{position:sticky;top:0;z-index:4;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);transform-origin:0 0;transition:transform .2s,visibility .2s,opacity .2s}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* reader: scrolling down hides the bar and scrolling up shows it; a tap on the pages does either */
 .rbar.off{transform:translateY(-100%);visibility:hidden}
@@ -122,6 +133,6 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .dup-opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:44px;padding:10px;text-align:left;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:10px;cursor:pointer}
 .dup-opt.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .dup-opt span{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
-#toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:#111;padding:10px 16px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90%;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 @media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}}
