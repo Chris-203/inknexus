@@ -52,7 +52,10 @@ export function App() {
     // Only on mount: this records the first view in history; later views are recorded by navigate().
   }, []);
 
-  useLayoutEffect(() => window.scrollTo(0, 0), [view]);
+  // Braces matter: newer Chrome returns a Promise from scrollTo, and React would call it as the cleanup.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   const full = view.name === 'reader' || view.name === 'frame';
   useEffect(() => void document.body.classList.toggle('nonav', full), [full]);
