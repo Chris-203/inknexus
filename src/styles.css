@@ -105,7 +105,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 #zwrap.pagezoom{touch-action:auto}
 #pages{--z:1;width:calc(var(--z) * 100%)}
 #pages img{width:100%;display:block;min-height:240px;background:var(--surface)}
-/* a page still loading, or one MangaDex would not give, says so over its empty box */
+/* a page still loading, or one that failed, says so over its empty box */
 .pg{position:relative}
 .pg.failed img{visibility:hidden}
 .pgmsg{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;margin:0;padding:16px;text-align:center;color:var(--muted);font-size:14px}

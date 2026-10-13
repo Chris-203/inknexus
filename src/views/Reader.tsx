@@ -88,7 +88,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   };
 
   // Data-saver image first; on error try full quality once, then mark the page failed and say so once for this chapter.
-  // MangaDex's image servers only give other sites pages they already have cached, so a retry would get the same answer.
   const onImgError = (img: HTMLImageElement, i: number, b: string) => {
     if (!img.dataset.t && b) {
       img.dataset.t = '1';
@@ -98,7 +97,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     mark(i, 'failed');
     if (!failedOnce.current) {
       failedOnce.current = true;
-      toast("Some pages aren't available outside MangaDex yet. Read this chapter on MangaDex.");
+      toast('Some pages failed to load. Try again later, or read this chapter on MangaDex.');
     }
   };
 
@@ -134,7 +133,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
                 />
                 {shown[i] === 'failed' ? (
                   <div className="pgmsg">
-                    <p>Page {i + 1} isn't available outside MangaDex yet.</p>
+                    <p>Page {i + 1} failed to load.</p>
                     <a className="btn" href={mangadex.chapterUrl(readable.id)} target="_blank" rel="noopener noreferrer">
                       Read on MangaDex ↗
                     </a>
