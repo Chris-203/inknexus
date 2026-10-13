@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { useApp, type View } from '../context';
-import { ResetZoom } from '../components/ResetZoom';
+import { TopBar } from '../components/TopBar';
 import { fmt } from '../lib/format';
 import { chapterLink, host, linkName, nextWhole } from '../lib/links';
 import { getFrameZoom, setFrameZoom, stepZoom, ZOOM_STEPS } from '../lib/siteSettings';
@@ -36,7 +36,7 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
 
   return (
     <div className="fview">
-      <div className="rbar">
+      <TopBar>
         <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
           ‹
         </button>
@@ -59,7 +59,7 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
         <a className="ibtn" href={u} target="_blank" rel="noopener noreferrer" aria-label="Open in browser" title="Open in browser">
           ↗
         </a>
-      </div>
+      </TopBar>
       <div className="fwrap">
         <iframe
           className="frame"
@@ -70,7 +70,6 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
           title={x.title}
         />
       </div>
-      <ResetZoom />
     </div>
   );
 }
