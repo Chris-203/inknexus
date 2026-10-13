@@ -28,7 +28,7 @@ export function Library() {
     return (
       <>
         <header>
-          <h1>Library</h1>
+          <h1>My Series</h1>
           <span className="sub">0 series</span>
         </header>
         <div className="empty">
@@ -50,7 +50,7 @@ export function Library() {
   return (
     <>
       <header>
-        <h1>Library</h1>
+        <h1>My Series</h1>
         <span className="sub">
           {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
         </span>
