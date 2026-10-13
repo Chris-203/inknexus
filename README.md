@@ -31,7 +31,7 @@ npm run build     # typecheck and build into dist/
 2. On vercel.com choose Add New > Project, import the repo, and deploy. `vercel.json` sets the build, so no settings are needed.
 
 ### MangaDex relay
-Browsers block direct calls to the MangaDex API, so `api/mangadex.js`, a Vercel Function deployed with the site, relays them at `/api/mangadex`. It works on production and on every preview with no setup. It only forwards GET requests to `https://api.mangadex.org`, and only for pages on the same site. Chapter pages and covers go through a second function, `api/mdimage.js` at `/api/mdimage`, because MangaDex requires apps to proxy their images too: it only relays MangaDex image hosts, for pages on the same site, and lets browsers and Vercel's edge keep each image once fetched.
+Browsers block direct calls to the MangaDex API, so `api/mangadex.js`, a Vercel Function deployed with the site, relays them at `/api/mangadex`. It works on production and on every preview with no setup. It only forwards GET requests to `https://api.mangadex.org`, and only for pages on the same site. Chapter pages and covers go through a second function, `api/mdimage.js` at `/api/mdimage`, because MangaDex requires apps to proxy their images too: it only relays MangaDex image hosts, for pages on the same site, and lets the reader's browser keep each image once fetched. Images are not cached at Vercel's edge, which would serve them to any site without the same-site check.
 
 To run it locally, use `vercel dev`. `npm run dev` serves the page but not `/api/mangadex`, so MangaDex search fails with HTTP 404.
 
