@@ -16,8 +16,10 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 var(--body);
 body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
-header{display:flex;align-items:baseline;justify-content:space-between;padding:18px 16px 10px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:18px 16px 10px}
 header h1{font-size:28px}
+/* My Series: the count sits right next to the Select button */
+header .sub{flex:1;text-align:right}
 .sub,.hint{color:var(--muted)}
 .hint{padding:8px 16px;margin:0}
 .pad .hint{padding:0}
@@ -27,6 +29,10 @@ header h1{font-size:28px}
 .badges{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .badge{background:var(--text);color:var(--bg);font-size:12px;font-weight:700;padding:1px 7px;border-radius:99px}
 .badge.new{background:var(--accent);color:var(--on-accent)}
+/* selecting series to remove: a ring in the corner of each card, filled and checked when picked */
+.tick{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:99px;border:2px solid #fff;background:rgba(0,0,0,.4);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font:700 16px/1 system-ui,sans-serif}
+.card.on .tick{background:var(--accent);border-color:var(--accent)}
+.card.on img,.card.on .cover{outline:3px solid var(--accent);outline-offset:-3px}
 .ct{display:block;margin-top:6px;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* touch targets stay at least 44px */
 .btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:11px 16px;min-height:44px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
@@ -59,7 +65,10 @@ details.more .pad{padding:0 12px 12px}
 .empty .restore{max-width:34ch;margin:28px auto 12px;font-size:14px}
 #nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
 #nav[hidden]{display:none}
-#nav button{flex:1;background:none;border:0;padding:14px;color:var(--muted);font-weight:700;cursor:pointer}
+#nav button{flex:1;background:none;border:0;padding:8px 4px 6px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+#nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* the sliders' knobs cover their line */
+#nav circle{fill:var(--surface)}
 #nav button[aria-current]{color:var(--accent)}
 .backbar{padding:10px 14px 0}
 .top{display:flex;gap:14px;padding:16px}

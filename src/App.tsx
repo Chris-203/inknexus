@@ -7,13 +7,53 @@ import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
+import { Settings } from './views/Settings';
 import { Series } from './views/Series';
 import { Reader } from './views/Reader';
 import { Frame } from './views/Frame';
 
 // Views live in browser history as { v, back }, so the phone's back gesture moves through the app.
 // `back` says there is an in-app view behind this one.
-const NAMES = ['library', 'search', 'series', 'reader', 'frame'];
+const NAMES = ['library', 'search', 'settings', 'series', 'reader', 'frame'];
+
+// The bottom tabs. Icons are drawn here (24px, stroked in the tab color) rather than taken from an icon set.
+const TABS = [
+  {
+    name: 'library',
+    label: 'My Series',
+    // a comic book: cover, spine, and a speech bubble
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="2.5" width="16" height="19" rx="2" />
+        <path d="M8 2.5v19" />
+        <path d="M14 6.5c2.2 0 3.5 1.3 3.5 3s-1.3 3-3.5 3c-.4 0-.8 0-1.2-.1L11 13.5l.4-2c-.6-.5-.9-1.2-.9-2 0-1.7 1.3-3 3.5-3z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'search',
+    label: 'Find',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m15.5 15.5 5 5" />
+      </svg>
+    ),
+  },
+  {
+    name: 'settings',
+    label: 'Settings',
+    // sliders
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h16" />
+        <circle cx="9" cy="6" r="2" />
+        <circle cx="15" cy="12" r="2" />
+        <circle cx="8" cy="18" r="2" />
+      </svg>
+    ),
+  },
+] as const;
 
 function viewOf(st: unknown): View | null {
   const v = (st as { v?: View } | null)?.v;
@@ -115,23 +155,24 @@ export function App() {
       .catch(() => toast('That file is not an InkNexus backup'));
   };
 
-  const tab = view.name === 'search' ? 'search' : 'library';
+  const tab = view.name === 'search' || view.name === 'settings' ? view.name : 'library';
   return (
     <AppContext.Provider value={api}>
       <div id="app">
         {view.name === 'library' && <Library />}
         {view.name === 'search' && <Search />}
+        {view.name === 'settings' && <Settings />}
         {x && view.name === 'series' && <Series key={x.id} x={x} />}
         {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
         {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
       </div>
       <nav id="nav" hidden={full}>
-        <button aria-current={tab === 'library' || undefined} onClick={() => view.name !== 'library' && navigate({ name: 'library' })}>
-          Library
-        </button>
-        <button aria-current={tab === 'search' || undefined} onClick={() => view.name !== 'search' && navigate({ name: 'search' })}>
-          Find
-        </button>
+        {TABS.map((t) => (
+          <button key={t.name} aria-current={tab === t.name || undefined} onClick={() => view.name !== t.name && navigate({ name: t.name })}>
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
       </nav>
       <div id="toast" role="status" className={message.on ? 'on' : ''}>
         {message.text}
