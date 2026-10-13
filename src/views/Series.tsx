@@ -3,6 +3,7 @@ import { useApp } from '../context';
 import { LinkFields } from '../components/LinkFields';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet } from '../components/Sheet';
+import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
 import { fmt, plural } from '../lib/format';
 import { chapterLink, host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
@@ -55,7 +56,7 @@ export function Series({ x }: { x: SeriesT }) {
         </button>
       </div>
       <div className="top">
-        {x.cover ? <img className="cover" src={x.cover} alt="" /> : <span className="cover" />}
+        {x.cover ? <img className="cover" src={imageSrc(x.cover)} referrerPolicy="same-origin" alt="" /> : <span className="cover" />}
         <div className="info">
           <h2>
             {x.title}{' '}

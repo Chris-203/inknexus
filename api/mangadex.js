@@ -2,15 +2,10 @@
 // Usage from the app: /api/mangadex?url=<encoded https://api.mangadex.org/... URL>
 // Browsers block direct calls to the MangaDex API, so the app calls this instead.
 
+const { USER_AGENT, send, sameSite } = require('./_relay');
+
 const UPSTREAM_HOST = 'api.mangadex.org';
 const TIMEOUT_MS = 15000;
-
-function send(res, status, body, headers = {}) {
-  res.statusCode = status;
-  for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
-  if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', 'no-store');
-  res.end(body);
-}
 
 // The MangaDex URL to relay, or null if it is not an https URL on api.mangadex.org.
 function target(raw) {
@@ -24,27 +19,6 @@ function target(raw) {
   if (u.protocol !== 'https:' || u.hostname !== UPSTREAM_HOST) return null;
   if (u.port || u.username || u.password) return null;
   return u;
-}
-
-function hostOf(v) {
-  if (!v) return '';
-  try {
-    return new URL(v).host.toLowerCase();
-  } catch {
-    return '';
-  }
-}
-
-// Only pages on this same site may use the relay.
-function sameSite(req) {
-  const h = req.headers;
-  if (h['sec-fetch-site'] === 'same-origin') return true;
-  const self = String(h['x-forwarded-host'] || h.host || '')
-    .split(',')[0]
-    .trim()
-    .toLowerCase();
-  if (!self) return false;
-  return hostOf(h.origin) === self || hostOf(h.referer) === self;
 }
 
 // Short shared cache for search and chapter lists only. Never for at-home/server:
@@ -65,7 +39,7 @@ module.exports = async function handler(req, res) {
   let r, body;
   try {
     r = await fetch(u.href, {
-      headers: { 'User-Agent': 'InkNexus/1.0', Accept: 'application/json' },
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
       redirect: 'manual',
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

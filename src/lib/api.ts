@@ -1,6 +1,20 @@
 /** Same-origin Vercel Function (api/mangadex.js) that relays MangaDex API GETs. */
 export const RELAY = '/api/mangadex';
 export const MD = 'https://api.mangadex.org';
+/** Same-origin Vercel Function (api/mdimage.js) that relays MangaDex page images and covers: MangaDex requires apps to proxy them. */
+export const IMAGE_RELAY = '/api/mdimage';
+
+/** Where to load an image from: MangaDex images go through the image relay, any other address is used as is. */
+export function imageSrc(url: string): string {
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return url;
+  }
+  const md = host === 'uploads.mangadex.org' || host.endsWith('.mangadex.network');
+  return md ? `${IMAGE_RELAY}?url=${encodeURIComponent(url)}` : url;
+}
 
 export function apiHint(status: number): string {
   if (status === 429) return 'MangaDex is rate-limiting, wait a minute and try again';
