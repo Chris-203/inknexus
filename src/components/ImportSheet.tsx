@@ -31,7 +31,7 @@ export function ImportSheet({
       {dupes.length > 1 && (
         <div className="row">
           <button className="btn ghost sm" onClick={() => setUseBackup(dupes.map(() => false))}>
-            Keep all from library
+            Keep all from My Series
           </button>
           <button className="btn ghost sm" onClick={() => setUseBackup(dupes.map(() => true))}>
             Use all from backup
@@ -46,7 +46,7 @@ export function ImportSheet({
               const on = useBackup[i] === (k === 1);
               return (
                 <button key={k} className={`dup-opt${on ? ' on' : ''}`} aria-pressed={on} onClick={() => pick(i, k === 1)}>
-                  <span>{k ? 'In the backup' : 'In your library'}</span>
+                  <span>{k ? 'In the backup' : 'In My Series'}</span>
                   <b>{x.last ? `Last read: Ch. ${fmt(x.last)}` : 'Not started'}</b>
                   <span>{x.title}</span>
                   {x.t > 0 && <span>Updated {new Date(x.t).toLocaleDateString()}</span>}

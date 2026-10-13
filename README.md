@@ -6,7 +6,7 @@
 
 A mobile-friendly webtoon and manhwa tracker and reader.
 
-- **Library** with cover grid, last-chapter-read tracking, and "new" badges for MangaDex series with chapters past the one you're on
+- **My Series** with cover grid, last-chapter-read tracking, and "new" badges for MangaDex series with chapters past the one you're on
 - **Multiple sources per series**: switch between them, hide the ones you don't use, and the app remembers your pick
 - **Built-in reader** (vertical scroll) for MangaDex chapters, with sort, official-site chapters marked, and pinch or double-tap zoom on the pages
 - **AniList search** for metadata and official English reading links
