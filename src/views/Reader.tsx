@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { TopBar } from '../components/TopBar';
 import { useChapters } from '../lib/chapters';
@@ -25,6 +25,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
+  // Pages that showed or failed for good, by index; the rest are still loading.
+  const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
+  const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
   // Where the bar was last shown or hidden; scrolling 30px down from there hides it, and 30px up shows it.
   const base = useRef(0);
 
@@ -84,15 +87,18 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (z) toast(`Zoom ${Math.round(z * 100)}%`);
   };
 
-  // Data-saver image first; on error try full quality once, then say so once for this chapter.
-  const onImgError = (e: SyntheticEvent<HTMLImageElement>, b: string) => {
-    const img = e.currentTarget;
+  // Data-saver image first; on error try full quality once, then mark the page failed and say so once for this chapter.
+  // MangaDex's image servers only give other sites pages they already have cached, so a retry would get the same answer.
+  const onImgError = (img: HTMLImageElement, i: number, b: string) => {
     if (!img.dataset.t && b) {
       img.dataset.t = '1';
       img.src = b;
-    } else if (!failedOnce.current) {
+      return;
+    }
+    mark(i, 'failed');
+    if (!failedOnce.current) {
       failedOnce.current = true;
-      toast('Some pages failed to load. Try another chapter or source.');
+      toast("Some pages aren't available outside MangaDex yet. Read this chapter on MangaDex.");
     }
   };
 
@@ -116,8 +122,27 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         {credit}
         <div id="zwrap" ref={wrap}>
           <div id="pages" ref={pagesRef}>
-            {pages.value.map((u) => (
-              <img key={u.a} src={u.a} referrerPolicy="no-referrer" loading="lazy" alt="Page failed to load" onError={(e) => onImgError(e, u.b)} />
+            {pages.value.map((u, i) => (
+              <div key={u.a} className={`pg ${shown[i] || ''}`}>
+                <img
+                  src={u.a}
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  alt={`Page ${i + 1}`}
+                  onLoad={() => mark(i, 'done')}
+                  onError={(e) => onImgError(e.currentTarget, i, u.b)}
+                />
+                {shown[i] === 'failed' ? (
+                  <div className="pgmsg">
+                    <p>Page {i + 1} isn't available outside MangaDex yet.</p>
+                    <a className="btn" href={mangadex.chapterUrl(readable.id)} target="_blank" rel="noopener noreferrer">
+                      Read on MangaDex ↗
+                    </a>
+                  </div>
+                ) : (
+                  shown[i] !== 'done' && <p className="pgmsg">Loading page {i + 1}…</p>
+                )}
+              </div>
             ))}
           </div>
         </div>
