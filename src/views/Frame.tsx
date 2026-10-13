@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useApp, type View } from '../context';
 import { TopBar } from '../components/TopBar';
 import { fmt } from '../lib/format';
@@ -14,6 +14,23 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
   const u = view.url || l.url;
   const site = host(u);
   const [fz, setFz] = useState(() => getFrameZoom(site));
+  // When the bar was last shown, or 0 while it is hidden. Showing it again restarts the timer below.
+  const [shownAt, setShownAt] = useState(() => Date.now());
+  const showBar = () => setShownAt(Date.now());
+
+  // The site's scroll position is walled off from the app, so the bar cannot follow it. Instead it shows when a page
+  // of the site loads (pages start at the top) and from the corner button, and hides once the site is tapped (the app
+  // loses focus to it) or, where the browser does not report that, after a few seconds.
+  useEffect(() => {
+    if (!shownAt) return;
+    const hide = () => setShownAt(0);
+    const timer = setTimeout(hide, 5000);
+    addEventListener('blur', hide);
+    return () => {
+      clearTimeout(timer);
+      removeEventListener('blur', hide);
+    };
+  }, [shownAt]);
 
   const next = () => {
     if (!l.tpl) return;
@@ -36,7 +53,7 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
 
   return (
     <div className="fview">
-      <TopBar>
+      <TopBar off={!shownAt}>
         <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
           ‹
         </button>
@@ -68,8 +85,14 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
           sandbox="allow-scripts allow-same-origin allow-forms"
           referrerPolicy="no-referrer"
           title={x.title}
+          onLoad={showBar}
         />
       </div>
+      {!shownAt && (
+        <button id="showbar" className="ibtn float" aria-label="Show the bar" onClick={showBar}>
+          ▾
+        </button>
+      )}
     </div>
   );
 }
