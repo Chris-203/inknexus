@@ -74,12 +74,12 @@ describe('target', () => {
 });
 
 describe('handler', () => {
-  it('relays an image with an honest User-Agent, lets it be cached, and reports it', async () => {
+  it('relays an image with an honest User-Agent, lets only the browser cache it, and reports it', async () => {
     const { asked, reports } = mangadex(() => new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/jpeg', 'x-cache': 'HIT (fresh)' } }));
     const r = await call(PAGE);
     expect(r.status).toBe(200);
     expect(r.headers['content-type']).toBe('image/jpeg');
-    expect(r.headers['cache-control']).toBe('public, max-age=31536000, s-maxage=31536000, immutable');
+    expect(r.headers['cache-control']).toBe('private, max-age=31536000, immutable');
     expect(asked).toEqual([{ url: PAGE, ua: 'InkNexus/1.0' }]);
     expect(reports).toEqual([{ url: PAGE, success: true, bytes: 3, duration: expect.any(Number), cached: true }]);
   });

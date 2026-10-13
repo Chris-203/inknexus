@@ -64,8 +64,9 @@ module.exports = async function handler(req, res) {
   const type = r.headers.get('content-type') || '';
   const ok = r.status === 200 && type.startsWith('image/') && body.length > 0 && body.length <= MAX_BYTES;
   if (ok) {
-    // Page and cover file names carry a content hash, so a good image never changes: browsers and Vercel's edge keep it.
-    send(res, 200, body, { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable' });
+    // Page and cover file names carry a content hash, so a good image never changes and the browser keeps it. Private, because
+    // Vercel's edge would serve a cached image to any site without running the same-site check.
+    send(res, 200, body, { 'Content-Type': type, 'Cache-Control': 'private, max-age=31536000, immutable' });
   } else {
     send(res, 502, r.status === 200 ? 'MangaDex sent no usable image' : `MangaDex answered ${r.status}`);
   }
