@@ -123,10 +123,10 @@ export function Series({ x }: { x: SeriesT }) {
         <button
           className="btn danger sm"
           onClick={() => {
-            if (confirm('Remove this series from your library?')) removeSeries(x.id);
+            if (confirm('Remove this series from My Series?')) removeSeries(x.id);
           }}
         >
-          Remove from library
+          Remove from My Series
         </button>
       </div>
       {sheet === 'addsrc' && <AddSourceSheet x={x} onClose={() => setSheet(null)} />}

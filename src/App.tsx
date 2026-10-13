@@ -130,7 +130,7 @@ export function App() {
           My Series
         </button>
         <button aria-current={tab === 'search' || undefined} onClick={() => view.name !== 'search' && navigate({ name: 'search' })}>
-          Find
+          Search
         </button>
       </nav>
       <div id="toast" role="status" className={message.on ? 'on' : ''}>
