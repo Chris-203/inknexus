@@ -29,7 +29,7 @@ export function Library() {
 
   const toggle = (id: string) => setPicked((p) => p && (p.includes(id) ? p.filter((k) => k !== id) : [...p, id]));
   const remove = (ids: string[]) => {
-    if (!confirm(`Remove ${ids.length} series from your library?`)) return;
+    if (!confirm(`Remove ${ids.length} series from My Series?`)) return;
     removeSeries(...ids);
     setPicked(null);
     toast(`Removed ${ids.length} series`);
