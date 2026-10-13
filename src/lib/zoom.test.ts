@@ -1,4 +1,4 @@
-import { followPageZoom, pageZoom, zoomable, type PageZoom } from './zoom';
+import { followPageZoom, lockPageZoom, pageZoom, zoomable, type PageZoom } from './zoom';
 
 const rect = { top: 0, left: 0 };
 let wrap: EventTarget & { scrollLeft: number; getBoundingClientRect: () => typeof rect; classList: { toggle: () => void } };
@@ -200,9 +200,6 @@ describe('zoomable while the browser has zoomed the whole page', () => {
     const { wrap, pages, classes } = setup(2);
     expect(pinch(wrap).defaultPrevented).toBe(false);
     expect(pages.style.setProperty).not.toHaveBeenCalled();
-    const gesture = new Event('gesturestart', { cancelable: true });
-    wrap.dispatchEvent(gesture);
-    expect(gesture.defaultPrevented).toBe(false);
     expect(classes.has('pagezoom')).toBe(true);
   });
   it('leaves pinches to the browser while it has zoomed the whole page out', () => {
@@ -216,5 +213,38 @@ describe('zoomable while the browser has zoomed the whole page', () => {
     vv.dispatchEvent(new Event('resize'));
     expect(classes.has('pagezoom')).toBe(false);
     expect(pinch(wrap).defaultPrevented).toBe(true);
+  });
+});
+
+describe('lockPageZoom', () => {
+  function setup(pageScale: number) {
+    const vv = fakeViewport(pageScale);
+    const classes = new Set<string>();
+    const toggle = (c: string, on: boolean) => (on ? classes.add(c) : classes.delete(c));
+    const doc = Object.assign(new EventTarget(), { documentElement: { classList: { toggle } } });
+    vi.stubGlobal('window', { visualViewport: vv });
+    vi.stubGlobal('document', doc);
+    lockPageZoom();
+    return { vv, doc, classes };
+  }
+  function gesturePrevented(doc: EventTarget) {
+    const e = new Event('gesturestart', { cancelable: true });
+    doc.dispatchEvent(e);
+    return e.defaultPrevented;
+  }
+
+  it('stops the browser zooming the app at 100%', () => {
+    const { doc, classes } = setup(1);
+    expect(gesturePrevented(doc)).toBe(true);
+    expect(classes.has('pagezoom')).toBe(false);
+  });
+  it('lifts the lock while the browser has zoomed the page anyway, so it can get back to 100%', () => {
+    const { vv, doc, classes } = setup(2);
+    expect(gesturePrevented(doc)).toBe(false);
+    expect(classes.has('pagezoom')).toBe(true);
+    vv.scale = 1;
+    vv.dispatchEvent(new Event('resize'));
+    expect(classes.has('pagezoom')).toBe(false);
+    expect(gesturePrevented(doc)).toBe(true);
   });
 });

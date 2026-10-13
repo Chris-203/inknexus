@@ -98,12 +98,6 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
   wrap.addEventListener('touchmove', move, { passive: false });
   wrap.addEventListener('touchend', end);
   wrap.addEventListener('click', click);
-  // Safari can still pinch the whole page over the pages despite touch-action; its gesture events stop that here only.
-  const gesture = (e: Event) => {
-    if (!browserZoomed) e.preventDefault();
-  };
-  wrap.addEventListener('gesturestart', gesture);
-  wrap.addEventListener('gesturechange', gesture);
   return {
     zoomBy: (d) => {
       set(z + d, innerWidth / 2, innerHeight / 2);
@@ -117,10 +111,26 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
       wrap.removeEventListener('touchmove', move);
       wrap.removeEventListener('touchend', end);
       wrap.removeEventListener('click', click);
-      wrap.removeEventListener('gesturestart', gesture);
-      wrap.removeEventListener('gesturechange', gesture);
     },
   };
+}
+
+/**
+ * Keeps the whole app from zooming, like a native app; only the reader's pages zoom (see zoomable). touch-action on
+ * html stops pinch and double-tap zoom, and cancelling Safari's gesture events stops the pinches it still lets through.
+ * If the browser has zoomed the page anyway (over another site in the site view), both are lifted so it can get back
+ * to 100%.
+ */
+export function lockPageZoom(): void {
+  const vv = window.visualViewport;
+  const sync = () => document.documentElement.classList.toggle('pagezoom', isPageZoomed(vv));
+  const gesture = (e: Event) => {
+    if (!isPageZoomed(vv)) e.preventDefault();
+  };
+  sync();
+  vv?.addEventListener('resize', sync);
+  document.addEventListener('gesturestart', gesture);
+  document.addEventListener('gesturechange', gesture);
 }
 
 /**
