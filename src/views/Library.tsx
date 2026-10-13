@@ -1,5 +1,6 @@
 import { useApp } from '../context';
 import { ThemePicker } from '../components/ThemePicker';
+import { imageSrc } from '../lib/api';
 import { fmt } from '../lib/format';
 import { getState, useStore } from '../lib/store';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
@@ -60,7 +61,7 @@ export function Library() {
           const fresh = x.md && !x.mdh && last ? newCount(latestFor(x.md), last) : null;
           return (
             <button key={x.id} className="card" onClick={() => navigate({ name: 'series', id: x.id })}>
-              {x.cover ? <img src={x.cover} loading="lazy" alt="" /> : <span className="cover" />}
+              {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
               <span className="badges">
                 {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
                 {fresh?.n ? (

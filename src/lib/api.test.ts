@@ -1,4 +1,4 @@
-import { api, apiHint, statusOf, why } from './api';
+import { api, apiHint, imageSrc, statusOf, why } from './api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -27,5 +27,24 @@ describe('api', () => {
   it('why falls back for non-errors', () => {
     expect(why(new Error('boom'))).toBe('boom');
     expect(why(0)).toBe('unknown error');
+  });
+});
+
+describe('imageSrc', () => {
+  it('sends MangaDex page images and covers through the image relay', () => {
+    const page = 'https://cmdxd98sb0x3yprd.mangadex.network/data-saver/h/1-a.jpg';
+    expect(imageSrc(page)).toBe('/api/mdimage?url=' + encodeURIComponent(page));
+    const cover = 'https://uploads.mangadex.org/covers/m1/f.jpg.256.jpg';
+    expect(imageSrc(cover)).toBe('/api/mdimage?url=' + encodeURIComponent(cover));
+  });
+  it('leaves other images, look-alike hosts and non-addresses alone', () => {
+    for (const u of [
+      'https://s4.anilist.co/file/cover.jpg',
+      'https://mangadex.network.evil.example/a.jpg',
+      'https://evilmangadex.network/a.jpg',
+      '',
+      'not a url',
+    ])
+      expect(imageSrc(u)).toBe(u);
   });
 });

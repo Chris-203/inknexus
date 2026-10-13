@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { TopBar } from '../components/TopBar';
+import { imageSrc } from '../lib/api';
 import { useChapters } from '../lib/chapters';
 import { fmt } from '../lib/format';
 import { findSeries, setLast } from '../lib/store';
@@ -124,12 +125,12 @@ export function Reader({ x, n }: { x: Series; n: number }) {
             {pages.value.map((u, i) => (
               <div key={u.a} className={`pg ${shown[i] || ''}`}>
                 <img
-                  src={u.a}
-                  referrerPolicy="no-referrer"
+                  src={imageSrc(u.a)}
+                  referrerPolicy="same-origin"
                   loading="lazy"
                   alt={`Page ${i + 1}`}
                   onLoad={() => mark(i, 'done')}
-                  onError={(e) => onImgError(e.currentTarget, i, u.b)}
+                  onError={(e) => onImgError(e.currentTarget, i, u.b && imageSrc(u.b))}
                 />
                 {shown[i] === 'failed' ? (
                   <div className="pgmsg">
