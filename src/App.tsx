@@ -95,7 +95,6 @@ export function App() {
     const lib = getState().lib;
     const next = mergeImport(lib, plan.fresh, plan.dupes, fromBackup);
     replaceState({ ...getState(), lib: next });
-    setImporting(null);
     const updated = lib.filter((x, i) => JSON.stringify(x) !== JSON.stringify(next[i])).length;
     const parts = [plan.fresh.length && `${plan.fresh.length} added`, updated && `${updated} updated`].filter(Boolean);
     toast(parts.length ? `Backup imported: ${parts.join(', ')}` : 'Backup imported. Nothing changed');
