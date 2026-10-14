@@ -104,6 +104,8 @@ details.more .pad{padding:0 12px 12px}
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
 /* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
 .fview .rbar{gap:6px}
+/* hidden in the site view, the bar gives its space to the site (see Frame) */
+.fview .rbar.off{display:none}
 .fwrap{flex:1;min-height:0;position:relative;overflow:hidden}
 iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));height:calc(100% / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff}
 /* shown only while the browser has zoomed the whole app in the reader or site view; kept at normal size in the corner */
@@ -134,7 +136,10 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .pg.failed .pgmsg{color:var(--danger)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
-#totop{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+/* round buttons floating over the reader's pages or the site */
+.ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+#showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
 #modal.on{display:flex}
 #modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px))}

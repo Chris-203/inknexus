@@ -189,7 +189,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       </TopBar>
       <div id="strip">{content}</div>
       {toTop && (
-        <button id="totop" className="ibtn" aria-label="Back to top" onClick={backToTop}>
+        <button id="totop" className="ibtn float" aria-label="Back to top" onClick={backToTop}>
           ↑
         </button>
       )}
