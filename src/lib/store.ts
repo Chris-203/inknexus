@@ -42,8 +42,9 @@ export function addSeries(o: Parameters<typeof newSeries>[0]): Series {
   return x;
 }
 
-export function removeSeries(id: string) {
-  commit({ ...state, lib: state.lib.filter((x) => x.id !== id) });
+/** Remove one or more series from the library. */
+export function removeSeries(...ids: string[]) {
+  commit({ ...state, lib: state.lib.filter((x) => !ids.includes(x.id)) });
 }
 
 export function toggleSort() {
