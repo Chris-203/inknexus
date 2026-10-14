@@ -143,6 +143,10 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
 #modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px));animation:slide-up .25s cubic-bezier(.2,.8,.2,1)}
 #modal.closing .sheet{animation:slide-down .2s ease-in forwards}
+/* a drawer: full height on the right edge, sliding in from the side */
+#modal.side{align-items:stretch;justify-content:flex-end}
+#modal .sheet.drawer{width:min(320px,85%);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:16px 0 0 16px;padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in}
+#modal.closing .sheet.drawer{animation-name:slide-out}
 #modal .sheet:focus{outline:none}
 #modal h2{padding:0 16px 10px;font-size:20px}
 #modal .btn{margin:0 16px 10px;display:flex;width:calc(100% - 32px)}
@@ -160,5 +164,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes fade-out{to{opacity:0}}
 @keyframes slide-up{from{transform:translateY(100%)}}
 @keyframes slide-down{to{transform:translateY(100%)}}
+@keyframes slide-in{from{transform:translateX(100%)}}
+@keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
 @media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
