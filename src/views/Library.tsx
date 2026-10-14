@@ -157,9 +157,6 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
     <Sheet label="Settings" sheet={sheet} drawer>
       <h2>Settings</h2>
       <ThemePicker />
-      <button className="btn ghost" onClick={sheet.close}>
-        Close
-      </button>
     </Sheet>
   );
 }
