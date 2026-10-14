@@ -4,10 +4,10 @@
 @font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-700.woff2) format('woff2');font-weight:700;font-display:block}
 :root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* color themes (lib/theme.ts); Deep Canvas is the default */
-:root,:root[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
-:root[data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
-:root[data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
-:root[data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
+:root,[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
+[data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
+[data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
+[data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
 *,*::before,*::after{box-sizing:border-box}
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
@@ -81,7 +81,6 @@ details.more .pad{padding:0 12px 12px}
 .step input{width:78px;text-align:center;-moz-appearance:textfield;appearance:textfield}
 .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto}
-.chips.wrap{flex-wrap:wrap}
 .chip{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 14px;min-height:44px;cursor:pointer;color:var(--muted)}
 .chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
 /* a source chip: the name selects it; on the selected one, × on the left hides it */
@@ -119,6 +118,17 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--muted);cursor:pointer}
 .opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
+/* theme cards: data-theme on .tprev gives the preview that theme's colors; --ring keeps the app's own accent for the outline */
+.themes{--ring:var(--accent);display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;padding:4px 16px 16px}
+.theme{background:none;border:0;border-radius:12px;padding:0;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;font-size:14px}
+.theme[aria-pressed=true]{color:var(--text);font-weight:700}
+.tprev{position:relative;display:block;height:76px;border-radius:12px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.theme[aria-pressed=true] .tprev{outline:2px solid var(--ring);outline-offset:2px}
+.tprev i{position:absolute;border-radius:4px}
+.tprev i:nth-child(1){left:10px;top:10px;width:44%;height:7px;background:var(--text)}
+.tprev i:nth-child(2){left:10px;top:26px;width:26px;height:38px;background:var(--surface);border:1px solid var(--line)}
+.tprev i:nth-child(3){left:42px;top:26px;width:26px;height:38px;background:var(--surface);border:1px solid var(--line)}
+.tprev i:nth-child(4){right:10px;top:9px;width:22px;height:10px;border-radius:99px;background:var(--accent)}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:44px;min-height:44px;padding:0;vertical-align:middle}
 .ch b.nm{font-weight:600;overflow-wrap:anywhere}
