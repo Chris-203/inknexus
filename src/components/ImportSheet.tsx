@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { fmt } from '../lib/format';
 import type { Duplicate } from '../lib/importBackup';
 import { ResultRow } from './ResultRow';
-import { Sheet } from './Sheet';
+import { Sheet, useSheet } from './Sheet';
 
 /** For each backup series already in the library with a different last chapter, pick which version to keep. Sources and new series are handled either way. */
 export function ImportSheet({
@@ -16,12 +16,13 @@ export function ImportSheet({
   onImport: (fromBackup: Duplicate[]) => void;
   onClose: () => void;
 }) {
+  const sheet = useSheet(onClose);
   // Each starts on the version read further; a tie keeps the library's.
   const [useBackup, setUseBackup] = useState(() => dupes.map((d) => d.theirs.last > d.mine.last));
   const pick = (i: number, backup: boolean) => setUseBackup((u) => u.map((v, k) => (k === i ? backup : v)));
 
   return (
-    <Sheet label="Import backup" onClose={onClose}>
+    <Sheet label="Import backup" sheet={sheet}>
       <h2>Import backup</h2>
       <p className="hint">
         {dupes.length === 1 ? 'This series has' : `These ${dupes.length} series have`} a different last chapter in the backup. Tap the version to keep. Each
@@ -56,10 +57,16 @@ export function ImportSheet({
           </div>
         </div>
       ))}
-      <button className="btn" onClick={() => onImport(dupes.filter((_, i) => useBackup[i]))}>
+      <button
+        className="btn"
+        onClick={() => {
+          onImport(dupes.filter((_, i) => useBackup[i]));
+          sheet.close();
+        }}
+      >
         Import
       </button>
-      <button className="btn ghost" onClick={onClose}>
+      <button className="btn ghost" onClick={sheet.close}>
         Cancel
       </button>
     </Sheet>

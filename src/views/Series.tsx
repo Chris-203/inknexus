@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { LinkFields } from '../components/LinkFields';
 import { ResultRow } from '../components/ResultRow';
-import { Sheet } from '../components/Sheet';
+import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
 import { fmt, plural } from '../lib/format';
@@ -292,6 +292,7 @@ function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown:
 
 function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
   const { toast } = useApp();
+  const sheet = useSheet(onClose);
   const [kind, setKind] = useState<'md' | 'al' | null>(null);
   const res = useLoad(kind, () => (kind === 'md' ? mangadex.search(x.title) : anilist.search(x.title)));
   const site = kind === 'md' ? 'MangaDex' : 'AniList';
@@ -304,7 +305,7 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
       updateSeries(x.id, (s) => ({ al: o.ref, cover: s.cover || o.cover, links: [...s.links, ...fresh] }));
       toast(fresh.length ? `Added ${plural(fresh.length, 'official link')}` : 'No official links listed for this one');
     }
-    onClose();
+    sheet.close();
   };
   const onSave = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -316,12 +317,12 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
       setLast(x.id, made.r.num);
       toast(`Detected chapter ${fmt(made.r.num)} from the link`);
     }
-    onClose();
+    sheet.close();
   };
 
   const results = res?.state === 'done' ? res.value : [];
   return (
-    <Sheet label="Add a source" onClose={onClose}>
+    <Sheet label="Add a source" sheet={sheet}>
       <h2>Add a source</h2>
       {hidden.length > 0 && (
         <>
@@ -332,7 +333,7 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
               className="btn ghost"
               onClick={() => {
                 setHidden(x.id, q.k, false);
-                onClose();
+                sheet.close();
               }}
             >
               Show {q.n}
@@ -369,7 +370,7 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
         <LinkFields urlPlaceholder="Series or chapter link" />
         <button className="btn">Save link</button>
       </form>
-      <button className="btn ghost" onClick={onClose}>
+      <button className="btn ghost" onClick={sheet.close}>
         Close
       </button>
     </Sheet>
@@ -378,17 +379,18 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
 
 function NamesSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
   const { toast } = useApp();
+  const sheet = useSheet(onClose);
   const names = useLoad(x.md, () => mangadex.names(x.md!));
   const [text, setText] = useState(x.title);
 
   const rename = (t: string) => {
     updateSeries(x.id, () => ({ title: t }));
-    onClose();
+    sheet.close();
     toast('Name changed');
   };
 
   return (
-    <Sheet label="Change name" onClose={onClose}>
+    <Sheet label="Change name" sheet={sheet}>
       <h2>Change name</h2>
       {names?.state === 'busy' && <p className="hint">Loading names from MangaDex…</p>}
       {names?.state === 'error' && <p className="hint">Could not load names from MangaDex ({names.error}). Type a name below, or try again later.</p>}
@@ -417,7 +419,7 @@ function NamesSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
         <input name="title" value={text} onChange={(e) => setText(e.target.value)} required aria-label="Name" />
         <button className="btn">Save this name</button>
       </form>
-      <button className="btn ghost" onClick={onClose}>
+      <button className="btn ghost" onClick={sheet.close}>
         Close
       </button>
     </Sheet>
