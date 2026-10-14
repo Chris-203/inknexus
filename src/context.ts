@@ -4,6 +4,7 @@ import type { SearchResult } from './lib/types';
 export type View =
   | { name: 'library' }
   | { name: 'search' }
+  | { name: 'settings' }
   | { name: 'series'; id: string }
   | { name: 'reader'; id: string; n: number }
   | { name: 'frame'; id: string; i: number; ch: number; url: string };

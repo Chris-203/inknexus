@@ -20,6 +20,8 @@ header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
 header h1{font-size:28px}
 /* My Series: the count sits right next to the Select button */
 header .sub{flex:1;text-align:right}
+/* Select and the settings gear: centered, since the gear has no text to line up on */
+header .btn,header .ibtn{align-self:center}
 .sub,.hint{color:var(--muted)}
 .hint{padding:8px 16px;margin:0}
 .pad .hint{padding:0}
@@ -66,8 +68,8 @@ details.more .pad{padding:0 12px 12px}
 #nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
 #nav[hidden]{display:none}
 #nav button{flex:1;background:none;border:0;padding:8px 4px 6px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
-/* tab icons, drawn in App.tsx and stroked in the tab's color */
-#nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* icons drawn in the app (the tabs, the settings gear), stroked in the button's color */
+#nav svg,.ibtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #nav button[aria-current]{color:var(--accent)}
 .backbar{padding:10px 14px 0}
 .top{display:flex;gap:14px;padding:16px}
