@@ -35,7 +35,7 @@ export function Search() {
   const add = async (o: SearchResult) => {
     setAdding(true);
     const n = addSeries({ title: o.title, cover: o.cover, md: o.src === 'md' ? String(o.ref) : null, al: o.src === 'al' ? o.ref : null, links: o.links || [] });
-    let msg = 'Added to library';
+    let msg = 'Added to My Series';
     if (o.src === 'al') {
       try {
         const hit = (await mangadex.search(o.title)).find((k) => norm(k.title) === norm(o.title));
@@ -59,7 +59,7 @@ export function Search() {
     if (!made) return toast(NOT_WEB);
     const given = parseFloat(field('ch'));
     const n = addSeries({ title: field('title'), links: [made.link], last: given || made.r?.num || 0 });
-    toast(made.r && !given ? `Added. Detected chapter ${fmt(made.r.num)} from the link` : 'Added to library');
+    toast(made.r && !given ? `Added. Detected chapter ${fmt(made.r.num)} from the link` : 'Added to My Series');
     navigate({ name: 'series', id: n.id });
   };
 
@@ -100,7 +100,7 @@ export function Search() {
   return (
     <>
       <header>
-        <h1>Find</h1>
+        <h1>Search</h1>
       </header>
       <form className="row" role="search" onSubmit={onSearch}>
         <input id="q" aria-label="Search by title" placeholder="Search by title" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
@@ -113,7 +113,7 @@ export function Search() {
           <input name="title" aria-label="Title" placeholder="Title" required />
           <LinkFields urlPlaceholder="https://…" />
           <input name="ch" type="number" step="any" min="0" aria-label="Chapter you're on" placeholder="Chapter you're on (optional if the link has one)" />
-          <button className="btn">Add to library</button>
+          <button className="btn">Add to My Series</button>
         </form>
       </details>
     </>

@@ -28,16 +28,16 @@ export function Library() {
     return (
       <>
         <header>
-          <h1>Library</h1>
+          <h1>My Series</h1>
           <span className="sub">0 series</span>
         </header>
         <div className="empty">
-          <p>Your library is empty.</p>
+          <p>No series yet.</p>
           <button className="btn" onClick={() => navigate({ name: 'search' })}>
-            Find a series
+            Search for a series
           </button>
           <p className="restore">
-            Used InkNexus before, in another browser or on another device? Each one keeps its own library. Import the backup file you exported there.
+            Used InkNexus before, in another browser or on another device? Each one keeps its own list. Import the backup file you exported there.
           </p>
           <button className="btn ghost" onClick={importBackup}>
             Import backup
@@ -50,7 +50,7 @@ export function Library() {
   return (
     <>
       <header>
-        <h1>Library</h1>
+        <h1>My Series</h1>
         <span className="sub">
           {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
         </span>
