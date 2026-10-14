@@ -1,4 +1,4 @@
-import { loadState, newSeries, parseBackup, saveState, STORAGE_KEY } from './storage';
+import { loadState, newSeries, parseBackup, saveState, STORAGE_KEY, writeJson } from './storage';
 
 const MDID = '32d76d19-8a05-4db0-9fc2-e0b0648fe9d0';
 
@@ -72,5 +72,17 @@ describe('storage', () => {
     const s = newSeries({ title: 'T' });
     expect(s).toMatchObject({ title: 'T', cover: '', md: null, al: null, links: [], last: 0 });
     expect(s.id).toBeTruthy();
+  });
+  it('writeJson says whether the value was saved', () => {
+    const st = fakeStore();
+    expect(writeJson('k', [1], st)).toBe(true);
+    expect(st.m.get('k')).toBe('[1]');
+    const full = {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('full', 'QuotaExceededError');
+      },
+    };
+    expect(writeJson('k', [1], full)).toBe(false);
   });
 });
