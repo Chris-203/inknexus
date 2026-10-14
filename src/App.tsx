@@ -7,13 +7,14 @@ import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
+import { Settings } from './views/Settings';
 import { Series } from './views/Series';
 import { Reader } from './views/Reader';
 import { Frame } from './views/Frame';
 
 // Views live in browser history as { v, back }, so the phone's back gesture moves through the app.
 // `back` says there is an in-app view behind this one.
-const NAMES = ['library', 'search', 'series', 'reader', 'frame'];
+const NAMES = ['library', 'search', 'settings', 'series', 'reader', 'frame'];
 
 function viewOf(st: unknown): View | null {
   const v = (st as { v?: View } | null)?.v;
@@ -121,6 +122,7 @@ export function App() {
       <div id="app">
         {view.name === 'library' && <Library />}
         {view.name === 'search' && <Search />}
+        {view.name === 'settings' && <Settings />}
         {x && view.name === 'series' && <Series key={x.id} x={x} />}
         {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
         {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
