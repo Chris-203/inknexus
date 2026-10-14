@@ -65,7 +65,9 @@ details.more .pad{padding:0 12px 12px}
 .empty .restore{max-width:34ch;margin:28px auto 12px;font-size:14px}
 #nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
 #nav[hidden]{display:none}
-#nav button{flex:1;background:none;border:0;padding:14px;color:var(--muted);font-weight:700;cursor:pointer}
+#nav button{flex:1;background:none;border:0;padding:8px 4px 6px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+/* tab icons, drawn in App.tsx and stroked in the tab's color */
+#nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #nav button[aria-current]{color:var(--accent)}
 .backbar{padding:10px 14px 0}
 .top{display:flex;gap:14px;padding:16px}

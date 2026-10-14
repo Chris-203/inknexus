@@ -127,9 +127,19 @@ export function App() {
       </div>
       <nav id="nav" hidden={full}>
         <button aria-current={tab === 'library' || undefined} onClick={() => view.name !== 'library' && navigate({ name: 'library' })}>
+          {/* a comic book: cover, spine, and a speech bubble */}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="2.5" width="16" height="19" rx="2" />
+            <path d="M8 2.5v19" />
+            <path d="M14 6.5c2.2 0 3.5 1.3 3.5 3s-1.3 3-3.5 3c-.4 0-.8 0-1.2-.1L11 13.5l.4-2c-.6-.5-.9-1.2-.9-2 0-1.7 1.3-3 3.5-3z" />
+          </svg>
           My Series
         </button>
         <button aria-current={tab === 'search' || undefined} onClick={() => view.name !== 'search' && navigate({ name: 'search' })}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m15.5 15.5 5 5" />
+          </svg>
           Search
         </button>
       </nav>
