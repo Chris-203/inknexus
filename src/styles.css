@@ -1,7 +1,7 @@
 /* Latin subsets of Bangers and Comic Neue (SIL Open Font License, see public/fonts) */
-@font-face{font-family:Bangers;src:url(/fonts/bangers-400.woff2) format('woff2');font-weight:400;font-display:swap}
-@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-400.woff2) format('woff2');font-weight:400;font-display:swap}
-@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-700.woff2) format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:Bangers;src:url(/fonts/bangers-400.woff2) format('woff2');font-weight:400;font-display:block}
+@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-400.woff2) format('woff2');font-weight:400;font-display:block}
+@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-700.woff2) format('woff2');font-weight:700;font-display:block}
 :root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* color themes (lib/theme.ts); Deep Canvas is the default */
 :root,:root[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}

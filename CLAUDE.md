@@ -42,7 +42,7 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 - `api/mdimage.js`: Vercel Function that relays MangaDex page images and covers at `/api/mdimage`, limited to MangaDex image hosts and same-site requests; reports each MangaDex@Home image to MangaDex. `api/_relay.js`: what both relays share (`USER_AGENT`, `send()`, `sameSite()`)
 - `assets/`: cover art (`cover.svg` is the source, `cover.png` is rendered from it)
 - `public/`: icons, and the Latin font files with their licenses in `public/fonts/`, copied as-is into the build
-- `vercel.json`: builds with Vite into `dist/`
+- `vercel.json`: builds with Vite into `dist/`, and caches `/fonts/` for a year so text never starts in a fallback font on launch. A changed font file needs a new name, also in its `index.html` preload
 
 Library data uses the field names in `src/lib/types.ts`. They match what is already saved in people's browsers, so do not rename them without a migration.
 
