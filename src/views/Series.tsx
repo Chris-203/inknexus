@@ -1,17 +1,18 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { LinkFields } from '../components/LinkFields';
+import { ReadButton } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
-import { fmt, plural } from '../lib/format';
+import { chapterNote, fmt, plural } from '../lib/format';
 import { chapterLink, host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
 import { pasteChapterLink } from '../lib/pasteLink';
 import { opensInBrowser, setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { removeSeries, setHidden, setLast, sourcesOf, toggleSort, updateSeries, useStore } from '../lib/store';
-import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
+import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
@@ -135,21 +136,6 @@ export function Series({ x }: { x: SeriesT }) {
   );
 }
 
-/** Opens a MangaDex chapter in the reader, or on the official site when it is hosted there. */
-function ReadButton({ x, c, className, children }: { x: SeriesT; c: Chapter; className: string; children: ReactNode }) {
-  const { navigate, toast } = useApp();
-  const read = () => {
-    if (!c.ext) return navigate({ name: 'reader', id: x.id, n: c.num });
-    window.open(c.ext, '_blank', 'noopener');
-    toast(`Chapter ${fmt(c.num)} opens on the official site`);
-  };
-  return (
-    <button className={className} onClick={read}>
-      {children}
-    </button>
-  );
-}
-
 /** The MangaDex source: its chapter list, with the ones up to `shown` marked read. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
   const { sort } = useStore();
@@ -193,7 +179,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
         {(asc ? all : [...all].reverse()).map((c) => (
           <ReadButton key={c.id} x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
             <b>Ch. {fmt(c.num)}</b>
-            <span>{[c.ext ? 'Official site ↗' : c.title, c.grp].filter(Boolean).join(' · ')}</span>
+            <span>{chapterNote(c)}</span>
           </ReadButton>
         ))}
       </>
