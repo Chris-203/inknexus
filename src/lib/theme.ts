@@ -75,17 +75,16 @@ export function rgbOf(c: string): number[] | null {
 
 /** The color `p` of the way (0 to 1) from `a` to `b`, blended like Safari blends its bars: in linear light raised to 1/FADE_GAMMA. */
 export function blend(a: number[], b: number[], p: number): string {
-  const toFade = (v: number) => linear(v) ** (1 / FADE_GAMMA);
-  const fromFade = (v: number) => encode(v ** FADE_GAMMA);
   return `rgb(${a.map((v, i) => Math.round(fromFade(toFade(v) + (toFade(b[i]!) - toFade(v)) * p))).join(' ')})`;
 }
 
-// sRGB to linear light and back, both 0 to 255 on the sRGB side.
-function linear(v: number): number {
+// A 0 to 255 sRGB channel to Safari's blending space (linear light raised to 1/FADE_GAMMA), and back.
+function toFade(v: number): number {
   const c = v / 255;
-  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  return (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4) ** (1 / FADE_GAMMA);
 }
 
-function encode(l: number): number {
+function fromFade(f: number): number {
+  const l = f ** FADE_GAMMA;
   return 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * l ** (1 / 2.4) - 0.055);
 }
