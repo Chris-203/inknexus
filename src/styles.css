@@ -5,6 +5,15 @@
 :root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* the only text sizes and corner radii the app uses; pick the nearest one rather than adding another */
 :root{--font-xs:12px;--font-sm:14px;--font-base:16px;--font-lg:20px;--font-xl:28px;--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:99px}
+/* the theme colors are registered as colors, so the page reads them as rgb() when setTheme (lib/theme.ts) fades them */
+@property --bg{syntax:'<color>';inherits:true;initial-value:#121214}
+@property --surface{syntax:'<color>';inherits:true;initial-value:#1a1a1e}
+@property --line{syntax:'<color>';inherits:true;initial-value:#2e2e35}
+@property --text{syntax:'<color>';inherits:true;initial-value:#e2e8f0}
+@property --muted{syntax:'<color>';inherits:true;initial-value:#9a9fab}
+@property --accent{syntax:'<color>';inherits:true;initial-value:#ff6b6b}
+@property --on-accent{syntax:'<color>';inherits:true;initial-value:#121214}
+@property --danger{syntax:'<color>';inherits:true;initial-value:#ff9b8f}
 /* color themes (lib/theme.ts); Deep Canvas is the default */
 :root,[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
 [data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
@@ -173,15 +182,25 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 #showbar{left:12px;top:calc(8px + env(safe-area-inset-top,0px));animation:fade-in .4s}
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
+#modal{--drawer:min(320px,85%);--page-bg:var(--bg);--page-surface:var(--surface);position:fixed;inset:0;z-index:10;display:none;align-items:flex-end}
+/* iPhone Safari colors its status bar and toolbar from a fixed element at each screen edge, but reads a full-screen backdrop only once, when it first shows. These thin strips are not full-screen, so Safari reads them again when their color changes, as on a theme switch. Their background color is what Safari reads: they carry the theme themselves (data-theme), so it changes at once while the page fades. Safari ignores them when much fainter than this, so on top each one paints what is under it, in the page's fading colors (--page-* on #modal), and they wait for the sheet to slide in and hide while it slides out. */
+#modal .tint{--corner:calc(100% - var(--drawer) + var(--radius-lg));position:fixed;left:0;right:0;height:12px;opacity:.12;pointer-events:none;z-index:1;animation:tint-wait .25s}
+#modal .tint-top{top:0;background:var(--bg) linear-gradient(var(--page-bg),var(--page-bg))}
+#modal .tint-bottom{bottom:0;background:var(--bg) linear-gradient(var(--page-bg),var(--page-bg))}
+/* beside a drawer, the toolbar takes the nav bar's color; the bottom strip paints the nav bar on the left and the drawer, with its rounded corner, on the right */
+#modal.side .tint-bottom{background-color:var(--surface);background-image:radial-gradient(circle at var(--corner) calc(12px - var(--radius-lg)),var(--page-bg) var(--radius-lg),transparent 0),linear-gradient(to right,var(--page-surface) var(--corner),var(--page-bg) 0)}
+#modal.closing .tint{display:none}
+/* while a theme switch settles, the strips' color (hidden under their paint) is nudged toward gray, so Safari reads them again when it changes back (setTheme in lib/theme.ts) */
+[data-fading] #modal .tint{background-color:color-mix(in srgb,var(--bg) 97%,gray)}
+[data-fading] #modal.side .tint-bottom{background-color:color-mix(in srgb,var(--surface) 97%,gray)}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
-#modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:var(--radius-lg) var(--radius-lg) 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px));animation:slide-up .25s cubic-bezier(.2,.8,.2,1)}
+#modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:var(--radius-lg) var(--radius-lg) 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px));animation:slide-up .25s cubic-bezier(.2,.8,.2,1);box-shadow:0 -4px 24px rgba(0,0,0,.3)}
 #modal.closing .sheet{animation:slide-down .2s ease-in forwards}
 /* a drawer: full height on the right edge, sliding in from the side */
 #modal.side{align-items:stretch;justify-content:flex-end}
-#modal .sheet.drawer{width:min(320px,85%);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:var(--radius-lg) 0 0 var(--radius-lg);padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in}
+#modal .sheet.drawer{width:var(--drawer);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:var(--radius-lg) 0 0 var(--radius-lg);padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in;box-shadow:-4px 0 24px rgba(0,0,0,.3)}
 #modal.closing .sheet.drawer{animation-name:slide-out}
 #modal .sheet:focus{outline:none}
 #modal h2{padding:0 16px 10px;font-size:var(--font-lg)}
@@ -201,6 +220,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-up{from{transform:translateY(100%)}}
 @keyframes slide-down{to{transform:translateY(100%)}}
 @keyframes slide-in{from{transform:translateX(100%)}}
+@keyframes tint-wait{from,to{visibility:hidden}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
 @media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,.fbar{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
