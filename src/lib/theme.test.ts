@@ -23,4 +23,20 @@ describe('theme', () => {
     expect(root.dataset.theme).toBe('eink');
     expect(meta.content).toBe('#f4f4f0');
   });
+  it('fades into the theme with a view transition where the browser has one', () => {
+    const fade = vi.fn((show: () => void) => show());
+    vi.stubGlobal('document', { documentElement: root, querySelector: () => meta, startViewTransition: fade });
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    setTheme('pulp');
+    expect(fade).toHaveBeenCalledOnce();
+    expect(root.dataset.theme).toBe('pulp');
+  });
+  it('switches at once when reduced motion is on', () => {
+    const fade = vi.fn();
+    vi.stubGlobal('document', { documentElement: root, querySelector: () => meta, startViewTransition: fade });
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    setTheme('midnight');
+    expect(fade).not.toHaveBeenCalled();
+    expect(root.dataset.theme).toBe('midnight');
+  });
 });

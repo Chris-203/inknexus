@@ -30,8 +30,13 @@ export function applyTheme() {
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg').trim());
 }
 
+/** Save and show a theme. The page fades into it over the time iPhone Safari takes to fade its status bar and toolbar, so they change together. */
 export function setTheme(t: Theme) {
   writeJson(KEY, t);
-  applyTheme();
-  changes.emit();
+  const show = () => {
+    applyTheme();
+    changes.emit();
+  };
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(show);
+  else show();
 }

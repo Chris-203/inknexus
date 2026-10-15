@@ -186,4 +186,6 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
+/* a theme switch fades the page as fast as iPhone Safari fades its bars (setTheme in lib/theme.ts) */
+::view-transition-old(root),::view-transition-new(root){animation-duration:.12s}
 @media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
