@@ -152,7 +152,8 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 #showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
+/* the backdrop takes a touch of the theme color so it changes with the theme: iPhone Safari colors its status bar from it and only looks again when it changes */
+#modal{position:fixed;inset:0;background:color-mix(in srgb,rgba(0,0,0,.6) 90%,var(--bg));z-index:10;display:none;align-items:flex-end}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
