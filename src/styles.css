@@ -1,8 +1,7 @@
-/* Latin subsets of Bangers and Comic Neue (SIL Open Font License, see public/fonts) */
-@font-face{font-family:Bangers;src:url(/fonts/bangers-400.woff2) format('woff2');font-weight:400;font-display:block}
-@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-400.woff2) format('woff2');font-weight:400;font-display:block}
-@font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-700.woff2) format('woff2');font-weight:700;font-display:block}
-:root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
+/* Latin subsets of Kosugi Maru and Hanken Grotesk (SIL Open Font License, see public/fonts) */
+@font-face{font-family:'Kosugi Maru';src:url(/fonts/kosugi-maru-400.woff2) format('woff2');font-weight:400;font-display:block}
+@font-face{font-family:'Hanken Grotesk';src:url(/fonts/hanken-grotesk-var.woff2) format('woff2');font-weight:100 900;font-display:block}
+:root{--head:'Kosugi Maru',Impact,sans-serif;--body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* the only text sizes and corner radii the app uses; pick the nearest one rather than adding another */
 :root{--font-xs:12px;--font-sm:14px;--font-base:16px;--font-lg:20px;--font-xl:28px;--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:99px}
 /* the theme colors are registered as colors, so the page reads them as rgb() when setTheme (lib/theme.ts) fades them */
@@ -55,7 +54,7 @@ header .btn,header .ibtn{align-self:center}
 .btn:disabled{opacity:.5;cursor:default}
 .ibtn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius-md);min-width:44px;height:44px;padding:0 10px;font-size:var(--font-lg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .ibtn.txt{font-size:var(--font-sm);font-weight:700;font-family:var(--body)}
-/* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
+/* symbol buttons (‹ − + × ↗ ↑) use the system font */
 .ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
 .ibtn:disabled{opacity:.5;cursor:default}
 .row{display:flex;gap:8px;padding:4px 16px 12px}
