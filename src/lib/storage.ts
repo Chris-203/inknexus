@@ -23,12 +23,14 @@ export function readJson(key: string, store: KV | undefined = defaultStore()): u
   }
 }
 
-/** Save `value` as JSON under `key`. When storage is full or blocked, it still works for this visit. */
-export function writeJson(key: string, value: unknown, store: KV | undefined = defaultStore()) {
+/** Save `value` as JSON under `key`. False when storage is full or blocked; the value still works for this visit. */
+export function writeJson(key: string, value: unknown, store: KV | undefined = defaultStore()): boolean {
   try {
     store?.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    // Nothing else to do: the value stays in memory until the page closes.
+    // The value stays in memory until the page closes; callers that can make room retry with less.
+    return false;
   }
 }
 

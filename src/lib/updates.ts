@@ -19,7 +19,7 @@ const saved: Record<string, Latest> = isObj(stored) ? (stored as Record<string, 
 /** When each series was last tried this session, so a failed check is not retried on every render. */
 const tried = new Map<string, number>();
 
-/** Newest chapter numbers for a series: this session's full list when it is loaded, else the last check. */
+/** Newest chapter numbers for a series: its full list when that was loaded in the last 30 minutes, else the last check. */
 export function latestFor(md: string): Latest | undefined {
   const list = cachedChapters(md);
   return list ? { nums: list.chapters.map((c) => c.num), full: false, at: Date.now() } : saved[md];

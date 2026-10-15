@@ -21,10 +21,16 @@ function target(raw) {
   return u;
 }
 
-// Short shared cache for search and chapter lists only. Never for at-home/server:
-// its page URLs carry short-lived tokens.
+// How long Vercel's edge cache may share a successful answer. All users reach MangaDex from the relay's few egress IPs,
+// under one ~5 requests a second limit per IP, so shared hits are what keep the app under it.
+// The edge serves cached answers without running sameSite(), so only public catalog data is cached, and briefly.
+// s-maxage plus stale-while-revalidate stays within a day, so a chapter a scanlation group has had removed drops out.
+// Never cached: at-home/server, whose page URLs carry short-lived tokens, and anything not listed here.
 function cacheFor(u) {
-  if (u.pathname === '/manga' || /^\/manga\/[0-9a-f-]{36}\/feed$/i.test(u.pathname)) return 'public, max-age=0, s-maxage=60, stale-while-revalidate=120';
+  const p = u.pathname;
+  if (p === '/manga') return 'public, max-age=0, s-maxage=60, stale-while-revalidate=120';
+  if (/^\/manga\/[0-9a-f-]{36}$/i.test(p)) return 'public, max-age=0, s-maxage=3600, stale-while-revalidate=82800';
+  if (/^\/manga\/[0-9a-f-]{36}\/feed$/i.test(p)) return 'public, max-age=0, s-maxage=300, stale-while-revalidate=600';
   return 'no-store';
 }
 
@@ -56,3 +62,5 @@ module.exports = async function handler(req, res) {
   // MangaDex's status (including 429) goes to the app unchanged.
   return send(res, r.status, body, headers);
 };
+
+module.exports.cacheFor = cacheFor;

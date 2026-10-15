@@ -1,4 +1,4 @@
-import { chapters, latest, pages, PAGES_TTL, search, toChapterList, type MdChapter } from './mangadex';
+import { browse, chapters, GENRES, latest, pages, PAGES_TTL, search, toChapterList, type MdChapter } from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -85,6 +85,22 @@ describe('MangaDex requests', () => {
     expect(await search('orv')).toEqual([
       { src: 'md', ref: 'm1', title: "Omniscient Reader's Viewpoint", desc: 'd', cover: 'https://uploads.mangadex.org/covers/m1/f.jpg.256.jpg' },
     ]);
+  });
+  it('browse asks for a genre with English chapters, most followed first', async () => {
+    const seen = relay(() => ({ data: [] }));
+    const action = GENRES.find((g) => g.name === 'Action')!.id;
+    expect(await browse(action, 'follows')).toEqual([]);
+    expect(seen[0]).toContain(`includedTags[]=${action}`);
+    expect(seen[0]).toContain('order[followedCount]=desc');
+    expect(seen[0]).toContain('availableTranslatedLanguage[]=en');
+    expect(seen[0]).toContain('includes[]=cover_art');
+    expect(seen[0]).toContain('contentRating[]=safe');
+  });
+  it('browse with no genre and latest upload first leaves out the tag filter', async () => {
+    const seen = relay(() => ({ data: [] }));
+    await browse(null, 'latest');
+    expect(seen[0]).toContain('order[latestUploadedChapter]=desc');
+    expect(seen[0]).not.toContain('includedTags');
   });
   it('pages lists data-saver images with full-quality fallbacks', async () => {
     relay(() => ({ baseUrl: 'https://node.example', chapter: { hash: 'h', data: ['1.png'], dataSaver: ['1.jpg'] } }));
