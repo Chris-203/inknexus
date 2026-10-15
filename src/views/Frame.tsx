@@ -53,30 +53,32 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
 
   return (
     <div className="fview">
-      <TopBar off={!shownAt}>
-        <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
-          ‹
-        </button>
-        <b>{linkName(l)}</b>
-        {view.ch && l.tpl ? (
-          <button className="ibtn txt" aria-label="Mark read and open next chapter" onClick={next}>
-            Next ›
+      <div className={shownAt ? 'fbar' : 'fbar off'}>
+        <TopBar off={!shownAt}>
+          <button className="ibtn" aria-label="Back to series" onClick={() => goBack({ name: 'series', id: x.id })}>
+            ‹
           </button>
-        ) : (
-          <button className="ibtn txt" aria-label="Mark next chapter read" onClick={plusOne}>
-            +1 ch
+          <b>{linkName(l)}</b>
+          {view.ch && l.tpl ? (
+            <button className="ibtn txt" aria-label="Mark read and open next chapter" onClick={next}>
+              Next ›
+            </button>
+          ) : (
+            <button className="ibtn txt" aria-label="Mark next chapter read" onClick={plusOne}>
+              +1 ch
+            </button>
+          )}
+          <button className="ibtn" aria-label="Zoom out" disabled={fz === ZOOM_STEPS[0]} onClick={() => zoom(-1)}>
+            −
           </button>
-        )}
-        <button className="ibtn" aria-label="Zoom out" disabled={fz === ZOOM_STEPS[0]} onClick={() => zoom(-1)}>
-          −
-        </button>
-        <button className="ibtn" aria-label="Zoom in" disabled={fz === ZOOM_STEPS.at(-1)} onClick={() => zoom(1)}>
-          +
-        </button>
-        <a className="ibtn" href={u} target="_blank" rel="noopener noreferrer" aria-label="Open in browser" title="Open in browser">
-          ↗
-        </a>
-      </TopBar>
+          <button className="ibtn" aria-label="Zoom in" disabled={fz === ZOOM_STEPS.at(-1)} onClick={() => zoom(1)}>
+            +
+          </button>
+          <a className="ibtn" href={u} target="_blank" rel="noopener noreferrer" aria-label="Open in browser" title="Open in browser">
+            ↗
+          </a>
+        </TopBar>
+      </div>
       <div className="fwrap">
         <iframe
           className="frame"

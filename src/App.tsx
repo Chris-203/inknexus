@@ -35,7 +35,7 @@ function seriesFor(view: View): SeriesT | undefined {
 
 export function App() {
   const [view, setView] = useState<View>(() => viewOf(history.state) || { name: 'library' });
-  const [search, setSearch] = useState<SearchState>({ q: '', res: null });
+  const [search, setSearch] = useState<SearchState>({ q: '', res: null, tag: null, sort: 'follows' });
   const [message, setMessage] = useState({ text: '', on: false });
   const [importing, setImporting] = useState<ReturnType<typeof planImport> | null>(null);
   const toastTimer = useRef(0);

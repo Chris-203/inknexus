@@ -6,6 +6,7 @@ import { TopBar } from '../components/TopBar';
 import { imageSrc } from '../lib/api';
 import { useChapters } from '../lib/chapters';
 import { chapterNote, fmt } from '../lib/format';
+import { nextChapter, preloadChapter } from '../lib/preload';
 import { readProgress } from '../lib/progress';
 import { findSeries, setLast, useStore } from '../lib/store';
 import type { Chapter, Series } from '../lib/types';
@@ -95,7 +96,14 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   }, [done, shown]);
 
   const prev = [...list].reverse().find((k) => k.num < n);
-  const next = list.find((k) => k.num > n);
+  const next = nextChapter(list, n);
+  const allShown = done && pages.value.every((_, i) => shown[i] === 'done');
+
+  // Once every page has shown, load the next chapter ahead so it opens at once. Never marks anything read.
+  useEffect(() => {
+    if (allShown) return preloadChapter(next);
+  }, [allShown, next?.id]);
+
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
     setBar(true);

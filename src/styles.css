@@ -4,10 +4,10 @@
 @font-face{font-family:'Comic Neue';src:url(/fonts/comic-neue-700.woff2) format('woff2');font-weight:700;font-display:block}
 :root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* color themes (lib/theme.ts); Deep Canvas is the default */
-:root,:root[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
-:root[data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
-:root[data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
-:root[data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
+:root,[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
+[data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
+[data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
+[data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
 *,*::before,*::after{box-sizing:border-box}
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
@@ -59,9 +59,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{o
 .res img,.res .thumb{width:52px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;background:var(--surface);flex:none}
 .res div{flex:1;min-width:0}
 .res p{margin:2px 0 0;color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-details.manual,details.more{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
-details.manual{margin:12px 16px}
-details.manual summary,details.more summary{padding:12px 14px;min-height:44px;cursor:pointer;font-weight:700}
+details.more{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+details.more summary{padding:12px 14px;min-height:44px;cursor:pointer;font-weight:700}
 details.more .pad{padding:0 12px 12px}
 .empty{text-align:center;padding:60px 24px;color:var(--muted)}
 .empty .restore{max-width:34ch;margin:28px auto 12px;font-size:14px}
@@ -81,7 +80,6 @@ details.more .pad{padding:0 12px 12px}
 .step input{width:78px;text-align:center;-moz-appearance:textfield;appearance:textfield}
 .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto}
-.chips.wrap{flex-wrap:wrap}
 .chip{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 14px;min-height:44px;cursor:pointer;color:var(--muted)}
 .chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
 /* a source chip: the name selects it; on the selected one, × on the left hides it */
@@ -122,9 +120,11 @@ details.more .pad{padding:0 12px 12px}
 /* in-app site view: the bar, then the site filling the rest of the screen */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
 /* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
-.fview .rbar{gap:6px}
-/* hidden in the site view, the bar gives its space to the site (see Frame) */
-.fview .rbar.off{display:none}
+.fview .rbar{gap:6px;transition-duration:.4s}
+/* hidden in the site view, the bar gives its space to the site (see Frame): it slides up and fades while its row in .fbar closes at the same pace, so the site follows its bottom edge. The slide skips the safe area, which the bar's negative top margin already puts above the row */
+.fbar{display:grid;grid-template-rows:minmax(0,1fr);align-items:start;transition:grid-template-rows .4s}
+.fbar.off{grid-template-rows:minmax(0,0fr)}
+.fview .rbar.off{transform:translateY(calc(env(safe-area-inset-top,0px) - 100%));opacity:0}
 .fwrap{flex:1;min-height:0;position:relative;overflow:hidden}
 iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));height:calc(100% / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff}
 /* shown only while the browser has zoomed the whole app in the reader or site view; kept at normal size in the corner */
@@ -136,6 +136,17 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px;color:var(--muted);cursor:pointer}
 .opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
+/* theme cards: data-theme on .tprev gives the preview that theme's colors; --ring keeps the app's own accent for the outline */
+.themes{--ring:var(--accent);display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;padding:4px 16px 16px}
+.theme{background:none;border:0;border-radius:12px;padding:0;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;font-size:14px}
+.theme[aria-pressed=true]{color:var(--text);font-weight:700}
+.tprev{position:relative;display:block;height:76px;border-radius:12px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.theme[aria-pressed=true] .tprev{outline:2px solid var(--ring);outline-offset:2px}
+.tprev i{position:absolute;border-radius:4px}
+.tprev i:nth-child(1){left:10px;top:10px;width:44%;height:7px;background:var(--text)}
+.tprev i:nth-child(2){left:10px;top:26px;width:26px;height:38px;background:var(--surface);border:1px solid var(--line)}
+.tprev i:nth-child(3){left:42px;top:26px;width:26px;height:38px;background:var(--surface);border:1px solid var(--line)}
+.tprev i:nth-child(4){right:10px;top:9px;width:22px;height:10px;border-radius:99px;background:var(--accent)}
 .presets .chip{padding:5px 11px;font-size:13px}
 .ren{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;min-width:44px;min-height:44px;padding:0;vertical-align:middle}
 .ch b.nm{font-weight:600;overflow-wrap:anywhere}
@@ -159,7 +170,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
-#showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
+#showbar{left:12px;top:calc(8px + env(safe-area-inset-top,0px));animation:fade-in .4s}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
@@ -190,4 +201,4 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,.fbar{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
