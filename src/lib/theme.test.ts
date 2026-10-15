@@ -1,13 +1,15 @@
 import { getTheme, setTheme } from './theme';
 
 const memory = new Map<string, string>();
-const root = { dataset: {} as Record<string, string> };
+const classes = new Set<string>();
+const root = { dataset: {} as Record<string, string>, classList: { add: (c: string) => void classes.add(c), remove: (c: string) => void classes.delete(c) } };
 const meta = { content: '', setAttribute: (_: string, v: string) => void (meta.content = v) };
 beforeEach(() => {
   memory.clear();
   vi.stubGlobal('localStorage', { getItem: (k: string) => memory.get(k) ?? null, setItem: (k: string, v: string) => void memory.set(k, v) });
   vi.stubGlobal('document', { documentElement: root, querySelector: () => meta });
   vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => ' #f4f4f0' }));
+  vi.stubGlobal('window', globalThis);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,20 +25,15 @@ describe('theme', () => {
     expect(root.dataset.theme).toBe('eink');
     expect(meta.content).toBe('#f4f4f0');
   });
-  it('fades into the theme with a view transition where the browser has one', () => {
-    const fade = vi.fn((show: () => void) => show());
-    vi.stubGlobal('document', { documentElement: root, querySelector: () => meta, startViewTransition: fade });
-    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  it('marks the page as fading for a moment, so its colors fade into the theme', () => {
+    vi.useFakeTimers();
     setTheme('pulp');
-    expect(fade).toHaveBeenCalledOnce();
-    expect(root.dataset.theme).toBe('pulp');
-  });
-  it('switches at once when reduced motion is on', () => {
-    const fade = vi.fn();
-    vi.stubGlobal('document', { documentElement: root, querySelector: () => meta, startViewTransition: fade });
-    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    expect(classes.has('theming')).toBe(true);
     setTheme('midnight');
-    expect(fade).not.toHaveBeenCalled();
-    expect(root.dataset.theme).toBe('midnight');
+    vi.advanceTimersByTime(100);
+    expect(classes.has('theming')).toBe(true);
+    vi.advanceTimersByTime(60);
+    expect(classes.has('theming')).toBe(false);
+    vi.useRealTimers();
   });
 });

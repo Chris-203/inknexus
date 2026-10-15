@@ -12,6 +12,7 @@ export const THEMES = [
 ] as const;
 export type Theme = (typeof THEMES)[number]['id'];
 const changes = createChanges();
+let fading = 0;
 
 /** The saved theme, or Deep Canvas. */
 export function getTheme(): Theme {
@@ -30,13 +31,13 @@ export function applyTheme() {
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg').trim());
 }
 
-/** Save and show a theme. The page fades into it over the time iPhone Safari takes to fade its status bar and toolbar, so they change together. */
+/** Save and show a theme. Its colors fade in over the time iPhone Safari takes to fade its status bar and toolbar (html.theming in styles.css), so they change together. */
 export function setTheme(t: Theme) {
   writeJson(KEY, t);
-  const show = () => {
-    applyTheme();
-    changes.emit();
-  };
-  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(show);
-  else show();
+  const root = document.documentElement;
+  root.classList.add('theming');
+  applyTheme();
+  changes.emit();
+  clearTimeout(fading);
+  fading = window.setTimeout(() => root.classList.remove('theming'), 150);
 }
