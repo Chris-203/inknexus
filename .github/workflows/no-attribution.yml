@@ -1,0 +1,22 @@
+name: No attribution
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+jobs:
+  attribution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: No tool footers, session links or co-author trailers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          text=$({
+            gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,comments,reviews --jq '.title, .body, .comments[].body, .reviews[].body'
+            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" --jq '.[].commit.message'
+          })
+          found=$(grep -i -E 'claude code|claude[.]ai/code|claude[.]com/claude-code|claude-session|co-authored-by|generated (by|with)[^a-z]{0,4}claude|🤖' <<< "$text" || true)
+          if [ -z "$found" ]; then exit 0; fi
+          echo "::error::This PR's title, body, comments or commit messages carry attribution, which CLAUDE.md does not allow. Edit it out of the body or comments, and reword the commits (git commit --amend or a rebase, then push with --force-with-lease)."
+          echo "$found"
+          exit 1
