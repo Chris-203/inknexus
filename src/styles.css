@@ -166,9 +166,9 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 #modal .tint{--corner:calc(100% - var(--drawer) + 16px);position:fixed;left:0;right:0;height:12px;opacity:.12;pointer-events:none;z-index:1;animation:tint-wait .25s}
 #modal .tint-top{top:0;background:color-mix(in srgb,var(--bg) 40%,#000)}
 #modal .tint-bottom{bottom:0;background:var(--bg)}
-/* beside a drawer: the dimmed page (and nav bar) on the left, the drawer with its 16px rounded corner on the right */
+/* beside a drawer, the bars take the dimmed page and the dimmed nav bar; each strip paints the drawer, with its 16px rounded corner, over its right side */
 #modal.side .tint-top{background-image:linear-gradient(to right,transparent var(--corner),var(--bg) 0),radial-gradient(circle at var(--corner) 16px,var(--bg) 16px,transparent 0)}
-#modal.side .tint-bottom{background-image:linear-gradient(to right,transparent var(--corner),var(--bg) 0),radial-gradient(circle at var(--corner) -4px,transparent 16px,color-mix(in srgb,var(--surface) 40%,#000) 0)}
+#modal.side .tint-bottom{background-color:color-mix(in srgb,var(--surface) 40%,#000);background-image:linear-gradient(to right,transparent var(--corner),var(--bg) 0),radial-gradient(circle at var(--corner) -4px,var(--bg) 16px,transparent 0)}
 #modal.closing .tint{display:none}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
