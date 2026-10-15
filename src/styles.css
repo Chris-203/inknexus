@@ -190,6 +190,9 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* beside a drawer, the toolbar takes the nav bar's color; the bottom strip paints the nav bar on the left and the drawer, with its rounded corner, on the right */
 #modal.side .tint-bottom{background-color:var(--surface);background-image:radial-gradient(circle at var(--corner) calc(12px - var(--radius-lg)),var(--page-bg) var(--radius-lg),transparent 0),linear-gradient(to right,var(--page-surface) var(--corner),var(--page-bg) 0)}
 #modal.closing .tint{display:none}
+/* while a theme switch settles, the strips' color (hidden under their paint) is nudged toward gray, so Safari reads them again when it changes back (setTheme in lib/theme.ts) */
+[data-fading] #modal .tint{background-color:color-mix(in srgb,var(--bg) 97%,gray)}
+[data-fading] #modal.side .tint-bottom{background-color:color-mix(in srgb,var(--surface) 97%,gray)}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
