@@ -161,11 +161,15 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 #showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
-/* iPhone Safari colors its status bar and toolbar from a fixed element at each screen edge, but reads a full-screen backdrop only once, when it first shows. These thin strips are not full-screen, so Safari reads them again when their color changes, as on a theme switch. They carry the theme themselves (data-theme), so they take its colors at once while the page fades, and they are too faint to see. */
-#modal .tint{position:fixed;left:0;right:0;height:12px;opacity:.01;pointer-events:none;z-index:1}
+#modal{--drawer:min(320px,85%);position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
+/* iPhone Safari colors its status bar and toolbar from a fixed element at each screen edge, but reads a full-screen backdrop only once, when it first shows. These thin strips are not full-screen, so Safari reads them again when their color changes, as on a theme switch. They carry the theme themselves (data-theme), so they take its colors at once while the page fades. Safari ignores them when much fainter than this, so instead each one paints what is under it, and they wait for the sheet to slide in and hide while it slides out. */
+#modal .tint{--corner:calc(100% - var(--drawer) + 16px);position:fixed;left:0;right:0;height:12px;opacity:.12;pointer-events:none;z-index:1;animation:tint-wait .25s}
 #modal .tint-top{top:0;background:color-mix(in srgb,var(--bg) 40%,#000)}
 #modal .tint-bottom{bottom:0;background:var(--bg)}
+/* beside a drawer: the dimmed page (and nav bar) on the left, the drawer with its 16px rounded corner on the right */
+#modal.side .tint-top{background-image:linear-gradient(to right,transparent var(--corner),var(--bg) 0),radial-gradient(circle at var(--corner) 16px,var(--bg) 16px,transparent 0)}
+#modal.side .tint-bottom{background-image:linear-gradient(to right,transparent var(--corner),var(--bg) 0),radial-gradient(circle at var(--corner) -4px,transparent 16px,color-mix(in srgb,var(--surface) 40%,#000) 0)}
+#modal.closing .tint{display:none}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
@@ -173,7 +177,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 #modal.closing .sheet{animation:slide-down .2s ease-in forwards}
 /* a drawer: full height on the right edge, sliding in from the side */
 #modal.side{align-items:stretch;justify-content:flex-end}
-#modal .sheet.drawer{width:min(320px,85%);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:16px 0 0 16px;padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in}
+#modal .sheet.drawer{width:var(--drawer);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:16px 0 0 16px;padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in}
 #modal.closing .sheet.drawer{animation-name:slide-out}
 #modal .sheet:focus{outline:none}
 #modal h2{padding:0 16px 10px;font-size:20px}
@@ -193,6 +197,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-up{from{transform:translateY(100%)}}
 @keyframes slide-down{to{transform:translateY(100%)}}
 @keyframes slide-in{from{transform:translateX(100%)}}
+@keyframes tint-wait{from,to{visibility:hidden}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
 /* a theme switch fades the theme colors as fast as iPhone Safari fades its bars (setTheme in lib/theme.ts) */
