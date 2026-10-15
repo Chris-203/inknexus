@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { SearchResult } from './lib/types';
+import type { BrowseSort } from './sources/mangadex';
 
 export type View =
   | { name: 'library' }
@@ -9,8 +10,12 @@ export type View =
   | { name: 'frame'; id: string; i: number; ch: number; url: string };
 
 export interface SearchState {
+  /** The title searched for, or '' while browsing. */
   q: string;
   res: SearchResult[] | null;
+  /** The MangaDex genre browsed (null for all genres) and its order. */
+  tag: string | null;
+  sort: BrowseSort;
 }
 
 export interface AppApi {
@@ -21,7 +26,7 @@ export interface AppApi {
   toast: (message: string) => void;
   /** Open the file picker to import a backup. */
   importBackup: () => void;
-  /** Find results, kept while you open a series and come back. */
+  /** Search or browse results, kept while you open a series and come back. */
   search: SearchState;
   setSearch: (s: SearchState) => void;
 }

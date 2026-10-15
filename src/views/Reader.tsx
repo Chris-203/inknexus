@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
+import { ReadButton } from '../components/ReadButton';
+import { Sheet, useSheet } from '../components/Sheet';
 import { TopBar } from '../components/TopBar';
 import { imageSrc } from '../lib/api';
 import { useChapters } from '../lib/chapters';
-import { fmt } from '../lib/format';
-import { findSeries, setLast } from '../lib/store';
-import type { Series } from '../lib/types';
+import { chapterNote, fmt } from '../lib/format';
+import { nextChapter, preloadChapter } from '../lib/preload';
+import { readProgress } from '../lib/progress';
+import { findSeries, setLast, useStore } from '../lib/store';
+import type { Chapter, Series } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
@@ -26,6 +30,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [chaptersOpen, setChaptersOpen] = useState(false);
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
@@ -73,8 +79,31 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     return () => removeEventListener('scroll', onScroll);
   }, []);
 
+  // The track along the top: how far through the pages, kept up to date as pages load and change height.
+  useEffect(() => {
+    if (!done) return;
+    const update = () => {
+      const r = pagesRef.current?.getBoundingClientRect();
+      if (r) setProgress(readProgress(r.top, r.height, innerHeight));
+    };
+    update();
+    addEventListener('scroll', update, { passive: true });
+    addEventListener('resize', update);
+    return () => {
+      removeEventListener('scroll', update);
+      removeEventListener('resize', update);
+    };
+  }, [done, shown]);
+
   const prev = [...list].reverse().find((k) => k.num < n);
-  const next = list.find((k) => k.num > n);
+  const next = nextChapter(list, n);
+  const allShown = done && pages.value.every((_, i) => shown[i] === 'done');
+
+  // Once every page has shown, load the next chapter ahead so it opens at once. Never marks anything read.
+  useEffect(() => {
+    if (allShown) return preloadChapter(next);
+  }, [allShown, next?.id]);
+
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
     setBar(true);
@@ -167,25 +196,57 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     );
   }
 
+  const lastNum = list[list.length - 1]?.num;
   return (
     <>
-      <TopBar off={!bar}>
-        <button className="ibtn" aria-label="Back to series" onClick={toSeries}>
-          ‹
-        </button>
-        <b>
-          {x.title} · Ch. {fmt(n)}
-        </b>
-        {done && (
-          <>
-            <button className="ibtn" aria-label="Zoom out" onClick={() => zoomBy(-0.5)}>
-              −
-            </button>
-            <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
-              +
-            </button>
-          </>
-        )}
+      {done && (
+        <div
+          className="rtrack"
+          role="progressbar"
+          aria-label="Chapter progress"
+          aria-valuenow={Math.round(progress * 100)}
+          style={{ transform: `scaleX(${progress})` }}
+        />
+      )}
+      <TopBar off={!bar} over>
+        <div className="chnav">
+          <button aria-label={prev ? `Chapter ${fmt(prev.num)}` : 'No earlier chapter'} disabled={!prev} onClick={() => prev && toChapter(prev.num)}>
+            ‹
+          </button>
+          <b>
+            Ch. {fmt(n)}
+            {lastNum !== undefined && <span> / {fmt(lastNum)}</span>}
+          </b>
+          <button aria-label={next ? `Chapter ${fmt(next.num)}` : 'No later chapter'} disabled={!next} onClick={() => next && toChapter(next.num)}>
+            ›
+          </button>
+        </div>
+        <div className="rtools" role="toolbar" aria-label="Reader" aria-orientation="vertical">
+          <button className="ibtn" aria-label={`Back to ${x.title}`} onClick={toSeries}>
+            {/* a house */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 11.5 12 4l9 7.5" />
+              <path d="M5.5 10v10h13V10" />
+              <path d="M10 20v-5.5h4V20" />
+            </svg>
+          </button>
+          <button className="ibtn" aria-label="Chapters" aria-expanded={chaptersOpen} disabled={!list.length} onClick={() => setChaptersOpen(true)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 6h11M9 12h11M9 18h11" />
+              <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+            </svg>
+          </button>
+          {done && (
+            <>
+              <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
+                +
+              </button>
+              <button className="ibtn" aria-label="Zoom out" onClick={() => zoomBy(-0.5)}>
+                −
+              </button>
+            </>
+          )}
+        </div>
       </TopBar>
       <div id="strip">{content}</div>
       {toTop && (
@@ -193,6 +254,30 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           ↑
         </button>
       )}
+      {chaptersOpen && <ChaptersSheet x={x} list={list} n={n} onClose={() => setChaptersOpen(false)} />}
     </>
+  );
+}
+
+/** Every chapter of the series, in the library's sort order, opened on the one being read. */
+function ChaptersSheet({ x, list, n, onClose }: { x: Series; list: Chapter[]; n: number; onClose: () => void }) {
+  const { sort } = useStore();
+  const sheet = useSheet(onClose);
+  useEffect(() => {
+    document.querySelector('#modal [aria-current]')?.scrollIntoView({ block: 'center' });
+  }, []);
+  return (
+    <Sheet label="Chapters" sheet={sheet}>
+      <h2>Chapters</h2>
+      {(sort === 'asc' ? list : [...list].reverse()).map((c) => (
+        <ReadButton key={c.id} x={x} c={c} replace current={c.num === n} className={`ch${c.num <= (x.last || 0) ? ' read' : ''}`}>
+          <b>Ch. {fmt(c.num)}</b>
+          <span>{chapterNote(c)}</span>
+        </ReadButton>
+      ))}
+      <button className="btn ghost" onClick={sheet.close}>
+        Close
+      </button>
+    </Sheet>
   );
 }
