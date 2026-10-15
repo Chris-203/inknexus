@@ -37,7 +37,8 @@ const changes = createChanges();
 
 export const subscribeChapters = changes.subscribe;
 
-export type ChaptersState = { status: 'loading' } | { status: 'error'; error: string } | { status: 'ready'; list: ChapterList };
+/** `error` on a ready list says why it could not be reloaded, so the list may be out of date. */
+export type ChaptersState = { status: 'loading' } | { status: 'error'; error: string } | { status: 'ready'; list: ChapterList; error?: string };
 
 /** A list younger than `age`. */
 function listFor(md: string, age: number): ChapterList | undefined {
@@ -58,8 +59,8 @@ export function cachedChapters(md: string): ChapterList | undefined {
 
 export function chapterState(md: string): ChaptersState {
   const list = listFor(md, MAX_AGE);
-  if (list) return { status: 'ready', list };
   const error = errors.get(md);
+  if (list) return error ? { status: 'ready', list, error } : { status: 'ready', list };
   return error ? { status: 'error', error } : { status: 'loading' };
 }
 
