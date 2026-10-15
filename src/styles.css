@@ -5,7 +5,7 @@
 :root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* the only text sizes and corner radii the app uses; pick the nearest one rather than adding another */
 :root{--font-xs:12px;--font-sm:14px;--font-base:16px;--font-lg:20px;--font-xl:28px;--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:99px}
-/* the theme colors are registered as colors so they can fade: a theme switch fades them once on html, and every background, text, border and icon reads the same in-between color in the same frame */
+/* the theme colors are registered as colors, so the page reads them as rgb() when setTheme (lib/theme.ts) fades them */
 @property --bg{syntax:'<color>';inherits:true;initial-value:#121214}
 @property --surface{syntax:'<color>';inherits:true;initial-value:#1a1a1e}
 @property --line{syntax:'<color>';inherits:true;initial-value:#2e2e35}
@@ -220,6 +220,4 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes tint-wait{from,to{visibility:hidden}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-/* a theme switch fades the theme colors as fast as iPhone Safari fades its bars (setTheme in lib/theme.ts) */
-@media (prefers-reduced-motion:no-preference){html.theming{transition:--bg .1s linear,--surface .1s linear,--line .1s linear,--text .1s linear,--muted .1s linear,--accent .1s linear,--on-accent .1s linear,--danger .1s linear}}
 @media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,.fbar{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
