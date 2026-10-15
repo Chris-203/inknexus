@@ -1,0 +1,19 @@
+name: PR media
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Visible changes need media in the PR body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+          NO_MEDIA: ${{ contains(github.event.pull_request.labels.*.name, 'no-media') }}
+        run: |
+          visible=$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only | grep -E '^(src/(views|components)/|src/(App\.tsx|styles\.css)$|index\.html$|public/)' || true)
+          if [ -z "$visible" ] || [ "$NO_MEDIA" = true ] || grep -q 'chris/pr-media/' <<< "$BODY"; then exit 0; fi
+          echo "::error::This PR changes $(echo $visible) but its body has no media from the chris/pr-media branch. Add before and after screenshots, and GIFs when something moves, as CLAUDE.md describes. If nothing visible changed, add the no-media label and say how it was checked in How it was tested."
+          exit 1
