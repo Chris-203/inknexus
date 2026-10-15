@@ -25,6 +25,8 @@ export function Sheet({ label, sheet, drawer, children }: { label: string; sheet
 
   return (
     <div id="modal" className={`on${drawer ? ' side' : ''}${sheet.closing ? ' closing' : ''}`} onClick={(e) => e.target === e.currentTarget && sheet.close()}>
+      <i className="tint tint-top" aria-hidden="true" />
+      <i className="tint tint-bottom" aria-hidden="true" />
       <div
         ref={ref}
         className={drawer ? 'sheet drawer' : 'sheet'}

@@ -152,8 +152,11 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 #showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
-/* the backdrop takes a touch of the theme color so it changes with the theme: iPhone Safari colors its status bar from it and only looks again when it changes */
-#modal{position:fixed;inset:0;background:color-mix(in srgb,rgba(0,0,0,.6) 90%,var(--bg));z-index:10;display:none;align-items:flex-end}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
+/* iPhone Safari colors its status bar and toolbar from a fixed element at each screen edge, but reads a full-screen backdrop only once, when it first shows. These thin strips are not full-screen, so Safari reads them again when their color changes, as on a theme switch; they are almost transparent. */
+#modal .tint{position:fixed;left:0;right:0;height:12px;opacity:.12;pointer-events:none;z-index:1}
+#modal .tint-top{top:0;background:color-mix(in srgb,var(--bg) 40%,#000)}
+#modal .tint-bottom{bottom:0;background:var(--bg)}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
