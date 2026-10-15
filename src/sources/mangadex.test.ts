@@ -1,4 +1,4 @@
-import { chapters, latest, pages, search, toChapterList, type MdChapter } from './mangadex';
+import { chapters, latest, pages, PAGES_TTL, search, toChapterList, type MdChapter } from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -89,5 +89,50 @@ describe('MangaDex requests', () => {
   it('pages lists data-saver images with full-quality fallbacks', async () => {
     relay(() => ({ baseUrl: 'https://node.example', chapter: { hash: 'h', data: ['1.png'], dataSaver: ['1.jpg'] } }));
     expect(await pages('c1')).toEqual([{ a: 'https://node.example/data-saver/h/1.jpg', b: 'https://node.example/data/h/1.png' }]);
+  });
+});
+
+describe('pages cache', () => {
+  afterEach(() => vi.useRealTimers());
+  // Each at-home answer has its own node, so a reused answer shows as the same baseUrl.
+  const nodes = () => {
+    let k = 0;
+    return relay(() => ({ baseUrl: `https://node${++k}.example`, chapter: { hash: 'h', data: ['1.png'], dataSaver: ['1.jpg'] } }));
+  };
+
+  it('reuses a chapter’s answer, so its image URLs stay the same', async () => {
+    const seen = nodes();
+    const a = await pages('hit');
+    expect(await pages('hit')).toEqual(a);
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/hit']);
+  });
+  it('shares a load still in flight', async () => {
+    const seen = nodes();
+    expect(pages('flight')).toBe(pages('flight'));
+    await pages('flight');
+    expect(seen).toHaveLength(1);
+  });
+  it('asks again for a different chapter', async () => {
+    const seen = nodes();
+    await pages('one');
+    await pages('two');
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/one', 'https://api.mangadex.org/at-home/server/two']);
+  });
+  it('asks again once an answer is older than PAGES_TTL', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const seen = nodes();
+    const a = await pages('old');
+    vi.advanceTimersByTime(PAGES_TTL - 1);
+    expect(await pages('old')).toEqual(a);
+    vi.advanceTimersByTime(1);
+    expect((await pages('old'))[0]!.a).not.toBe(a[0]!.a);
+    expect(seen).toHaveLength(2);
+  });
+  it('does not reuse a failed load', async () => {
+    vi.stubGlobal('fetch', async () => new Response('', { status: 429 }));
+    await expect(pages('fail')).rejects.toThrow('HTTP 429');
+    const seen = nodes();
+    expect(await pages('fail')).toHaveLength(1);
+    expect(seen).toHaveLength(1);
   });
 });

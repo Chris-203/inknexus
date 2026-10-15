@@ -88,8 +88,30 @@ export async function latest(ref: string): Promise<Latest> {
   return { nums: toChapterList(raw).chapters.map((c) => c.num), full: raw.length >= LATEST, at: Date.now() };
 }
 
-/** Image URLs for a chapter from MangaDex@Home: data-saver first, full quality as fallback. */
-export async function pages(id: string): Promise<Page[]> {
+/** How long an at-home answer is reused. Its baseUrl lasts about 15 minutes. */
+export const PAGES_TTL = 10 * 60_000;
+
+/**
+ * at-home answers by chapter id, with when they were asked for. Each answer has its own baseUrl, so reusing one keeps
+ * the image URLs, and with them the browser cache, the same for a chapter loaded ahead.
+ */
+const pageCache = new Map<string, { at: number; list: Promise<Page[]> }>();
+
+/** Image URLs for a chapter from MangaDex@Home: data-saver first, full quality as fallback. Reused for PAGES_TTL; a failed load is not. */
+export function pages(id: string): Promise<Page[]> {
+  const now = Date.now();
+  for (const [k, e] of pageCache) if (now - e.at >= PAGES_TTL) pageCache.delete(k);
+  const hit = pageCache.get(id);
+  if (hit) return hit.list;
+  const list = fetchPages(id);
+  pageCache.set(id, { at: now, list });
+  list.catch(() => {
+    if (pageCache.get(id)?.list === list) pageCache.delete(id);
+  });
+  return list;
+}
+
+async function fetchPages(id: string): Promise<Page[]> {
   const j: { baseUrl: string; chapter: { hash: string; data: string[]; dataSaver: string[] } } = await (await api(`${MD}/at-home/server/${id}`)).json();
   return j.chapter.dataSaver.map((f, i) => ({
     a: `${j.baseUrl}/data-saver/${j.chapter.hash}/${f}`,
