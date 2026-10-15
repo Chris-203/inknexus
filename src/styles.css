@@ -161,23 +161,22 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 #showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
-#modal{--drawer:min(320px,85%);--page-bg:var(--bg);--page-dim:color-mix(in srgb,var(--bg) 40%,#000);--nav-dim:color-mix(in srgb,var(--surface) 40%,#000);position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
+#modal{--drawer:min(320px,85%);--page-bg:var(--bg);--page-surface:var(--surface);position:fixed;inset:0;z-index:10;display:none;align-items:flex-end}
 /* iPhone Safari colors its status bar and toolbar from a fixed element at each screen edge, but reads a full-screen backdrop only once, when it first shows. These thin strips are not full-screen, so Safari reads them again when their color changes, as on a theme switch. Their background color is what Safari reads: they carry the theme themselves (data-theme), so it changes at once while the page fades. Safari ignores them when much fainter than this, so on top each one paints what is under it, in the page's fading colors (--page-* on #modal), and they wait for the sheet to slide in and hide while it slides out. */
 #modal .tint{--corner:calc(100% - var(--drawer) + 16px);position:fixed;left:0;right:0;height:12px;opacity:.12;pointer-events:none;z-index:1;animation:tint-wait .25s}
-#modal .tint-top{top:0;background:color-mix(in srgb,var(--bg) 40%,#000) linear-gradient(var(--page-dim),var(--page-dim))}
+#modal .tint-top{top:0;background:var(--bg) linear-gradient(var(--page-bg),var(--page-bg))}
 #modal .tint-bottom{bottom:0;background:var(--bg) linear-gradient(var(--page-bg),var(--page-bg))}
-/* beside a drawer, the bars take the dimmed page and the dimmed nav bar; each strip paints the drawer, with its 16px rounded corner, over its right side */
-#modal.side .tint-top{background-image:radial-gradient(circle at var(--corner) 16px,var(--page-bg) 16px,transparent 0),linear-gradient(to right,var(--page-dim) var(--corner),var(--page-bg) 0)}
-#modal.side .tint-bottom{background-color:color-mix(in srgb,var(--surface) 40%,#000);background-image:radial-gradient(circle at var(--corner) -4px,var(--page-bg) 16px,transparent 0),linear-gradient(to right,var(--nav-dim) var(--corner),var(--page-bg) 0)}
+/* beside a drawer, the toolbar takes the nav bar's color; the bottom strip paints the nav bar on the left and the drawer, with its 16px rounded corner, on the right */
+#modal.side .tint-bottom{background-color:var(--surface);background-image:radial-gradient(circle at var(--corner) -4px,var(--page-bg) 16px,transparent 0),linear-gradient(to right,var(--page-surface) var(--corner),var(--page-bg) 0)}
 #modal.closing .tint{display:none}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
-#modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px));animation:slide-up .25s cubic-bezier(.2,.8,.2,1)}
+#modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px));animation:slide-up .25s cubic-bezier(.2,.8,.2,1);box-shadow:0 -4px 24px rgba(0,0,0,.3)}
 #modal.closing .sheet{animation:slide-down .2s ease-in forwards}
 /* a drawer: full height on the right edge, sliding in from the side */
 #modal.side{align-items:stretch;justify-content:flex-end}
-#modal .sheet.drawer{width:var(--drawer);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:16px 0 0 16px;padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in}
+#modal .sheet.drawer{width:var(--drawer);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:16px 0 0 16px;padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in;box-shadow:-4px 0 24px rgba(0,0,0,.3)}
 #modal.closing .sheet.drawer{animation-name:slide-out}
 #modal .sheet:focus{outline:none}
 #modal h2{padding:0 16px 10px;font-size:20px}
