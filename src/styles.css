@@ -104,9 +104,11 @@ details.more .pad{padding:0 12px 12px}
 /* in-app site view: the bar, then the site filling the rest of the screen */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
 /* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
-.fview .rbar{gap:6px}
-/* hidden in the site view, the bar gives its space to the site (see Frame) */
-.fview .rbar.off{display:none}
+.fview .rbar{gap:6px;transition-duration:.4s}
+/* hidden in the site view, the bar gives its space to the site (see Frame): it slides up and fades while its row in .fbar closes at the same pace, so the site follows its bottom edge. The slide skips the safe area, which the bar's negative top margin already puts above the row */
+.fbar{display:grid;grid-template-rows:minmax(0,1fr);align-items:start;transition:grid-template-rows .4s}
+.fbar.off{grid-template-rows:minmax(0,0fr)}
+.fview .rbar.off{transform:translateY(calc(env(safe-area-inset-top,0px) - 100%));opacity:0}
 .fwrap{flex:1;min-height:0;position:relative;overflow:hidden}
 iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));height:calc(100% / var(--fz));transform:scale(var(--fz));transform-origin:0 0;border:0;background:#fff}
 /* shown only while the browser has zoomed the whole app in the reader or site view; kept at normal size in the corner */
@@ -151,7 +153,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
-#showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px))}
+#showbar{left:12px;top:calc(8px + env(safe-area-inset-top,0px));animation:fade-in .4s}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10;display:none;align-items:flex-end}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
@@ -182,4 +184,4 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,.fbar{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
