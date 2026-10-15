@@ -19,6 +19,12 @@
 [data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
 [data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
 [data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
+[data-theme=sumi]{color-scheme:dark;--bg:#0D0D14;--surface:#161622;--line:#262638;--text:#F0EDE8;--muted:#9A9AAA;--accent:#D4564A;--on-accent:#F0EDE8;--danger:#E5484D}
+[data-theme=washi]{color-scheme:light;--bg:#F7F4EC;--surface:#FFFFFF;--line:#E3DED2;--text:#26211B;--muted:#7A7264;--accent:#C2402F;--on-accent:#FFFFFF;--danger:#B3261E}
+[data-theme=neon]{color-scheme:dark;--bg:#0B0B10;--surface:#131319;--line:#232330;--text:#EDEDF2;--muted:#9B9BA8;--accent:#7C6EF8;--on-accent:#FFFFFF;--danger:#FF6B6B}
+[data-theme=mist]{color-scheme:light;--bg:#F7F7FA;--surface:#FFFFFF;--line:#E2E2E9;--text:#17171C;--muted:#71717D;--accent:#5B4AE0;--on-accent:#FFFFFF;--danger:#C42F2F}
+[data-theme=matcha]{color-scheme:dark;--bg:#0F1210;--surface:#161A16;--line:#252C25;--text:#EAF0E8;--muted:#9CA89A;--accent:#A3E635;--on-accent:#0F1210;--danger:#FF8A80}
+[data-theme=sencha]{color-scheme:light;--bg:#F5F7EF;--surface:#FFFFFF;--line:#DFE4D2;--text:#20261C;--muted:#6B7263;--accent:#4D7C0F;--on-accent:#FFFFFF;--danger:#B3261E}
 *,*::before,*::after{box-sizing:border-box}
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}

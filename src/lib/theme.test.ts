@@ -37,7 +37,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('theme', () => {
   it('is Deep Canvas until one is chosen, and ignores bad saved values', () => {
     expect(getTheme()).toBe('canvas');
-    memory.set('inknexus-theme', JSON.stringify('neon'));
+    memory.set('inknexus-theme', JSON.stringify('bogus'));
     expect(getTheme()).toBe('canvas');
   });
   it('saves the chosen theme, sets it on the page, and colors the browser bar', () => {

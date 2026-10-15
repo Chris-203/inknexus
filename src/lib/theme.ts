@@ -9,6 +9,12 @@ export const THEMES = [
   { id: 'midnight', name: 'Midnight Manga' },
   { id: 'eink', name: 'E-Ink' },
   { id: 'pulp', name: 'Vintage Pulp' },
+  { id: 'sumi', name: 'Sumi Ink' },
+  { id: 'washi', name: 'Washi Paper' },
+  { id: 'neon', name: 'Neon Violet' },
+  { id: 'mist', name: 'Violet Mist' },
+  { id: 'matcha', name: 'Matcha' },
+  { id: 'sencha', name: 'Sencha' },
 ] as const;
 export type Theme = (typeof THEMES)[number]['id'];
 const changes = createChanges();
