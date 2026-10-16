@@ -13,12 +13,11 @@ export const THEMES = [
 export type Theme = (typeof THEMES)[number]['id'];
 const changes = createChanges();
 const COLORS = ['--bg', '--surface', '--line', '--text', '--muted', '--accent', '--on-accent', '--danger'];
-// iPhone Safari fades its status bar and toolbar into a new color by itself, over about 90ms and through lighter
-// in-between colors than CSS blends (fitted from iPhone screen recordings), so the page fades the same way to keep pace.
+// A quick fade through lighter in-between colors than CSS blends, the way iPhone Safari fades its bars into a new color
+// (fitted from iPhone screen recordings).
 const FADE_MS = 90;
 const FADE_GAMMA = 1.6;
 let fading = 0;
-let settling = 0;
 
 /** The saved theme, or Deep Canvas. */
 export function getTheme(): Theme {
@@ -47,12 +46,6 @@ export function setTheme(t: Theme) {
   applyTheme();
   changes.emit();
   const to = COLORS.map((k) => rgbOf(getComputedStyle(root).getPropertyValue(k)));
-  // Safari picks black or white status bar icons when it reads the edge strips, and can pick wrong while the page is
-  // still changing. The strips' color is nudged until the fade has settled (data-fading in styles.css), so changing
-  // back makes Safari read the final color once more.
-  root.dataset.fading = '';
-  clearTimeout(settling);
-  settling = window.setTimeout(() => delete root.dataset.fading, FADE_MS + 150);
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || [...from, ...to].some((c) => !c)) return;
   const start = performance.now();
   const step = (now: number) => {

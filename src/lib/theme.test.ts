@@ -30,7 +30,6 @@ beforeEach(() => {
     return 1;
   });
   vi.stubGlobal('cancelAnimationFrame', () => {});
-  vi.stubGlobal('window', globalThis);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -59,18 +58,6 @@ describe('theme', () => {
     expect(mid[0]).toBeLessThan(244);
     frame!(90);
     expect(inline.has('--bg')).toBe(false);
-  });
-  it('marks the page while the switch settles, so Safari reads the edge strips again afterwards, also without a fade', () => {
-    vi.useFakeTimers();
-    reduceMotion = true;
-    setTheme('eink');
-    expect(root.dataset.fading).toBe('');
-    setTheme('pulp');
-    vi.advanceTimersByTime(200);
-    expect(root.dataset.fading).toBe('');
-    vi.advanceTimersByTime(50);
-    expect(root.dataset.fading).toBeUndefined();
-    vi.useRealTimers();
   });
   it('switches at once with reduced motion', () => {
     reduceMotion = true;
