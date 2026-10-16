@@ -23,7 +23,8 @@
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
 html.pagezoom{touch-action:auto}
-body{margin:0;background:var(--bg);color:var(--text);font:var(--font-base)/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+/* body fills the screen, so html's background, which turns to a new theme at once while body fades into it (setTheme in lib/theme.ts), never shows beside the page */
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font:var(--font-base)/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}

@@ -39,19 +39,21 @@ export function applyTheme() {
 /** Save and show a theme, fading the page into it the way iPhone Safari fades its bars (see FADE_MS). */
 export function setTheme(t: Theme) {
   writeJson(KEY, t);
-  const root = document.documentElement;
-  const from = COLORS.map((k) => rgbOf(getComputedStyle(root).getPropertyValue(k)));
+  // The fade runs on body, so html keeps the theme's own colors. iPhone Safari picks black or white status bar icons
+  // from html's background, which then changes once, straight to the new color, instead of through every frame of the fade.
+  const page = document.body;
+  const from = COLORS.map((k) => rgbOf(getComputedStyle(page).getPropertyValue(k)));
   cancelAnimationFrame(fading);
-  COLORS.forEach((k) => root.style.removeProperty(k));
+  COLORS.forEach((k) => page.style.removeProperty(k));
   applyTheme();
   changes.emit();
-  const to = COLORS.map((k) => rgbOf(getComputedStyle(root).getPropertyValue(k)));
+  const to = COLORS.map((k) => rgbOf(getComputedStyle(page).getPropertyValue(k)));
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || [...from, ...to].some((c) => !c)) return;
   const start = performance.now();
   const step = (now: number) => {
     // a frame's time can be from just before the tap
     const p = Math.min(1, Math.max(0, (now - start) / FADE_MS));
-    COLORS.forEach((k, i) => (p < 1 ? root.style.setProperty(k, blend(from[i]!, to[i]!, p)) : root.style.removeProperty(k)));
+    COLORS.forEach((k, i) => (p < 1 ? page.style.setProperty(k, blend(from[i]!, to[i]!, p)) : page.style.removeProperty(k)));
     if (p < 1) fading = requestAnimationFrame(step);
   };
   step(start);
