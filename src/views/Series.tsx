@@ -141,17 +141,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
   const { sort } = useStore();
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
-  else if (chs.status === 'error')
-    list = (
-      <>
-        <p className="hint">Could not load chapters from MangaDex ({chs.error}).</p>
-        <div className="pad">
-          <button className="btn ghost" onClick={() => retryChapters(x.md!)}>
-            Try again
-          </button>
-        </div>
-      </>
-    );
+  else if (chs.status === 'error') list = <ChaptersFailed md={x.md!} text={`Could not load chapters from MangaDex (${chs.error}).`} />;
   else if (!chs.list.chapters.length) {
     const n = chs.list.listed;
     list = (
@@ -187,6 +177,9 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
   }
   return (
     <>
+      {chs?.status === 'ready' && chs.error && (
+        <ChaptersFailed md={x.md!} text={`Could not check MangaDex for new chapters (${chs.error}). This list may be out of date.`} />
+      )}
       {list}
       <p className="credit">
         Chapters and data from MangaDex. Scanlation groups are credited on each chapter.{' '}
@@ -194,6 +187,20 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
           View on MangaDex ↗
         </a>
       </p>
+    </>
+  );
+}
+
+/** Why MangaDex chapters could not be loaded, with a button to try again. */
+function ChaptersFailed({ md, text }: { md: string; text: string }) {
+  return (
+    <>
+      <p className="hint">{text}</p>
+      <div className="pad">
+        <button className="btn ghost" onClick={() => retryChapters(md)}>
+          Try again
+        </button>
+      </div>
     </>
   );
 }
