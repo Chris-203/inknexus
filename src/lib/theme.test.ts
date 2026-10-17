@@ -1,35 +1,22 @@
-import { blend, getTheme, rgbOf, setTheme } from './theme';
+import { getTheme, setTheme } from './theme';
 
 const memory = new Map<string, string>();
-const inline = new Map<string, string>();
 const root = { dataset: {} as Record<string, string> };
-// The fade's colors, set on body.
-const body = { style: { setProperty: (k: string, v: string) => void inline.set(k, v), removeProperty: (k: string) => void inline.delete(k) } };
+const body = { style: { setProperty: vi.fn() } };
 const meta = { content: '', setAttribute: (_: string, v: string) => void (meta.content = v) };
-// What getComputedStyle gives for --bg in each theme; every other color is black.
-const BG: Record<string, string> = { canvas: 'rgb(18, 18, 20)', eink: 'rgb(244, 244, 240)' };
-let frame: ((now: number) => void) | null = null;
-let reduceMotion = false;
+// What getComputedStyle gives for --bg in each theme.
+const BG: Record<string, string> = { canvas: '#121214', eink: '#f4f4f0' };
+const frame = vi.fn();
 
 beforeEach(() => {
   memory.clear();
-  inline.clear();
   root.dataset = {};
-  frame = null;
-  reduceMotion = false;
+  frame.mockClear();
+  body.style.setProperty.mockClear();
   vi.stubGlobal('localStorage', { getItem: (k: string) => memory.get(k) ?? null, setItem: (k: string, v: string) => void memory.set(k, v) });
   vi.stubGlobal('document', { documentElement: root, body, querySelector: () => meta });
-  vi.stubGlobal('getComputedStyle', (el: object) => ({
-    getPropertyValue: (k: string) =>
-      (el === body ? inline.get(k) : undefined) ?? (k === '--bg' ? (BG[root.dataset.theme ?? ''] ?? 'rgb(18, 18, 20)') : 'rgb(0, 0, 0)'),
-  }));
-  vi.stubGlobal('matchMedia', () => ({ matches: reduceMotion }));
-  vi.stubGlobal('performance', { now: () => 0 });
-  vi.stubGlobal('requestAnimationFrame', (f: (now: number) => void) => {
-    frame = f;
-    return 1;
-  });
-  vi.stubGlobal('cancelAnimationFrame', () => {});
+  vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => ` ${BG[root.dataset.theme ?? ''] ?? '#121214'}` }));
+  vi.stubGlobal('requestAnimationFrame', frame);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -43,56 +30,15 @@ describe('theme', () => {
     setTheme('eink');
     expect(getTheme()).toBe('eink');
     expect(root.dataset.theme).toBe('eink');
-    expect(meta.content).toBe('rgb(244, 244, 240)');
+    expect(meta.content).toBe('#f4f4f0');
   });
-  it('fades the page from the old colors to the new ones over 90ms, then leaves them to the theme', () => {
+  it('switches every color at once, with no fade left for Safari to read an in-between color from', () => {
     root.dataset.theme = 'canvas';
     setTheme('eink');
-    expect(inline.get('--bg')).toBe('rgb(18 18 20)');
-    frame!(-5);
-    expect(inline.get('--bg')).toBe('rgb(18 18 20)');
-    frame!(45);
-    const mid = rgbOf(inline.get('--bg')!)!;
-    // lighter than an even sRGB blend (131), like Safari's bars
-    expect(mid[0]).toBeGreaterThan(140);
-    expect(mid[0]).toBeLessThan(244);
-    frame!(90);
-    expect(inline.has('--bg')).toBe(false);
-  });
-  it('fades only the body, so html, where Safari picks its status bar icons, has the new colors from the start', () => {
-    root.dataset.theme = 'canvas';
-    setTheme('eink');
-    frame!(45);
-    expect(inline.has('--bg')).toBe(true);
-    expect(getComputedStyle(document.documentElement).getPropertyValue('--bg')).toBe('rgb(244, 244, 240)');
-    expect('style' in root).toBe(false);
-  });
-  it('switches at once with reduced motion', () => {
-    reduceMotion = true;
-    root.dataset.theme = 'canvas';
-    setTheme('eink');
-    expect(inline.size).toBe(0);
-    expect(frame).toBeNull();
-  });
-  it('switches at once when the colors cannot be read', () => {
-    vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => '#fff' }));
-    setTheme('pulp');
-    expect(inline.size).toBe(0);
-  });
-});
-
-describe('rgbOf and blend', () => {
-  it('reads computed rgb() colors and nothing else', () => {
-    expect(rgbOf('rgb(18, 18, 20)')).toEqual([18, 18, 20]);
-    expect(rgbOf(' rgb(244 244 240)')).toEqual([244, 244, 240]);
-    expect(rgbOf('#fff')).toBeNull();
-    expect(rgbOf('')).toBeNull();
-  });
-  it('starts and ends on the two colors, and is lighter than an even blend in between', () => {
-    expect(blend([0, 0, 0], [255, 255, 255], 0)).toBe('rgb(0 0 0)');
-    expect(blend([0, 0, 0], [255, 255, 255], 1)).toBe('rgb(255 255 255)');
-    const [r] = rgbOf(blend([0, 0, 0], [255, 255, 255], 0.5))!;
-    expect(r).toBeGreaterThan(128);
-    expect(rgbOf(blend([255, 255, 255], [0, 0, 0], 0.5))![0]).toBe(r);
+    expect(root.dataset.theme).toBe('eink');
+    expect(body.style.setProperty).not.toHaveBeenCalled();
+    expect(frame).not.toHaveBeenCalled();
+    setTheme('canvas');
+    expect(meta.content).toBe('#121214');
   });
 });
