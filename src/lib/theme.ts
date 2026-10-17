@@ -13,12 +13,11 @@ export const THEMES = [
 export type Theme = (typeof THEMES)[number]['id'];
 const changes = createChanges();
 const COLORS = ['--bg', '--surface', '--line', '--text', '--muted', '--accent', '--on-accent', '--danger'];
-// iPhone Safari fades its status bar and toolbar into a new color by itself, over about 90ms and through lighter
-// in-between colors than CSS blends (fitted from iPhone screen recordings), so the page fades the same way to keep pace.
+// A quick fade through lighter in-between colors than CSS blends, the way iPhone Safari fades its bars into a new color
+// (fitted from iPhone screen recordings).
 const FADE_MS = 90;
 const FADE_GAMMA = 1.6;
 let fading = 0;
-let settling = 0;
 
 /** The saved theme, or Deep Canvas. */
 export function getTheme(): Theme {
@@ -40,25 +39,21 @@ export function applyTheme() {
 /** Save and show a theme, fading the page into it the way iPhone Safari fades its bars (see FADE_MS). */
 export function setTheme(t: Theme) {
   writeJson(KEY, t);
-  const root = document.documentElement;
-  const from = COLORS.map((k) => rgbOf(getComputedStyle(root).getPropertyValue(k)));
+  // The fade runs on body, so html keeps the theme's own colors. iPhone Safari picks black or white status bar icons
+  // from html's background, which then changes once, straight to the new color, instead of through every frame of the fade.
+  const page = document.body;
+  const from = COLORS.map((k) => rgbOf(getComputedStyle(page).getPropertyValue(k)));
   cancelAnimationFrame(fading);
-  COLORS.forEach((k) => root.style.removeProperty(k));
+  COLORS.forEach((k) => page.style.removeProperty(k));
   applyTheme();
   changes.emit();
-  const to = COLORS.map((k) => rgbOf(getComputedStyle(root).getPropertyValue(k)));
-  // Safari picks black or white status bar icons when it reads the edge strips, and can pick wrong while the page is
-  // still changing. The strips' color is nudged until the fade has settled (data-fading in styles.css), so changing
-  // back makes Safari read the final color once more.
-  root.dataset.fading = '';
-  clearTimeout(settling);
-  settling = window.setTimeout(() => delete root.dataset.fading, FADE_MS + 150);
+  const to = COLORS.map((k) => rgbOf(getComputedStyle(page).getPropertyValue(k)));
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || [...from, ...to].some((c) => !c)) return;
   const start = performance.now();
   const step = (now: number) => {
     // a frame's time can be from just before the tap
     const p = Math.min(1, Math.max(0, (now - start) / FADE_MS));
-    COLORS.forEach((k, i) => (p < 1 ? root.style.setProperty(k, blend(from[i]!, to[i]!, p)) : root.style.removeProperty(k)));
+    COLORS.forEach((k, i) => (p < 1 ? page.style.setProperty(k, blend(from[i]!, to[i]!, p)) : page.style.removeProperty(k)));
     if (p < 1) fading = requestAnimationFrame(step);
   };
   step(start);

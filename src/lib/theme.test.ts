@@ -2,10 +2,9 @@ import { blend, getTheme, rgbOf, setTheme } from './theme';
 
 const memory = new Map<string, string>();
 const inline = new Map<string, string>();
-const root = {
-  dataset: {} as Record<string, string>,
-  style: { setProperty: (k: string, v: string) => void inline.set(k, v), removeProperty: (k: string) => void inline.delete(k) },
-};
+const root = { dataset: {} as Record<string, string> };
+// The fade's colors, set on body.
+const body = { style: { setProperty: (k: string, v: string) => void inline.set(k, v), removeProperty: (k: string) => void inline.delete(k) } };
 const meta = { content: '', setAttribute: (_: string, v: string) => void (meta.content = v) };
 // What getComputedStyle gives for --bg in each theme; every other color is black.
 const BG: Record<string, string> = { canvas: 'rgb(18, 18, 20)', eink: 'rgb(244, 244, 240)' };
@@ -19,9 +18,10 @@ beforeEach(() => {
   frame = null;
   reduceMotion = false;
   vi.stubGlobal('localStorage', { getItem: (k: string) => memory.get(k) ?? null, setItem: (k: string, v: string) => void memory.set(k, v) });
-  vi.stubGlobal('document', { documentElement: root, querySelector: () => meta });
-  vi.stubGlobal('getComputedStyle', () => ({
-    getPropertyValue: (k: string) => inline.get(k) ?? (k === '--bg' ? (BG[root.dataset.theme ?? ''] ?? 'rgb(18, 18, 20)') : 'rgb(0, 0, 0)'),
+  vi.stubGlobal('document', { documentElement: root, body, querySelector: () => meta });
+  vi.stubGlobal('getComputedStyle', (el: object) => ({
+    getPropertyValue: (k: string) =>
+      (el === body ? inline.get(k) : undefined) ?? (k === '--bg' ? (BG[root.dataset.theme ?? ''] ?? 'rgb(18, 18, 20)') : 'rgb(0, 0, 0)'),
   }));
   vi.stubGlobal('matchMedia', () => ({ matches: reduceMotion }));
   vi.stubGlobal('performance', { now: () => 0 });
@@ -30,7 +30,6 @@ beforeEach(() => {
     return 1;
   });
   vi.stubGlobal('cancelAnimationFrame', () => {});
-  vi.stubGlobal('window', globalThis);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -60,17 +59,13 @@ describe('theme', () => {
     frame!(90);
     expect(inline.has('--bg')).toBe(false);
   });
-  it('marks the page while the switch settles, so Safari reads the edge strips again afterwards, also without a fade', () => {
-    vi.useFakeTimers();
-    reduceMotion = true;
+  it('fades only the body, so html, where Safari picks its status bar icons, has the new colors from the start', () => {
+    root.dataset.theme = 'canvas';
     setTheme('eink');
-    expect(root.dataset.fading).toBe('');
-    setTheme('pulp');
-    vi.advanceTimersByTime(200);
-    expect(root.dataset.fading).toBe('');
-    vi.advanceTimersByTime(50);
-    expect(root.dataset.fading).toBeUndefined();
-    vi.useRealTimers();
+    frame!(45);
+    expect(inline.has('--bg')).toBe(true);
+    expect(getComputedStyle(document.documentElement).getPropertyValue('--bg')).toBe('rgb(244, 244, 240)');
+    expect('style' in root).toBe(false);
   });
   it('switches at once with reduced motion', () => {
     reduceMotion = true;

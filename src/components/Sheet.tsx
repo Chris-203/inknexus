@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useTheme } from '../lib/theme';
 
 /** Closing state for a Sheet: close() plays its slide-out, then calls onClose. Call close() wherever the sheet closes so every way out animates. */
 export function useSheet(onClose: () => void) {
@@ -11,7 +10,6 @@ export function useSheet(onClose: () => void) {
 export function Sheet({ label, sheet, drawer, children }: { label: string; sheet: ReturnType<typeof useSheet>; drawer?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(sheet.close);
-  const theme = useTheme();
   close.current = sheet.close;
 
   useEffect(() => {
@@ -27,8 +25,6 @@ export function Sheet({ label, sheet, drawer, children }: { label: string; sheet
 
   return (
     <div id="modal" className={`on${drawer ? ' side' : ''}${sheet.closing ? ' closing' : ''}`} onClick={(e) => e.target === e.currentTarget && sheet.close()}>
-      <i className="tint tint-top" data-theme={theme} aria-hidden="true" />
-      <i className="tint tint-bottom" data-theme={theme} aria-hidden="true" />
       <div
         ref={ref}
         className={drawer ? 'sheet drawer' : 'sheet'}

@@ -23,7 +23,8 @@
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
 html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
 html.pagezoom{touch-action:auto}
-body{margin:0;background:var(--bg);color:var(--text);font:var(--font-base)/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+/* body fills the screen, so html's background, which turns to a new theme at once while body fades into it (setTheme in lib/theme.ts), never shows beside the page */
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font:var(--font-base)/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
@@ -182,17 +183,8 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 #showbar{left:12px;top:calc(8px + env(safe-area-inset-top,0px));animation:fade-in .4s}
-#modal{--drawer:min(320px,85%);--page-bg:var(--bg);--page-surface:var(--surface);position:fixed;inset:0;z-index:10;display:none;align-items:flex-end}
-/* iPhone Safari colors its status bar and toolbar from a fixed element at each screen edge, but reads a full-screen backdrop only once, when it first shows. These thin strips are not full-screen, so Safari reads them again when their color changes, as on a theme switch. Their background color is what Safari reads: they carry the theme themselves (data-theme), so it changes at once while the page fades. Safari ignores them when much fainter than this, so on top each one paints what is under it, in the page's fading colors (--page-* on #modal), and they wait for the sheet to slide in and hide while it slides out. */
-#modal .tint{--corner:calc(100% - var(--drawer) + var(--radius-lg));position:fixed;left:0;right:0;height:12px;opacity:.12;pointer-events:none;z-index:1;animation:tint-wait .25s}
-#modal .tint-top{top:0;background:var(--bg) linear-gradient(var(--page-bg),var(--page-bg))}
-#modal .tint-bottom{bottom:0;background:var(--bg) linear-gradient(var(--page-bg),var(--page-bg))}
-/* beside a drawer, the toolbar takes the nav bar's color; the bottom strip paints the nav bar on the left and the drawer, with its rounded corner, on the right */
-#modal.side .tint-bottom{background-color:var(--surface);background-image:radial-gradient(circle at var(--corner) calc(12px - var(--radius-lg)),var(--page-bg) var(--radius-lg),transparent 0),linear-gradient(to right,var(--page-surface) var(--corner),var(--page-bg) 0)}
-#modal.closing .tint{display:none}
-/* while a theme switch settles, the strips' color (hidden under their paint) is nudged toward gray, so Safari reads them again when it changes back (setTheme in lib/theme.ts) */
-[data-fading] #modal .tint{background-color:color-mix(in srgb,var(--bg) 97%,gray)}
-[data-fading] #modal.side .tint-bottom{background-color:color-mix(in srgb,var(--surface) 97%,gray)}
+/* iPhone Safari paints its status bar and toolbar as a solid block in the color of a fixed element at the middle of the screen's top or bottom edge, and reads a full-screen one only once, so the bars fall behind a theme switch. It skips a fixed element more than 5% taller than the screen, so #modal reaches half a screen below it, with padding to keep its sheets on screen: the page then shows under the clock with a sheet open, as it does without one, and fades with it */
+#modal{--drawer:min(320px,85%);position:fixed;inset:0 0 -50vh;padding-bottom:50vh;z-index:10;display:none;align-items:flex-end}
 #modal.on{display:flex;animation:fade-in .2s ease-out}
 /* closing: the sheet slides down and the backdrop fades before the sheet unmounts (useSheet in components/Sheet.tsx) */
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
@@ -220,7 +212,6 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-up{from{transform:translateY(100%)}}
 @keyframes slide-down{to{transform:translateY(100%)}}
 @keyframes slide-in{from{transform:translateX(100%)}}
-@keyframes tint-wait{from,to{visibility:hidden}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
 @media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,.fbar{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
