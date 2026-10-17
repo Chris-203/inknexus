@@ -18,6 +18,7 @@ const COLORS = ['--bg', '--surface', '--line', '--text', '--muted', '--accent', 
 const FADE_MS = 90;
 const FADE_GAMMA = 1.6;
 let fading = 0;
+let settling = 0;
 
 /** The saved theme, or Deep Canvas. */
 export function getTheme(): Theme {
@@ -47,6 +48,12 @@ export function setTheme(t: Theme) {
   COLORS.forEach((k) => page.style.removeProperty(k));
   applyTheme();
   changes.emit();
+  // Safari can still keep icons it picked from the color html had a moment before. html's background is nudged toward
+  // gray until the switch has settled (data-settling in styles.css), so changing back makes Safari read the final color again.
+  const root = document.documentElement;
+  root.dataset.settling = '';
+  clearTimeout(settling);
+  settling = window.setTimeout(() => delete root.dataset.settling, FADE_MS + 150);
   const to = COLORS.map((k) => rgbOf(getComputedStyle(page).getPropertyValue(k)));
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || [...from, ...to].some((c) => !c)) return;
   const start = performance.now();

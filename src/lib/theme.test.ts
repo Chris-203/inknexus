@@ -30,6 +30,7 @@ beforeEach(() => {
     return 1;
   });
   vi.stubGlobal('cancelAnimationFrame', () => {});
+  vi.stubGlobal('window', globalThis);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -66,6 +67,18 @@ describe('theme', () => {
     expect(inline.has('--bg')).toBe(true);
     expect(getComputedStyle(document.documentElement).getPropertyValue('--bg')).toBe('rgb(244, 244, 240)');
     expect('style' in root).toBe(false);
+  });
+  it('marks html while the switch settles, so Safari reads its background again afterwards, also without a fade', () => {
+    vi.useFakeTimers();
+    reduceMotion = true;
+    setTheme('eink');
+    expect(root.dataset.settling).toBe('');
+    setTheme('pulp');
+    vi.advanceTimersByTime(200);
+    expect(root.dataset.settling).toBe('');
+    vi.advanceTimersByTime(50);
+    expect(root.dataset.settling).toBeUndefined();
+    vi.useRealTimers();
   });
   it('switches at once with reduced motion', () => {
     reduceMotion = true;
