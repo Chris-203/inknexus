@@ -35,7 +35,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
-  // Where the bar was last shown or hidden; scrolling 30px down from there hides it, and 30px up shows it.
+  // Where the bar was last shown, or the highest point scrolled to since; scrolling 30px down from there hides it.
+  // Scrolling up leaves it hidden; a tap brings it back.
   const base = useRef(0);
 
   // Reaching the end of the chapter marks it read.
@@ -68,11 +69,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   useEffect(() => {
     const onScroll = () => {
-      const d = scrollY - base.current;
-      if (Math.abs(d) > 30) {
-        setBar(d < 0);
-        base.current = scrollY;
-      }
+      base.current = Math.min(base.current, scrollY);
+      if (scrollY - base.current > 30) setBar(false);
       setToTop(scrollY > innerHeight);
     };
     addEventListener('scroll', onScroll, { passive: true });

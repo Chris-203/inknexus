@@ -101,7 +101,7 @@ details.more .pad{padding:0 12px 12px}
 .pad.end{margin-top:20px}
 .rbar{position:sticky;top:0;z-index:4;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);transform-origin:0 0;transition:transform .2s,visibility .2s,opacity .2s}
 .rbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* reader: scrolling down hides the bar and scrolling up shows it; a tap on the pages does either */
+/* reader: scrolling down hides the bar and only a tap on the pages shows it again; a tap also hides it */
 .rbar.off{transform:translateY(-100%);visibility:hidden}
 /* reader: the bar floats over the pages with no background, like a manga site's reader; only its controls show */
 .rbar.over{position:fixed;left:0;right:0;top:0;margin-top:0;justify-content:flex-end;align-items:flex-start;background:none;backdrop-filter:none;border:0;pointer-events:none}
