@@ -141,7 +141,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
   const { sort } = useStore();
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
-  else if (chs.status === 'error') list = <ChaptersFailed md={x.md!} text={`Could not load chapters from MangaDex (${chs.error}).`} />;
+  else if (chs.status === 'error') list = <ChaptersFailed md={x.md!} text="Could not load chapters from MangaDex. Try again in a moment." />;
   else if (!chs.list.chapters.length) {
     const n = chs.list.listed;
     list = (
@@ -177,9 +177,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
   }
   return (
     <>
-      {chs?.status === 'ready' && chs.error && (
-        <ChaptersFailed md={x.md!} text={`Could not check MangaDex for new chapters (${chs.error}). This list may be out of date.`} />
-      )}
+      {chs?.status === 'ready' && chs.error && <ChaptersFailed md={x.md!} text="Could not check for new chapters, so this list may be out of date." />}
       {list}
       <p className="credit">
         Chapters and data from MangaDex. Scanlation groups are credited on each chapter.{' '}
