@@ -41,6 +41,11 @@ export function setFrameZoom(site: string, z: number) {
 
 /** The zoom step `d` steps away from `z` (-1 smaller, 1 bigger), staying within 100%–200%. */
 export function stepZoom(z: number, d: number): number {
-  const i = ZOOM_STEPS.indexOf(z) + d;
-  return ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i))]!;
+  return stepIn(ZOOM_STEPS, z, d);
+}
+
+/** The value `d` places away from `v` in `steps`, stopping at either end. */
+export function stepIn(steps: number[], v: number, d: number): number {
+  const i = steps.indexOf(v) + d;
+  return steps[Math.min(steps.length - 1, Math.max(0, i))]!;
 }
