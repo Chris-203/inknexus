@@ -3,9 +3,9 @@ import { readJson, writeJson } from './storage';
 
 // The reader's auto scroll speed, kept on this device only (never in the library or backups).
 const KEY = 'inknexus-scroll-speed';
-/** Speeds as multiples of 1×, a little faster than a steady read scrolling by thumb. */
-export const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
-const PX_PER_SEC = 280;
+/** Speeds as multiples of 1×, an unhurried read of a long strip. */
+export const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+const PX_PER_SEC = 175;
 
 /** The saved speed, 1× unless set. */
 export function getScrollSpeed(): number {
@@ -17,7 +17,7 @@ export function setScrollSpeed(s: number) {
   writeJson(KEY, s);
 }
 
-/** The speed `d` steps away from `s` (-1 slower, 1 faster), staying within 0.5×–3×. */
+/** The speed `d` steps away from `s` (-1 slower, 1 faster), staying within 0.25×–3×. */
 export function stepSpeed(s: number, d: number): number {
   return stepIn(SPEEDS, s, d);
 }
