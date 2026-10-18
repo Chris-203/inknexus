@@ -40,10 +40,11 @@ function setup() {
 describe('zoomable', () => {
   it('calls onTap for a single tap once a double tap is ruled out', () => {
     const { onTap } = setup();
-    tap();
+    tap(100, 700);
     expect(onTap).not.toHaveBeenCalled();
     vi.advanceTimersByTime(400);
     expect(onTap).toHaveBeenCalledTimes(1);
+    expect(onTap).toHaveBeenCalledWith(700);
   });
   it('zooms on a double tap without calling onTap', () => {
     const { onTap } = setup();

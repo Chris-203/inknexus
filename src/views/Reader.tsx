@@ -5,7 +5,7 @@ import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { TopBar } from '../components/TopBar';
 import { imageSrc } from '../lib/api';
-import { getScrollSpeed, scrollDistance, setScrollSpeed, SPEEDS, stepSpeed } from '../lib/autoScroll';
+import { getScrollSpeed, getTapScroll, scrollDistance, setScrollSpeed, setTapScroll, SPEEDS, stepSpeed, tapAction } from '../lib/autoScroll';
 import { useChapters } from '../lib/chapters';
 import { chapterNote, fmt } from '../lib/format';
 import { nextChapter, preloadChapter } from '../lib/preload';
@@ -38,6 +38,10 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const [auto, setAuto] = useState(false);
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(getScrollSpeed);
+  const [tapScroll, setTapScrollOn] = useState(getTapScroll);
+  // Read by the tap handler, which is set up once per chapter.
+  const tapScrollRef = useRef(tapScroll);
+  tapScrollRef.current = tapScroll;
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
@@ -65,9 +69,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   useEffect(() => {
     if (!done || !wrap.current || !pagesRef.current) return;
-    const z = zoomable(wrap.current, pagesRef.current, () => {
-      base.current = scrollY;
-      setBar((b) => !b);
+    const z = zoomable(wrap.current, pagesRef.current, (y) => {
+      const act = tapScrollRef.current ? tapAction(y, innerHeight) : 'bar';
+      if (act === 'bar') {
+        base.current = scrollY;
+        setBar((b) => !b);
+        return;
+      }
+      // Most of a screen, so the last lines stay in view to read on from.
+      const top = innerHeight * 0.8 * (act === 'up' ? -1 : 1);
+      scrollBy({ top, behavior: scrollMotion() });
     });
     zoom.current = z;
     return z.stop;
@@ -139,12 +150,17 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
     setBar(true);
-    scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    scrollTo({ top: 0, behavior: scrollMotion() });
   };
   const toChapter = (to: number) => navigate({ name: 'reader', id: x.id, n: to }, true);
   const toggleAuto = () => {
     setAuto(!auto);
     setPaused(false);
+  };
+  const toggleTapScroll = () => {
+    setTapScrollOn(!tapScroll);
+    setTapScroll(!tapScroll);
+    toast(tapScroll ? 'Tap to scroll off' : 'Tap to scroll on: tap the bottom of the screen to go down, the top to go back');
   };
   const changeSpeed = (d: number) => {
     const s = stepSpeed(speed, d);
@@ -279,6 +295,12 @@ export function Reader({ x, n }: { x: Series; n: number }) {
                   <path d="M7 6l5 5 5-5M7 13l5 5 5-5" />
                 </svg>
               </button>
+              <button className="ibtn" aria-label="Tap to scroll" aria-pressed={tapScroll} onClick={toggleTapScroll}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v6M9 6l3-3 3 3M12 21v-6M9 18l3 3 3-3" />
+                  <circle cx="12" cy="12" r="1.5" />
+                </svg>
+              </button>
               <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
                 +
               </button>
@@ -317,6 +339,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       {chaptersOpen && <ChaptersSheet x={x} list={list} n={n} onClose={() => setChaptersOpen(false)} />}
     </>
   );
+}
+
+/** Smooth scrolling, unless the device asks for reduced motion. */
+function scrollMotion(): ScrollBehavior {
+  return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
 /** Every chapter of the series, in the library's sort order, opened on the one being read. */
