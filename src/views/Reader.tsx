@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
+import { HouseIcon } from '../components/HouseIcon';
 import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { TopBar } from '../components/TopBar';
@@ -221,12 +222,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         </div>
         <div className="rtools" role="toolbar" aria-label="Reader" aria-orientation="vertical">
           <button className="ibtn" aria-label={`Back to ${x.title}`} onClick={toSeries}>
-            {/* a house */}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 11.5 12 4l9 7.5" />
-              <path d="M5.5 10v10h13V10" />
-              <path d="M10 20v-5.5h4V20" />
-            </svg>
+            <HouseIcon />
           </button>
           <button className="ibtn" aria-label="Chapters" aria-expanded={chaptersOpen} disabled={!list.length} onClick={() => setChaptersOpen(true)}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
