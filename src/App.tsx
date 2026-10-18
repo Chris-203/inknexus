@@ -70,10 +70,13 @@ export function App() {
     if (gone) navigate({ name: 'library' }, true);
   }, [gone, navigate]);
 
+  // history.back() would first step back through the pages a site in the site view went to, one at a time.
+  // navigation.back() skips those and goes to the app's previous view; older browsers without it use history.back().
   const goBack = useCallback(
     (fallback: View) => {
-      if (hasBack()) history.back();
-      else navigate(fallback, true);
+      if (!hasBack()) navigate(fallback, true);
+      else if (window.navigation) navigation.back();
+      else history.back();
     },
     [navigate],
   );
