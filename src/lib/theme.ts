@@ -9,6 +9,12 @@ export const THEMES = [
   { id: 'midnight', name: 'Midnight Manga' },
   { id: 'eink', name: 'E-Ink' },
   { id: 'pulp', name: 'Vintage Pulp' },
+  { id: 'sumi', name: 'Sumi Ink' },
+  { id: 'washi', name: 'Washi Paper' },
+  { id: 'neon', name: 'Neon Violet' },
+  { id: 'mist', name: 'Violet Mist' },
+  { id: 'matcha', name: 'Matcha' },
+  { id: 'sencha', name: 'Sencha' },
 ] as const;
 export type Theme = (typeof THEMES)[number]['id'];
 const changes = createChanges();
@@ -30,6 +36,8 @@ export function applyTheme() {
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg').trim());
 }
 
+/** Save and show a theme. Every color changes in the same frame, with no fade: iPhone Safari takes its bar color and its
+ * black or white status bar icons from body's background, and an in-between color could leave it with the wrong icons. */
 export function setTheme(t: Theme) {
   writeJson(KEY, t);
   applyTheme();
