@@ -121,7 +121,7 @@ details.more .pad{padding:0 12px 12px}
 .rtools{position:absolute;right:12px;top:calc(60px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:12px}
 .rtools .ibtn{background:none;border:0}
 /* how far through the chapter, a thin line along the top that stays while the controls hide */
-.rtrack{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:3px;background:var(--accent);transform-origin:0 0;z-index:6;pointer-events:none}
+.rtrack{position:fixed;left:0;right:0;bottom:0;height:3px;background:var(--accent);transform-origin:0 0;z-index:6;pointer-events:none}
 /* in-app site view: the site fills the screen, under the floating controls */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
 /* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
