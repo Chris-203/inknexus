@@ -5,6 +5,7 @@ import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { TopBar } from '../components/TopBar';
 import { imageSrc } from '../lib/api';
+import { getScrollSpeed, scrollDistance, setScrollSpeed, SPEEDS, stepSpeed } from '../lib/autoScroll';
 import { useChapters } from '../lib/chapters';
 import { chapterNote, fmt } from '../lib/format';
 import { nextChapter, preloadChapter } from '../lib/preload';
@@ -33,6 +34,10 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const [toTop, setToTop] = useState(false);
   const [progress, setProgress] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  // Auto scroll: `auto` shows its controls, `paused` stops it there. It pauses itself at the end of the chapter.
+  const [auto, setAuto] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState(getScrollSpeed);
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
@@ -94,6 +99,34 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     };
   }, [done, shown]);
 
+  // Auto scroll moves the pages on each frame, and waits while a finger is on the screen or the chapter list is open.
+  useEffect(() => {
+    if (!auto || paused || chaptersOpen || !done) return;
+    let raf = 0;
+    let last = performance.now();
+    let carry = 0;
+    let held = false;
+    const hold = (e: TouchEvent) => {
+      held = e.touches.length > 0;
+    };
+    const frame = (t: number) => {
+      if (!held) {
+        const [px, rest] = scrollDistance(speed, t - last, carry);
+        carry = rest;
+        if (innerHeight + scrollY >= document.documentElement.scrollHeight - 1) return setPaused(true);
+        if (px) scrollBy(0, px);
+      }
+      last = t;
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) addEventListener(ev, hold, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) removeEventListener(ev, hold);
+    };
+  }, [auto, paused, chaptersOpen, done, speed]);
+
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = nextChapter(list, n);
   const allShown = done && pages.value.every((_, i) => shown[i] === 'done');
@@ -109,6 +142,15 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   };
   const toChapter = (to: number) => navigate({ name: 'reader', id: x.id, n: to }, true);
+  const toggleAuto = () => {
+    setAuto(!auto);
+    setPaused(false);
+  };
+  const changeSpeed = (d: number) => {
+    const s = stepSpeed(speed, d);
+    setSpeed(s);
+    setScrollSpeed(s);
+  };
   const zoomBy = (d: number) => {
     const z = zoom.current?.zoomBy(d);
     // Zooming scrolls to keep the middle in place; that is not the reader scrolling on.
@@ -232,6 +274,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           </button>
           {done && (
             <>
+              <button className="ibtn" aria-label="Auto scroll" aria-pressed={auto} onClick={toggleAuto}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 6l5 5 5-5M7 13l5 5 5-5" />
+                </svg>
+              </button>
               <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
                 +
               </button>
@@ -243,6 +290,25 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         </div>
       </TopBar>
       <div id="strip">{content}</div>
+      {auto && done && (
+        <div id="autoscroll" className="chnav" role="toolbar" aria-label="Auto scroll">
+          <button aria-label={paused ? 'Play' : 'Pause'} onClick={() => setPaused(!paused)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d={paused ? 'M8 5v14l11-7z' : 'M7 5h3.5v14H7zM13.5 5H17v14h-3.5z'} />
+            </svg>
+          </button>
+          <button aria-label="Slower" disabled={speed === SPEEDS[0]} onClick={() => changeSpeed(-1)}>
+            −
+          </button>
+          <b aria-live="polite">{speed}×</b>
+          <button aria-label="Faster" disabled={speed === SPEEDS.at(-1)} onClick={() => changeSpeed(1)}>
+            +
+          </button>
+          <button aria-label="Stop auto scroll" onClick={toggleAuto}>
+            ×
+          </button>
+        </div>
+      )}
       {toTop && (
         <button id="totop" className="ibtn float" aria-label="Back to top" onClick={backToTop}>
           ↑

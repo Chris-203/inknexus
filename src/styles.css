@@ -176,6 +176,12 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+/* the reader's auto scroll controls: ▶/❚❚ − 1× + ×, floating at the bottom left, clear of the back-to-top button */
+#autoscroll{position:fixed;z-index:5;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 4px 16px rgba(0,0,0,.5)}
+/* system font: Comic Neue draws × very small */
+#autoscroll b{min-width:44px;text-align:center;font:700 var(--font-sm) system-ui,sans-serif}
+#autoscroll svg{width:20px;height:20px;fill:currentColor;vertical-align:middle}
+.rtools .ibtn[aria-pressed=true]{color:var(--accent)}
 /* the site view's way back to its hidden controls: a small frosted button where the chapter switcher was */
 #showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px));border-radius:10px;box-shadow:none;opacity:.8;animation:fade-in .4s}
 #showbar circle{fill:currentColor;stroke:none}
