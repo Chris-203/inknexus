@@ -16,6 +16,9 @@ import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
 
+/** How far the pages rise, in px, when pulling up at the end of a chapter to open the next one. */
+const PULL = 80;
+
 /** The built-in reader for chapter `n`, MangaDex chapters only. It remounts for each chapter. */
 export function Reader({ x, n }: { x: Series; n: number }) {
   const { navigate, goBack, toast } = useApp();
@@ -33,6 +36,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [pulled, setPulled] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
   // Auto scroll: `auto` shows its controls, `paused` stops it there. It pauses itself at the end of the chapter.
   const [auto, setAuto] = useState(false);
@@ -148,6 +152,42 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (allShown) return preloadChapter(next);
   }, [allShown, next?.id]);
 
+  // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px over
+  // a ring that fills, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
+  // Only once every page has shown, so a short or loading chapter never skips ahead.
+  const pullsOn = allShown && next && !next.ext ? next.num : undefined;
+  useEffect(() => {
+    if (pullsOn === undefined) return;
+    let from: number | null = null;
+    const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+    const move = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || (from === null && !atEnd())) {
+        from = null;
+        return setPulled(0);
+      }
+      const y = e.touches[0]!.clientY;
+      from ??= y;
+      const d = Math.min(PULL, Math.max(0, (from - y) / 2));
+      setPulled(d);
+      if (d < PULL) return;
+      from = null;
+      removeEventListener('touchmove', move);
+      navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
+    };
+    const release = () => {
+      from = null;
+      setPulled(0);
+    };
+    addEventListener('touchmove', move, { passive: true });
+    addEventListener('touchend', release);
+    addEventListener('touchcancel', release);
+    return () => {
+      removeEventListener('touchmove', move);
+      removeEventListener('touchend', release);
+      removeEventListener('touchcancel', release);
+    };
+  }, [pullsOn, x.id, navigate]);
+
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
     setBar(true);
@@ -248,11 +288,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
               ‹ Ch. {fmt(prev.num)}
             </button>
           )}
-          {next ? (
+          {/* A chapter readable here opens by pulling up at the end; only one on an official site keeps a button. */}
+          {next?.ext && (
             <button className="btn" onClick={() => toChapter(next.num)}>
               Ch. {fmt(next.num)} ›
             </button>
-          ) : (
+          )}
+          {!next && (
             <button className="btn" onClick={toSeries}>
               Back to series
             </button>
@@ -321,7 +363,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           )}
         </div>
       </TopBar>
-      <div id="strip">{content}</div>
+      <div id="strip" className={pulled ? 'pulling' : undefined} style={pulled ? { transform: `translateY(${-pulled}px)` } : undefined}>
+        {content}
+      </div>
       {auto && done && (
         <div id="autoscroll" className="chnav" role="toolbar" aria-label="Auto scroll">
           <button aria-label={paused ? 'Play' : 'Pause'} onClick={() => setPaused(!paused)}>
@@ -339,6 +383,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           <button aria-label="Stop auto scroll" onClick={toggleAuto}>
             ×
           </button>
+        </div>
+      )}
+      {pullsOn !== undefined && (
+        <div className={`pullnext${pulled ? ' pulling' : ''}`} aria-hidden="true" style={{ transform: `translateY(${PULL - pulled}px)` }}>
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="15" pathLength="1" />
+            <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
+            <path d="M18 11v14M12 19l6 6 6-6" />
+          </svg>
+          <span>Pull to read next chapter</span>
         </div>
       )}
       {toTop && (

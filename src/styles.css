@@ -173,6 +173,14 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .pg.failed .pgmsg{color:var(--danger)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
+/* pull up at the end of a chapter for the next one (Reader.tsx): the pages rise over this bar, which waits below the screen with an arrow over its text. The page itself does not bounce there, so the pull is all the pages show */
+html:has(.pullnext){overscroll-behavior-y:none}
+#strip{transition:transform .2s ease-out}
+.pullnext{position:fixed;left:0;right:0;bottom:0;height:calc(80px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:var(--font-sm);pointer-events:none;transition:transform .2s ease-out}
+#strip.pulling,.pullnext.pulling{transition:none}
+.pullnext svg{width:36px;height:36px;fill:none;stroke:var(--line);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pullnext .ring{stroke:var(--accent);stroke-dasharray:1;transform:rotate(-90deg);transform-origin:center}
+.pullnext path{stroke:var(--text);stroke-width:2.5}
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
@@ -216,4 +224,4 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,#strip,.pullnext{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet{animation-duration:1ms}}
