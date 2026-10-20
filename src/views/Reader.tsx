@@ -5,6 +5,7 @@ import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { TopBar } from '../components/TopBar';
 import { imageSrc } from '../lib/api';
+import { getScrollSpeed, getTapScroll, scrollDistance, setScrollSpeed, setTapScroll, SPEEDS, stepSpeed, tapAction } from '../lib/autoScroll';
 import { useChapters } from '../lib/chapters';
 import { chapterNote, fmt } from '../lib/format';
 import { nextChapter, preloadChapter } from '../lib/preload';
@@ -14,6 +15,9 @@ import type { Chapter, Series } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
+
+/** How far the pages rise, in px, when pulling up at the end of a chapter to open the next one. */
+const PULL = 80;
 
 /** How long the loading screen stays at least, in ms, from when the chapter opens. */
 const COVER_MIN = 1000;
@@ -35,7 +39,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [pulled, setPulled] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  // Auto scroll: `auto` shows its controls, `paused` stops it there. It pauses itself at the end of the chapter.
+  const [auto, setAuto] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState(getScrollSpeed);
+  const [tapScroll, setTapScrollOn] = useState(getTapScroll);
+  // Read by the tap handler, which is set up once per chapter.
+  const tapScrollRef = useRef(tapScroll);
+  tapScrollRef.current = tapScroll;
   // The loading screen: 'on' until the pages that fill the first screen have shown, then 'out' while it fades, then gone.
   const [cover, setCover] = useState<'on' | 'out' | null>('on');
   const opened = useRef(performance.now());
@@ -55,7 +68,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         ob.disconnect();
         if (n > (findSeries(x.id)?.last || 0)) {
           setLast(x.id, n);
-          toast(`Chapter ${fmt(n)} marked read`);
+          toast(`Chapter ${fmt(n)} marked read`, true);
         }
       },
       { threshold: 0.6 },
@@ -66,9 +79,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   useEffect(() => {
     if (!done || !wrap.current || !pagesRef.current) return;
-    const z = zoomable(wrap.current, pagesRef.current, () => {
-      base.current = scrollY;
-      setBar((b) => !b);
+    const z = zoomable(wrap.current, pagesRef.current, (y) => {
+      const act = tapScrollRef.current ? tapAction(y, innerHeight) : 'bar';
+      if (act === 'bar') {
+        base.current = scrollY;
+        setBar((b) => !b);
+        return;
+      }
+      // Most of a screen, so the last lines stay in view to read on from.
+      const top = innerHeight * 0.8 * (act === 'up' ? -1 : 1);
+      scrollBy({ top, behavior: scrollMotion() });
     });
     zoom.current = z;
     return z.stop;
@@ -84,12 +104,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     return () => removeEventListener('scroll', onScroll);
   }, []);
 
-  // The track along the top: how far through the pages, kept up to date as pages load and change height.
+  // The track along the bottom: how far through the pages, kept up to date as pages load and change height.
   useEffect(() => {
     if (!done) return;
+    const loading = pages.value.findIndex((_, i) => !shown[i]);
     const update = () => {
-      const r = pagesRef.current?.getBoundingClientRect();
-      if (r) setProgress(readProgress(r.top, r.height, innerHeight));
+      const boxes = [...(pagesRef.current?.children ?? [])].map((e) => e.getBoundingClientRect());
+      setProgress(readProgress(boxes, innerHeight, loading < 0 ? boxes.length : loading));
     };
     update();
     addEventListener('scroll', update, { passive: true });
@@ -99,6 +120,34 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       removeEventListener('resize', update);
     };
   }, [done, shown]);
+
+  // Auto scroll moves the pages on each frame, and waits while a finger is on the screen or the chapter list is open.
+  useEffect(() => {
+    if (!auto || paused || chaptersOpen || !done) return;
+    let raf = 0;
+    let last = performance.now();
+    let carry = 0;
+    let held = false;
+    const hold = (e: TouchEvent) => {
+      held = e.touches.length > 0;
+    };
+    const frame = (t: number) => {
+      if (!held) {
+        const [px, rest] = scrollDistance(speed, t - last, carry);
+        carry = rest;
+        if (innerHeight + scrollY >= document.documentElement.scrollHeight - 1) return setPaused(true);
+        if (px) scrollBy(0, px);
+      }
+      last = t;
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) addEventListener(ev, hold, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) removeEventListener(ev, hold);
+    };
+  }, [auto, paused, chaptersOpen, done, speed]);
 
   // The loading screen lifts once every page that starts on the first screen has shown or failed, or the chapter
   // can't be shown (a message says why).
@@ -123,17 +172,76 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (allShown) return preloadChapter(next);
   }, [allShown, next?.id]);
 
+  // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px over
+  // a ring that fills, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
+  // Only once every page has shown, so a short or loading chapter never skips ahead.
+  const pullsOn = allShown && next && !next.ext ? next.num : undefined;
+  useEffect(() => {
+    if (pullsOn === undefined) return;
+    let from: number | null = null;
+    const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+    const move = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || (from === null && !atEnd())) {
+        from = null;
+        return setPulled(0);
+      }
+      const y = e.touches[0]!.clientY;
+      from ??= y;
+      const d = Math.min(PULL, Math.max(0, (from - y) / 2));
+      setPulled(d);
+      if (d < PULL) return;
+      from = null;
+      removeEventListener('touchmove', move);
+      navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
+    };
+    const release = () => {
+      from = null;
+      setPulled(0);
+    };
+    addEventListener('touchmove', move, { passive: true });
+    addEventListener('touchend', release);
+    addEventListener('touchcancel', release);
+    return () => {
+      removeEventListener('touchmove', move);
+      removeEventListener('touchend', release);
+      removeEventListener('touchcancel', release);
+    };
+  }, [pullsOn, x.id, navigate]);
+
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
     setBar(true);
-    scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    scrollTo({ top: 0, behavior: scrollMotion() });
   };
   const toChapter = (to: number) => navigate({ name: 'reader', id: x.id, n: to }, true);
+  // Auto scroll and tap to scroll are never on together: turning one on turns the other off.
+  const tapScrollTo = (on: boolean) => {
+    setTapScrollOn(on);
+    setTapScroll(on);
+  };
+  const toggleAuto = () => {
+    if (!auto && tapScroll) {
+      tapScrollTo(false);
+      toast('Tap to scroll off');
+    }
+    setAuto(!auto);
+    setPaused(false);
+  };
+  const toggleTapScroll = () => {
+    if (!tapScroll) setAuto(false);
+    tapScrollTo(!tapScroll);
+    toast(tapScroll ? 'Tap to scroll off' : 'Tap to scroll on: tap the bottom of the screen to go down, the top to go back');
+  };
+  const changeSpeed = (d: number) => {
+    const s = stepSpeed(speed, d);
+    setSpeed(s);
+    setScrollSpeed(s);
+  };
   const zoomBy = (d: number) => {
     const z = zoom.current?.zoomBy(d);
     // Zooming scrolls to keep the middle in place; that is not the reader scrolling on.
     base.current = scrollY;
-    if (z) toast(`Zoom ${Math.round(z * 100)}%`);
+    if (z) toast(`Zoom ${Math.round(z * 100)}%`, true);
   };
 
   // Data-saver image first; on error try full quality once, then mark the page failed and say so once for this chapter.
@@ -200,11 +308,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
               ‹ Ch. {fmt(prev.num)}
             </button>
           )}
-          {next ? (
+          {/* A chapter readable here opens by pulling up at the end; only one on an official site keeps a button. */}
+          {next?.ext && (
             <button className="btn" onClick={() => toChapter(next.num)}>
               Ch. {fmt(next.num)} ›
             </button>
-          ) : (
+          )}
+          {!next && (
             <button className="btn" onClick={toSeries}>
               Back to series
             </button>
@@ -252,6 +362,17 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           </button>
           {done && (
             <>
+              <button className="ibtn" aria-label="Auto scroll" aria-pressed={auto} onClick={toggleAuto}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 6l5 5 5-5M7 13l5 5 5-5" />
+                </svg>
+              </button>
+              <button className="ibtn" aria-label="Tap to scroll" aria-pressed={tapScroll} onClick={toggleTapScroll}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v6M9 6l3-3 3 3M12 21v-6M9 18l3 3 3-3" />
+                  <circle cx="12" cy="12" r="1.5" />
+                </svg>
+              </button>
               <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
                 +
               </button>
@@ -262,7 +383,38 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           )}
         </div>
       </TopBar>
-      <div id="strip">{content}</div>
+      <div id="strip" className={pulled ? 'pulling' : undefined} style={pulled ? { transform: `translateY(${-pulled}px)` } : undefined}>
+        {content}
+      </div>
+      {auto && done && (
+        <div id="autoscroll" className="chnav" role="toolbar" aria-label="Auto scroll">
+          <button aria-label={paused ? 'Play' : 'Pause'} onClick={() => setPaused(!paused)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d={paused ? 'M8 5v14l11-7z' : 'M7 5h3.5v14H7zM13.5 5H17v14h-3.5z'} />
+            </svg>
+          </button>
+          <button aria-label="Slower" disabled={speed === SPEEDS[0]} onClick={() => changeSpeed(-1)}>
+            −
+          </button>
+          <b aria-live="polite">{speed}×</b>
+          <button aria-label="Faster" disabled={speed === SPEEDS.at(-1)} onClick={() => changeSpeed(1)}>
+            +
+          </button>
+          <button aria-label="Stop auto scroll" onClick={toggleAuto}>
+            ×
+          </button>
+        </div>
+      )}
+      {pullsOn !== undefined && (
+        <div className={`pullnext${pulled ? ' pulling' : ''}`} aria-hidden="true" style={{ transform: `translateY(${PULL - pulled}px)` }}>
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="15" pathLength="1" />
+            <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
+            <path d="M18 11v14M12 19l6 6 6-6" />
+          </svg>
+          <span>Pull to read next chapter</span>
+        </div>
+      )}
       {cover && (
         <div id="rcover" className={cover} role="status" onAnimationEnd={() => cover === 'out' && setCover(null)}>
           <img src="/favicon.svg" alt="" />
@@ -278,6 +430,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       {chaptersOpen && <ChaptersSheet x={x} list={list} n={n} onClose={() => setChaptersOpen(false)} />}
     </>
   );
+}
+
+/** Smooth scrolling, unless the device asks for reduced motion. */
+function scrollMotion(): ScrollBehavior {
+  return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
 /** Every chapter of the series, in the library's sort order, opened on the one being read. */

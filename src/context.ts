@@ -23,7 +23,8 @@ export interface AppApi {
   navigate: (v: View, replace?: boolean) => void;
   /** The in-app back button: step back through history when there is an app view behind, otherwise go to `fallback`. */
   goBack: (fallback: View) => void;
-  toast: (message: string) => void;
+  /** Show a message for a moment. `update` marks a routine reading update, which Settings can turn off; errors and confirmations never pass it. */
+  toast: (message: string, update?: boolean) => void;
   /** Open the file picker to import a backup. */
   importBackup: () => void;
   /** Search or browse results, kept while you open a series and come back. */

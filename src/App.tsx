@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { ImportSheet } from './components/ImportSheet';
 import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
+import { showsReadingUpdates } from './lib/readingUpdates';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
@@ -81,7 +82,8 @@ export function App() {
     [navigate],
   );
 
-  const toast = useCallback((text: string) => {
+  const toast = useCallback((text: string, update = false) => {
+    if (update && !showsReadingUpdates()) return;
     setMessage({ text, on: true });
     clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setMessage((m) => ({ ...m, on: false })), 3200);

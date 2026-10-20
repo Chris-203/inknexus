@@ -5,12 +5,10 @@
 :root{--head:Bangers,Impact,sans-serif;--body:'Comic Neue',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* the only text sizes and corner radii the app uses; pick the nearest one rather than adding another */
 :root{--font-xs:12px;--font-sm:14px;--font-base:16px;--font-lg:20px;--font-xl:28px;--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:99px}
-/* color themes (lib/theme.ts); Deep Canvas is the default */
-:root,[data-theme=canvas]{color-scheme:dark;--bg:#121214;--surface:#1a1a1e;--line:#2e2e35;--text:#e2e8f0;--muted:#9a9fab;--accent:#ff6b6b;--on-accent:#121214;--danger:#ff9b8f}
+/* color themes (lib/theme.ts); Sumi Ink is the default */
+:root,[data-theme=sumi]{color-scheme:dark;--bg:#0D0D14;--surface:#161622;--line:#262638;--text:#F0EDE8;--muted:#9A9AAA;--accent:#D4564A;--on-accent:#F0EDE8;--danger:#E5484D}
 [data-theme=midnight]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#94a3b8;--muted:#8191a8;--accent:#38bdf8;--on-accent:#0f172a;--danger:#f87171}
 [data-theme=eink]{color-scheme:light;--bg:#f4f4f0;--surface:#fff;--line:#d6d6cf;--text:#2b2d2f;--muted:#5e6266;--accent:#5c6b73;--on-accent:#fff;--danger:#b3261e}
-[data-theme=pulp]{color-scheme:light;--bg:#efebe4;--surface:#e5dec9;--line:#d0c5ac;--text:#3c2f2f;--muted:#6b5a52;--accent:#b4432b;--on-accent:#fff;--danger:#962d22}
-[data-theme=sumi]{color-scheme:dark;--bg:#0D0D14;--surface:#161622;--line:#262638;--text:#F0EDE8;--muted:#9A9AAA;--accent:#D4564A;--on-accent:#F0EDE8;--danger:#E5484D}
 [data-theme=washi]{color-scheme:light;--bg:#F7F4EC;--surface:#FFFFFF;--line:#E3DED2;--text:#26211B;--muted:#7A7264;--accent:#C2402F;--on-accent:#FFFFFF;--danger:#B3261E}
 [data-theme=neon]{color-scheme:dark;--bg:#0B0B10;--surface:#131319;--line:#232330;--text:#EDEDF2;--muted:#9B9BA8;--accent:#7C6EF8;--on-accent:#FFFFFF;--danger:#FF6B6B}
 [data-theme=mist]{color-scheme:light;--bg:#F7F7FA;--surface:#FFFFFF;--line:#E2E2E9;--text:#17171C;--muted:#71717D;--accent:#5B4AE0;--on-accent:#FFFFFF;--danger:#C42F2F}
@@ -127,7 +125,7 @@ details.more .pad{padding:0 12px 12px}
 .rtools{position:absolute;right:12px;top:calc(60px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:12px}
 .rtools .ibtn{background:none;border:0}
 /* how far through the chapter, a thin line along the top that stays while the controls hide */
-.rtrack{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:3px;background:var(--accent);transform-origin:0 0;z-index:6;pointer-events:none}
+.rtrack{position:fixed;left:0;right:0;bottom:0;height:3px;background:var(--accent);transform-origin:0 0;z-index:6;pointer-events:none}
 /* in-app site view: the site fills the screen, under the floating controls */
 .fview{display:flex;flex-direction:column;height:calc(100dvh - env(safe-area-inset-top,0px))}
 /* site zoom (--fz): the site is laid out narrower and scaled back up to fill the space, like the browser's text zoom */
@@ -143,16 +141,16 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
 .presets{display:flex;gap:6px;flex-wrap:wrap}
 /* theme cards: data-theme on .tprev gives the preview that theme's colors; --ring keeps the app's own accent for the outline */
-.themes{--ring:var(--accent);display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;padding:4px 16px 16px}
-.theme{background:none;border:0;border-radius:var(--radius-md);padding:0;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;font-size:var(--font-sm)}
+.themes{--ring:var(--accent);display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 16px 16px}
+.tcol{display:flex;flex-direction:column;gap:14px}
+.theme{background:none;border:0;border-radius:var(--radius-md);padding:0;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;font-size:var(--font-sm);white-space:nowrap}
 .theme[aria-pressed=true]{color:var(--text);font-weight:700}
-.tprev{position:relative;display:block;height:76px;border-radius:var(--radius-md);background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.tprev{position:relative;display:block;width:94px;height:76px;border-radius:var(--radius-md);background:var(--bg);border:1px solid var(--line);overflow:hidden}
 .theme[aria-pressed=true] .tprev{outline:2px solid var(--ring);outline-offset:2px}
 .tprev i{position:absolute;border-radius:var(--radius-sm)}
-.tprev i:nth-child(1){left:10px;top:10px;width:44%;height:7px;background:var(--text)}
-.tprev i:nth-child(2){left:10px;top:26px;width:26px;height:38px;background:var(--surface);border:1px solid var(--line)}
-.tprev i:nth-child(3){left:42px;top:26px;width:26px;height:38px;background:var(--surface);border:1px solid var(--line)}
-.tprev i:nth-child(4){right:10px;top:9px;width:22px;height:10px;border-radius:var(--radius-full);background:var(--accent)}
+.tprev i:nth-child(1){left:10px;top:10px;width:34px;height:8px;border-radius:var(--radius-full);background:var(--text)}
+.tprev i:nth-child(2){left:12px;top:26px;width:30px;height:38px;background:var(--surface);border:1px solid var(--line)}
+.tprev i:nth-child(3){left:50px;top:10px;width:34px;height:8px;border-radius:var(--radius-full);background:var(--accent)}
 .presets .chip{padding:5px 11px;font-size:var(--font-sm)}
 .ren{background:none;border:0;color:var(--muted);font-size:var(--font-base);cursor:pointer;min-width:44px;min-height:44px;padding:0;vertical-align:middle}
 .ch b.nm{font-weight:600;overflow-wrap:anywhere}
@@ -173,6 +171,14 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .pg.failed .pgmsg{color:var(--danger)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
+/* pull up at the end of a chapter for the next one (Reader.tsx): the pages rise over this bar, which waits below the screen with an arrow over its text. The page itself does not bounce there, so the pull is all the pages show */
+html:has(.pullnext){overscroll-behavior-y:none}
+#strip{transition:transform .2s ease-out}
+.pullnext{position:fixed;left:0;right:0;bottom:0;height:calc(80px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:var(--font-sm);pointer-events:none;transition:transform .2s ease-out}
+#strip.pulling,.pullnext.pulling{transition:none}
+.pullnext svg{width:36px;height:36px;fill:none;stroke:var(--line);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pullnext .ring{stroke:var(--accent);stroke-dasharray:1;transform:rotate(-90deg);transform-origin:center}
+.pullnext path{stroke:var(--text);stroke-width:2.5}
 /* the reader's loading screen until the first screen of pages has shown (Reader.tsx), under the reader's bar so it can still go back. It shows at once, so the pages never flash underneath */
 #rcover{position:fixed;inset:0;z-index:3;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:var(--font-sm)}
 #rcover.out{animation:fade-out .3s forwards;pointer-events:none}
@@ -181,6 +187,12 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+/* the reader's auto scroll controls: ▶/❚❚ − 1× + ×, floating at the bottom left, clear of the back-to-top button */
+#autoscroll{position:fixed;z-index:5;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 4px 16px rgba(0,0,0,.5)}
+/* system font: Comic Neue draws × very small */
+#autoscroll b{min-width:44px;text-align:center;font:700 var(--font-sm) system-ui,sans-serif}
+#autoscroll svg{width:20px;height:20px;fill:currentColor;vertical-align:middle}
+.rtools .ibtn[aria-pressed=true]{color:var(--accent)}
 /* the site view's way back to its hidden controls: a small frosted button where the chapter switcher was */
 #showbar{right:12px;top:calc(8px + env(safe-area-inset-top,0px));border-radius:10px;box-shadow:none;opacity:.8;animation:fade-in .4s}
 #showbar circle{fill:currentColor;stroke:none}
@@ -191,9 +203,9 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 #modal.closing{animation:fade-out .2s ease-in forwards;pointer-events:none}
 #modal .sheet{background:var(--bg);border-top:1px solid var(--line);border-radius:var(--radius-lg) var(--radius-lg) 0 0;width:100%;max-height:85%;overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom,0px));animation:slide-up .25s cubic-bezier(.2,.8,.2,1);box-shadow:0 -4px 24px rgba(0,0,0,.3)}
 #modal.closing .sheet{animation:slide-down .2s ease-in forwards}
-/* a drawer: full height on the right edge, sliding in from the side */
+/* a drawer: full height on the right edge, sliding in from the side, as wide as its widest part (the theme cards) */
 #modal.side{align-items:stretch;justify-content:flex-end}
-#modal .sheet.drawer{width:var(--drawer);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:var(--radius-lg) 0 0 var(--radius-lg);padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in;box-shadow:-4px 0 24px rgba(0,0,0,.3)}
+#modal .sheet.drawer{width:min-content;max-width:var(--drawer);max-height:none;border-top:0;border-left:1px solid var(--line);border-radius:var(--radius-lg) 0 0 var(--radius-lg);padding-top:calc(18px + env(safe-area-inset-top,0px));animation-name:slide-in;box-shadow:-4px 0 24px rgba(0,0,0,.3)}
 #modal.closing .sheet.drawer{animation-name:slide-out}
 #modal .sheet:focus{outline:none}
 #modal h2{padding:0 16px 10px;font-size:var(--font-lg)}
@@ -215,4 +227,4 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom,#strip,.pullnext{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}

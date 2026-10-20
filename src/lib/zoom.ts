@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 /**
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
- * and it never shrinks below the screen width. A single tap or click calls `onTap`. While the browser has zoomed the
+ * and it never shrinks below the screen width. A single tap or click calls `onTap` with how far down the screen it was. While the browser has zoomed the
  * whole page anyway (iPhone Safari can, see TopBar), pinches and double-taps are left to the browser, so they can bring
  * it back to 100%.
  * Returns `zoomBy`, which zooms around the middle of the screen and returns the new zoom, and `stop`, which removes the listeners.
  */
-export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => void): { zoomBy: (d: number) => number; stop: () => void } {
+export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: number) => void): { zoomBy: (d: number) => number; stop: () => void } {
   let z = 1;
   let pinch: { d: number; z: number } | null = null;
   let tap: { x: number; y: number; at: number } | null = null;
@@ -83,13 +83,13 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: () => voi
     } else {
       last = { ...tap, at: now };
       // Wait out a possible second tap, so a double tap only zooms.
-      single = window.setTimeout(onTap, 320);
+      single = window.setTimeout(onTap, 320, tap.y);
     }
     tap = null;
   };
   // Mouse clicks; the click a touch also fires is already handled above.
-  const click = () => {
-    if (Date.now() - touchedAt > 800) onTap();
+  const click = (e: MouseEvent) => {
+    if (Date.now() - touchedAt > 800) onTap(e.clientY);
   };
 
   onViewport();
