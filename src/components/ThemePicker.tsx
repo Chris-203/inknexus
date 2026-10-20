@@ -1,7 +1,7 @@
 import { saveTheme, setTheme, THEMES, useDefaultTheme, useTheme } from '../lib/theme';
 
 /** A card per color theme with a small preview drawn in its colors, dark themes in the left column and light in the right; the one on show is outlined.
- * A tapped theme is only tried until it is made the default. */
+ * A tapped theme is only tried until Make default is checked. */
 export function ThemePicker() {
   const theme = useTheme();
   const saved = useDefaultTheme();
@@ -24,14 +24,12 @@ export function ThemePicker() {
           </div>
         ))}
       </div>
-      {theme !== saved && (
-        <div className="tsave">
-          Keep {THEMES.find((t) => t.id === theme)?.name}?
-          <button className="btn ghost sm" onClick={saveTheme}>
-            Make default
-          </button>
-        </div>
-      )}
+      <div className="pad">
+        <label className="opt">
+          <input type="checkbox" checked={theme === saved} disabled={theme === saved} onChange={saveTheme} />
+          Make default
+        </label>
+      </div>
     </>
   );
 }
