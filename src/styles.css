@@ -151,6 +151,9 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .tprev i:nth-child(1){left:10px;top:10px;width:34px;height:8px;border-radius:var(--radius-full);background:var(--text)}
 .tprev i:nth-child(2){left:12px;top:26px;width:30px;height:38px;background:var(--surface);border:1px solid var(--line)}
 .tprev i:nth-child(3){left:50px;top:10px;width:34px;height:8px;border-radius:var(--radius-full);background:var(--accent)}
+/* asks to keep a tried theme, below the cards */
+.tsave{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:0 16px 16px;color:var(--muted);font-size:var(--font-sm)}
+#modal .tsave .btn{margin:0;width:auto}
 .presets .chip{padding:5px 11px;font-size:var(--font-sm)}
 .ren{background:none;border:0;color:var(--muted);font-size:var(--font-base);cursor:pointer;min-width:44px;min-height:44px;padding:0;vertical-align:middle}
 .ch b.nm{font-weight:600;overflow-wrap:anywhere}
