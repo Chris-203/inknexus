@@ -173,8 +173,8 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .pg.failed .pgmsg{color:var(--danger)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
-/* the reader's loading screen until the first screen of pages has shown (Reader.tsx), under the reader's bar so it can still go back. It waits a moment before showing, so a chapter loaded ahead opens without a flash of it */
-#rcover{position:fixed;inset:0;z-index:3;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:var(--font-sm);animation:fade-in .2s .15s both}
+/* the reader's loading screen until the first screen of pages has shown (Reader.tsx), under the reader's bar so it can still go back. It shows at once, so the pages never flash underneath */
+#rcover{position:fixed;inset:0;z-index:3;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:var(--font-sm)}
 #rcover.out{animation:fade-out .3s forwards;pointer-events:none}
 #rcover img{width:64px;height:64px}
 #rcover b{font-family:var(--head);font-weight:400;font-size:var(--font-xl);letter-spacing:.02em;color:var(--text)}
@@ -215,4 +215,4 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover,#rcover.out{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){#toast,.rbar,#unzoom{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}

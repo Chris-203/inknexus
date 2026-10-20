@@ -15,8 +15,8 @@ import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
 
-/** How long the loading screen stays at least, in ms, once it shows. */
-const COVER_MIN = 1000;
+/** How long the loading screen stays at least, in ms, from when the chapter opens. */
+const COVER_MIN = 2000;
 
 /** The built-in reader for chapter `n`, MangaDex chapters only. It remounts for each chapter. */
 export function Reader({ x, n }: { x: Series; n: number }) {
@@ -109,11 +109,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     const el = pagesRef.current?.children[waiting];
     const ready = failed || waiting < 0 || (!!el && el.getBoundingClientRect().top >= innerHeight);
     if (!ready) return;
-    // It shows only after 150ms (styles.css), so a chapter ready before then skips it. Once it shows, it stays a
-    // second so it never flashes.
-    const since = performance.now() - opened.current;
-    if (since < 150) return setCover(null);
-    const t = setTimeout(() => setCover('out'), 150 + COVER_MIN - since);
+    // Even a chapter that is already loaded keeps it up for COVER_MIN, so it never flashes.
+    const t = setTimeout(() => setCover('out'), COVER_MIN - (performance.now() - opened.current));
     return () => clearTimeout(t);
   }, [cover, failed, done, shown]);
 
