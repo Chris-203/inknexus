@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { HouseIcon } from '../components/HouseIcon';
 import { ReadButton } from '../components/ReadButton';
@@ -33,6 +33,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const [toTop, setToTop] = useState(false);
   const [progress, setProgress] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  // The loading screen: 'on' until the pages that fill the first screen have shown, then 'out' while it fades, then gone.
+  const [cover, setCover] = useState<'on' | 'out' | null>('on');
+  const opened = useRef(performance.now());
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
@@ -93,6 +96,19 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       removeEventListener('resize', update);
     };
   }, [done, shown]);
+
+  // The loading screen lifts once every page that starts on the first screen has shown or failed, or the chapter
+  // can't be shown (a message says why).
+  const failed = chs?.status === 'error' || pages?.state === 'error' || (chs?.status === 'ready' && !readable);
+  useLayoutEffect(() => {
+    if (cover !== 'on') return;
+    const waiting = done ? pages.value.findIndex((_, i) => !shown[i]) : 0;
+    const el = pagesRef.current?.children[waiting];
+    const ready = failed || waiting < 0 || (!!el && el.getBoundingClientRect().top >= innerHeight);
+    if (!ready) return;
+    // It shows only after 150ms (styles.css), so a chapter ready before then skips the fade too.
+    setCover(performance.now() - opened.current < 150 ? null : 'out');
+  }, [cover, failed, done, shown]);
 
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = nextChapter(list, n);
@@ -243,6 +259,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         </div>
       </TopBar>
       <div id="strip">{content}</div>
+      {cover && (
+        <div id="rcover" className={cover} role="status" onAnimationEnd={() => cover === 'out' && setCover(null)}>
+          <img src="/favicon.svg" alt="" />
+          <b>InkNexus</b>
+          <span>Loading Ch. {fmt(n)}…</span>
+        </div>
+      )}
       {toTop && (
         <button id="totop" className="ibtn float" aria-label="Back to top" onClick={backToTop}>
           ↑
