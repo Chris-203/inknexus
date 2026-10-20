@@ -5,24 +5,22 @@ import { readJson, writeJson } from './storage';
 // The color theme, kept on this device only (not in the library or backups). Its colors are in styles.css.
 const KEY = 'inknexus-theme';
 export const THEMES = [
-  { id: 'canvas', name: 'Deep Canvas' },
-  { id: 'midnight', name: 'Midnight Manga' },
-  { id: 'eink', name: 'E-Ink' },
-  { id: 'pulp', name: 'Vintage Pulp' },
-  { id: 'sumi', name: 'Sumi Ink' },
-  { id: 'washi', name: 'Washi Paper' },
-  { id: 'neon', name: 'Neon Violet' },
-  { id: 'mist', name: 'Violet Mist' },
-  { id: 'matcha', name: 'Matcha' },
-  { id: 'sencha', name: 'Sencha' },
+  { id: 'midnight', name: 'Midnight Manga', dark: true },
+  { id: 'sumi', name: 'Sumi Ink', dark: true },
+  { id: 'neon', name: 'Neon Violet', dark: true },
+  { id: 'matcha', name: 'Matcha', dark: true },
+  { id: 'eink', name: 'E-Ink', dark: false },
+  { id: 'washi', name: 'Washi Paper', dark: false },
+  { id: 'mist', name: 'Violet Mist', dark: false },
+  { id: 'sencha', name: 'Sencha', dark: false },
 ] as const;
 export type Theme = (typeof THEMES)[number]['id'];
 const changes = createChanges();
 
-/** The saved theme, or Deep Canvas. */
+/** The saved theme, or Sumi Ink (also for a theme that was removed). */
 export function getTheme(): Theme {
   const v = readJson(KEY);
-  return THEMES.find((t) => t.id === v)?.id ?? 'canvas';
+  return THEMES.find((t) => t.id === v)?.id ?? 'sumi';
 }
 
 export function useTheme(): Theme {
