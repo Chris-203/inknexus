@@ -1,4 +1,4 @@
-import { getTheme, setTheme } from './theme';
+import { getDefaultTheme, getTheme, saveTheme, setTheme } from './theme';
 
 const memory = new Map<string, string>();
 const root = { dataset: {} as Record<string, string> };
@@ -17,6 +17,8 @@ beforeEach(() => {
   vi.stubGlobal('document', { documentElement: root, body, querySelector: () => meta });
   vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => ` ${BG[root.dataset.theme ?? ''] ?? '#0D0D14'}` }));
   vi.stubGlobal('requestAnimationFrame', frame);
+  // Stop trying a theme left from the last test.
+  setTheme('sumi');
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -32,11 +34,30 @@ describe('theme', () => {
     memory.set('inknexus-theme', JSON.stringify('pulp'));
     expect(getTheme()).toBe('sumi');
   });
-  it('saves the chosen theme, sets it on the page, and colors the browser bar', () => {
+  it('shows a tapped theme on the page and colors the browser bar, without saving it', () => {
     setTheme('eink');
     expect(getTheme()).toBe('eink');
     expect(root.dataset.theme).toBe('eink');
     expect(meta.content).toBe('#f4f4f0');
+    expect(getDefaultTheme()).toBe('sumi');
+    expect(memory.has('inknexus-theme')).toBe(false);
+  });
+  it('saves the theme on show as the default', () => {
+    setTheme('eink');
+    saveTheme();
+    expect(getDefaultTheme()).toBe('eink');
+    expect(memory.get('inknexus-theme')).toBe(JSON.stringify('eink'));
+    setTheme('washi');
+    setTheme('eink');
+    expect(getTheme()).toBe('eink');
+  });
+  it('goes back to the default when it is tapped again', () => {
+    memory.set('inknexus-theme', JSON.stringify('mist'));
+    setTheme('eink');
+    setTheme('mist');
+    expect(getTheme()).toBe('mist');
+    memory.set('inknexus-theme', JSON.stringify('washi'));
+    expect(getTheme()).toBe('washi');
   });
   it('switches every color at once, with no fade left for Safari to read an in-between color from', () => {
     root.dataset.theme = 'sumi';

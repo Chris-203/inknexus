@@ -19,6 +19,9 @@ import * as mangadex from '../sources/mangadex';
 /** How far the pages rise, in px, when pulling up at the end of a chapter to open the next one. */
 const PULL = 80;
 
+/** How long the loading screen stays at least, in ms, from when the chapter opens. */
+const COVER_MIN = 1000;
+
 /** The built-in reader for chapter `n`, MangaDex chapters only. It remounts for each chapter. */
 export function Reader({ x, n }: { x: Series; n: number }) {
   const { navigate, goBack, toast } = useApp();
@@ -46,6 +49,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   // Read by the tap handler, which is set up once per chapter.
   const tapScrollRef = useRef(tapScroll);
   tapScrollRef.current = tapScroll;
+  // The loading screen: 'on' until the pages that fill the first screen have shown, then 'out' while it fades, then gone.
+  const [cover, setCover] = useState<'on' | 'out' | null>('on');
+  const opened = useRef(performance.now());
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
@@ -142,6 +148,20 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) removeEventListener(ev, hold);
     };
   }, [auto, paused, chaptersOpen, done, speed]);
+
+  // The loading screen lifts once every page that starts on the first screen has shown or failed, or the chapter
+  // can't be shown (a message says why).
+  const failed = chs?.status === 'error' || pages?.state === 'error' || (chs?.status === 'ready' && !readable);
+  useLayoutEffect(() => {
+    if (cover !== 'on') return;
+    const waiting = done ? pages.value.findIndex((_, i) => !shown[i]) : 0;
+    const el = pagesRef.current?.children[waiting];
+    const ready = failed || waiting < 0 || (!!el && el.getBoundingClientRect().top >= innerHeight);
+    if (!ready) return;
+    // Even a chapter that is already loaded keeps it up for COVER_MIN, so it never flashes.
+    const t = setTimeout(() => setCover('out'), COVER_MIN - (performance.now() - opened.current));
+    return () => clearTimeout(t);
+  }, [cover, failed, done, shown]);
 
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = nextChapter(list, n);
@@ -384,6 +404,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
             <path d="M18 11v14M12 19l6 6 6-6" />
           </svg>
           <span>Pull to read next chapter</span>
+        </div>
+      )}
+      {cover && (
+        <div id="rcover" className={cover} role="status" onAnimationEnd={() => cover === 'out' && setCover(null)}>
+          <img src="/favicon.svg" alt="" />
+          <b>InkNexus</b>
+          <span>Loading Ch. {fmt(n)}…</span>
         </div>
       )}
       {toTop && (
