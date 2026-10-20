@@ -42,6 +42,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   // Read by the tap handler, which is set up once per chapter.
   const tapScrollRef = useRef(tapScroll);
   tapScrollRef.current = tapScroll;
+  // Until when a tap's smooth scroll is still moving; auto scroll waits for it, since scrolling also would stop it short.
+  const tapMoving = useRef(0);
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
@@ -78,6 +80,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       }
       // Most of a screen, so the last lines stay in view to read on from.
       const top = innerHeight * 0.8 * (act === 'up' ? -1 : 1);
+      tapMoving.current = performance.now() + 600;
       scrollBy({ top, behavior: scrollMotion() });
     });
     zoom.current = z;
@@ -110,7 +113,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     };
   }, [done, shown]);
 
-  // Auto scroll moves the pages on each frame, and waits while a finger is on the screen or the chapter list is open.
+  // Auto scroll moves the pages on each frame, and waits while a finger is on the screen, a tap is scrolling, or the chapter list is open.
   useEffect(() => {
     if (!auto || paused || chaptersOpen || !done) return;
     let raf = 0;
@@ -121,7 +124,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       held = e.touches.length > 0;
     };
     const frame = (t: number) => {
-      if (!held) {
+      if (!held && t > tapMoving.current) {
         const [px, rest] = scrollDistance(speed, t - last, carry);
         carry = rest;
         if (innerHeight + scrollY >= document.documentElement.scrollHeight - 1) return setPaused(true);
