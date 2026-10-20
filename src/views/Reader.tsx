@@ -16,7 +16,7 @@ import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
 
 /** How long the loading screen stays at least, in ms, from when the chapter opens. */
-const COVER_MIN = 2000;
+const COVER_MIN = 1000;
 
 /** The built-in reader for chapter `n`, MangaDex chapters only. It remounts for each chapter. */
 export function Reader({ x, n }: { x: Series; n: number }) {
