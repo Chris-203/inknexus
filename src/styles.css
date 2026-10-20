@@ -173,10 +173,10 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .pg.failed .pgmsg{color:var(--danger)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
-/* pull up at the end of a chapter for the next one (Reader.tsx): the pages rise over this bar, which waits below the screen. The page itself does not bounce there, so the pull is all the pages show */
+/* pull up at the end of a chapter for the next one (Reader.tsx): the pages rise over this bar, which waits below the screen with an arrow over its text. The page itself does not bounce there, so the pull is all the pages show */
 html:has(.pullnext){overscroll-behavior-y:none}
 #strip{transition:transform .2s ease-out}
-.pullnext{position:fixed;left:0;right:0;bottom:0;height:calc(80px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:var(--font-sm);pointer-events:none;transition:transform .2s ease-out}
+.pullnext{position:fixed;left:0;right:0;bottom:0;height:calc(80px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:var(--font-sm);pointer-events:none;transition:transform .2s ease-out}
 #strip.pulling,.pullnext.pulling{transition:none}
 .pullnext svg{width:36px;height:36px;fill:none;stroke:var(--line);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .pullnext .ring{stroke:var(--accent);stroke-dasharray:1;transform:rotate(-90deg);transform-origin:center}

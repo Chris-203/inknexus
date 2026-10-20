@@ -220,11 +220,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
               ‹ Ch. {fmt(prev.num)}
             </button>
           )}
-          {next ? (
+          {/* A chapter readable here opens by pulling up at the end; only one on an official site keeps a button. */}
+          {next?.ext && (
             <button className="btn" onClick={() => toChapter(next.num)}>
               Ch. {fmt(next.num)} ›
             </button>
-          ) : (
+          )}
+          {!next && (
             <button className="btn" onClick={toSeries}>
               Back to series
             </button>
@@ -290,7 +292,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           <svg viewBox="0 0 36 36">
             <circle cx="18" cy="18" r="15" pathLength="1" />
             <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
-            <path d="M18 25V11M12 17l6-6 6 6" />
+            <path d="M18 11v14M12 19l6 6 6-6" />
           </svg>
           <span>Pull to read next chapter</span>
         </div>
