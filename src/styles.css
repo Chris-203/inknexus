@@ -116,19 +116,19 @@ details.more .pad{padding:0 12px 12px}
 .chnav,.rtools,#showbar{background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line)}
 /* the chapter switcher: ‹ Ch. 12 / 57 › */
 .chnav{display:flex;align-items:center;border-radius:10px}
-.rbar .chnav{flex-wrap:wrap}
+.rbar .chnav{flex-wrap:wrap;justify-content:center}
 .chnav button{background:none;border:0;min-width:44px;height:44px;padding:0;font:20px system-ui,sans-serif;color:var(--text);cursor:pointer}
 .chnav button:disabled{opacity:.35;cursor:default}
 .chnav button.txt{padding:0 12px;font:700 var(--font-sm) var(--body)}
 .rbar .chnav b{flex:none;padding:0 4px;font-size:15px;white-space:nowrap}
 .chnav b span{color:var(--muted);font-weight:400}
-/* the chapter's credit on its own line under the switcher; width 0 keeps it from widening the switcher */
-.chcredit{display:flex;justify-content:center;width:0;min-width:100%;margin:-6px 0 0;padding:0 10px 6px;overflow:hidden;color:var(--muted);font-size:var(--font-xs);white-space:nowrap}
-.chcredit span{display:flex;flex:none}
+/* the chapter's credit on its own line under the switcher; width 0 and no side padding keep it from widening the switcher */
+.chcredit{display:flex;justify-content:center;width:0;min-width:100%;margin:-6px 0 0;padding-bottom:6px;overflow:hidden;color:var(--muted);font-size:var(--font-xs);white-space:nowrap}
+.chcredit span{display:flex;flex:none;margin:0 10px}
 .chcredit i{font-style:normal;overflow:hidden;text-overflow:ellipsis}
 .chcredit.long{justify-content:flex-start;clip-path:inset(0 10px)}
-.chcredit.long span{padding-right:32px;animation:chcredit 10s linear infinite}
-@keyframes chcredit{to{transform:translateX(-100%)}}
+.chcredit.long span{margin:0;padding-right:32px;animation:chcredit 10s linear infinite}
+@keyframes chcredit{from{transform:translateX(10px)}to{transform:translateX(calc(10px - 100%))}}
 /* the side toolbar under the switcher */
 .rtools{position:absolute;right:12px;top:calc(60px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:12px}
 .rtools .ibtn{background:none;border:0}
@@ -239,4 +239,4 @@ html:has(.pullnext){overscroll-behavior-y:none}
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,.pullnext{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,.pullnext{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
