@@ -173,6 +173,11 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .pg.failed .pgmsg{color:var(--danger)}
 .endbar{display:flex;gap:10px;padding:20px 16px}
 .endbar .btn{flex:1}
+/* the room below the end of a chapter: scrolling to its bottom opens the next one, and the track fills on the way */
+.pullnext{height:60vh;padding:24px 16px;text-align:center;color:var(--muted);font-size:var(--font-sm)}
+.pullnext p{margin:0 0 12px}
+.pulltrack{height:4px;max-width:240px;margin:0 auto;border-radius:var(--radius-full);background:var(--line);overflow:hidden}
+.pulltrack div{height:100%;background:var(--accent);transform-origin:0 0}
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}

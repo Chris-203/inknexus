@@ -27,11 +27,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
+  const pull = useRef<HTMLDivElement>(null);
   const failedOnce = useRef(false);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [pulled, setPulled] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
@@ -102,6 +104,24 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   useEffect(() => {
     if (allShown) return preloadChapter(next);
   }, [allShown, next?.id]);
+
+  // Scrolling on past the end opens the next chapter, as in webtoon apps: the space below the end fills a bar, and
+  // reaching its bottom opens the chapter. Only once every page has shown, so a short or loading chapter never skips ahead.
+  const pullsOn = allShown && next && !next.ext ? next.num : undefined;
+  useEffect(() => {
+    if (pullsOn === undefined) return;
+    const onScroll = () => {
+      const r = pull.current?.getBoundingClientRect();
+      if (!r) return;
+      setPulled(readProgress(r.top, r.height, innerHeight));
+      // A pixel or two of slack, since the page's end can sit a fraction of a pixel below the screen's.
+      if (r.bottom > innerHeight + 2) return;
+      removeEventListener('scroll', onScroll);
+      navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    return () => removeEventListener('scroll', onScroll);
+  }, [pullsOn, x.id, navigate]);
 
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
@@ -191,6 +211,14 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           )}
         </div>
         {credit}
+        {pullsOn !== undefined && (
+          <div className="pullnext" ref={pull}>
+            <p>Keep scrolling for Ch. {fmt(pullsOn)}</p>
+            <div className="pulltrack">
+              <div style={{ transform: `scaleX(${pulled})` }} />
+            </div>
+          </div>
+        )}
       </>
     );
   }
