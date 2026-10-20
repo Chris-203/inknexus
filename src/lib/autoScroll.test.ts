@@ -1,4 +1,4 @@
-import { getScrollSpeed, scrollDistance, setScrollSpeed, stepSpeed } from './autoScroll';
+import { getScrollSpeed, getTapScroll, scrollDistance, setScrollSpeed, setTapScroll, stepSpeed, tapAction } from './autoScroll';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -36,5 +36,20 @@ describe('auto scroll', () => {
   });
   it('never jumps after a long gap', () => {
     expect(scrollDistance(1, 5000, 0)[0]).toBe(17);
+  });
+  it('keeps tap to scroll off unless turned on', () => {
+    expect(getTapScroll()).toBe(false);
+    setTapScroll(true);
+    expect(getTapScroll()).toBe(true);
+    memory.set('inknexus-tap-scroll', '"yes"');
+    expect(getTapScroll()).toBe(false);
+  });
+  it('tapAction splits the screen into thirds', () => {
+    expect(tapAction(0, 900)).toBe('up');
+    expect(tapAction(299, 900)).toBe('up');
+    expect(tapAction(300, 900)).toBe('bar');
+    expect(tapAction(600, 900)).toBe('bar');
+    expect(tapAction(601, 900)).toBe('down');
+    expect(tapAction(899, 900)).toBe('down');
   });
 });
