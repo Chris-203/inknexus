@@ -15,7 +15,6 @@ export function ThemePicker() {
                   <i />
                   <i />
                   <i />
-                  <i />
                 </span>
                 {t.name}
               </button>
