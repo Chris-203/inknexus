@@ -15,6 +15,9 @@ import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
 
+/** How far the pages rise, in px, when pulling up at the end of a chapter to open the next one. */
+const PULL = 80;
+
 /** The built-in reader for chapter `n`, MangaDex chapters only. It remounts for each chapter. */
 export function Reader({ x, n }: { x: Series; n: number }) {
   const { navigate, goBack, toast } = useApp();
@@ -27,7 +30,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
-  const pull = useRef<HTMLDivElement>(null);
   const failedOnce = useRef(false);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
@@ -105,22 +107,40 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (allShown) return preloadChapter(next);
   }, [allShown, next?.id]);
 
-  // Scrolling on past the end opens the next chapter, as in webtoon apps: the space below the end fills a bar, and
-  // reaching its bottom opens the chapter. Only once every page has shown, so a short or loading chapter never skips ahead.
+  // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px over
+  // a ring that fills, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
+  // Only once every page has shown, so a short or loading chapter never skips ahead.
   const pullsOn = allShown && next && !next.ext ? next.num : undefined;
   useEffect(() => {
     if (pullsOn === undefined) return;
-    const onScroll = () => {
-      const r = pull.current?.getBoundingClientRect();
-      if (!r) return;
-      setPulled(readProgress(r.top, r.height, innerHeight));
-      // A pixel or two of slack, since the page's end can sit a fraction of a pixel below the screen's.
-      if (r.bottom > innerHeight + 2) return;
-      removeEventListener('scroll', onScroll);
+    let from: number | null = null;
+    const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+    const move = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || (from === null && !atEnd())) {
+        from = null;
+        return setPulled(0);
+      }
+      const y = e.touches[0]!.clientY;
+      from ??= y;
+      const d = Math.min(PULL, Math.max(0, (from - y) / 2));
+      setPulled(d);
+      if (d < PULL) return;
+      from = null;
+      removeEventListener('touchmove', move);
       navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
     };
-    addEventListener('scroll', onScroll, { passive: true });
-    return () => removeEventListener('scroll', onScroll);
+    const release = () => {
+      from = null;
+      setPulled(0);
+    };
+    addEventListener('touchmove', move, { passive: true });
+    addEventListener('touchend', release);
+    addEventListener('touchcancel', release);
+    return () => {
+      removeEventListener('touchmove', move);
+      removeEventListener('touchend', release);
+      removeEventListener('touchcancel', release);
+    };
   }, [pullsOn, x.id, navigate]);
 
   const toSeries = () => goBack({ name: 'series', id: x.id });
@@ -211,14 +231,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           )}
         </div>
         {credit}
-        {pullsOn !== undefined && (
-          <div className="pullnext" ref={pull}>
-            <p>Keep scrolling for Ch. {fmt(pullsOn)}</p>
-            <div className="pulltrack">
-              <div style={{ transform: `scaleX(${pulled})` }} />
-            </div>
-          </div>
-        )}
       </>
     );
   }
@@ -270,7 +282,19 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           )}
         </div>
       </TopBar>
-      <div id="strip">{content}</div>
+      <div id="strip" className={pulled ? 'pulling' : undefined} style={pulled ? { transform: `translateY(${-pulled}px)` } : undefined}>
+        {content}
+      </div>
+      {pullsOn !== undefined && (
+        <div className={`pullnext${pulled ? ' pulling' : ''}`} aria-hidden="true" style={{ transform: `translateY(${PULL - pulled}px)` }}>
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="15" pathLength="1" />
+            <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
+            <path d="M18 25V11M12 17l6-6 6 6" />
+          </svg>
+          <span>Pull to read next chapter</span>
+        </div>
+      )}
       {toTop && (
         <button id="totop" className="ibtn float" aria-label="Back to top" onClick={backToTop}>
           ↑
