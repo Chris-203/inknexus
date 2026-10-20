@@ -4,6 +4,7 @@ import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
 import { fmt } from '../lib/format';
+import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { getState, removeSeries, useStore } from '../lib/store';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
@@ -153,10 +154,17 @@ export function Library() {
 /** Settings in a drawer from the right edge, opened from the gear. */
 function SettingsSheet({ onClose }: { onClose: () => void }) {
   const sheet = useSheet(onClose);
+  const updates = useShowsReadingUpdates();
   return (
     <Sheet label="Settings" sheet={sheet} drawer>
       <h2>Settings</h2>
       <ThemePicker />
+      <div className="pad">
+        <label className="opt">
+          <input type="checkbox" checked={updates} onChange={(e) => setShowsReadingUpdates(e.target.checked)} />
+          Show reading updates, like "Chapter 5 marked read" and "Zoom 150%"
+        </label>
+      </div>
     </Sheet>
   );
 }

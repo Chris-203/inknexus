@@ -49,7 +49,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         ob.disconnect();
         if (n > (findSeries(x.id)?.last || 0)) {
           setLast(x.id, n);
-          toast(`Chapter ${fmt(n)} marked read`);
+          toast(`Chapter ${fmt(n)} marked read`, true);
         }
       },
       { threshold: 0.6 },
@@ -113,7 +113,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     const z = zoom.current?.zoomBy(d);
     // Zooming scrolls to keep the middle in place; that is not the reader scrolling on.
     base.current = scrollY;
-    if (z) toast(`Zoom ${Math.round(z * 100)}%`);
+    if (z) toast(`Zoom ${Math.round(z * 100)}%`, true);
   };
 
   // Data-saver image first; on error try full quality once, then mark the page failed and say so once for this chapter.
