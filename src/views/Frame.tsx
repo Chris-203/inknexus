@@ -38,20 +38,20 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
   const next = () => {
     if (!l.tpl) return;
     setLast(x.id, Math.max(x.last || 0, view.ch));
-    toast(`Chapter ${fmt(view.ch)} marked read`);
+    toast(`Chapter ${fmt(view.ch)} marked read`, true);
     toChapter(view.ch + 1);
   };
   const plusOne = () => {
     const n = nextWhole(x.last || 0);
     setLast(x.id, n);
-    toast(`Now on chapter ${fmt(n)}`);
+    toast(`Now on chapter ${fmt(n)}`, true);
   };
   // The site is laid out narrower and scaled back up to fill the screen, like the browser's text zoom.
   const zoom = (d: number) => {
     const z = stepZoom(fz, d);
     setFz(z);
     setFrameZoom(site, z);
-    toast(`Site zoom ${Math.round(z * 100)}%`);
+    toast(`Site zoom ${Math.round(z * 100)}%`, true);
   };
 
   return (
