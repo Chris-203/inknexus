@@ -207,7 +207,7 @@ function useOpenLink(x: SeriesT, l: Link, i: number, shown: number) {
     const url = mode === 'resume' ? l.resume || '' : n && l.tpl ? chapterLink(l.tpl, n) : '';
     if (opensInBrowser(site)) {
       window.open(url || l.url, '_blank', 'noopener');
-      return toast(n ? `Opened chapter ${fmt(n)} in the browser` : 'Opened in the browser');
+      return toast(n ? `Opened chapter ${fmt(n)} in the browser` : 'Opened in the browser', true);
     }
     navigate({ name: 'frame', id: x.id, i, ch: n, url });
   };
