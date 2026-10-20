@@ -83,12 +83,13 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     return () => removeEventListener('scroll', onScroll);
   }, []);
 
-  // The track along the top: how far through the pages, kept up to date as pages load and change height.
+  // The track along the bottom: how far through the pages, kept up to date as pages load and change height.
   useEffect(() => {
     if (!done) return;
+    const loading = pages.value.findIndex((_, i) => !shown[i]);
     const update = () => {
-      const r = pagesRef.current?.getBoundingClientRect();
-      if (r) setProgress(readProgress(r.top, r.height, innerHeight));
+      const boxes = [...(pagesRef.current?.children ?? [])].map((e) => e.getBoundingClientRect());
+      setProgress(readProgress(boxes, innerHeight, loading < 0 ? boxes.length : loading));
     };
     update();
     addEventListener('scroll', update, { passive: true });
