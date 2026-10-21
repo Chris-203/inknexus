@@ -172,8 +172,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (allShown) return preloadChapter(next);
   }, [allShown, next?.id]);
 
-  // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px over
-  // a ring that fills, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
+  // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px with
+  // the ring that ends them filling, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
   // Only once every page has shown, so a short or loading chapter never skips ahead.
   const pullsOn = allShown && next && !next.ext ? next.num : undefined;
   useEffect(() => {
@@ -376,6 +376,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       </TopBar>
       <div id="strip" className={pulled ? 'pulling' : undefined} style={pulled ? { transform: `translateY(${-pulled}px)` } : undefined}>
         {content}
+        {pullsOn !== undefined && (
+          <div className="pullnext" aria-hidden="true">
+            <svg viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15" pathLength="1" />
+              <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
+              <path d="M18 11v14M12 19l6 6 6-6" />
+            </svg>
+            <span>Pull to read next chapter</span>
+          </div>
+        )}
       </div>
       {auto && done && (
         <div id="autoscroll" className="chnav" role="toolbar" aria-label="Auto scroll">
@@ -394,16 +404,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           <button aria-label="Stop auto scroll" onClick={toggleAuto}>
             ×
           </button>
-        </div>
-      )}
-      {pullsOn !== undefined && (
-        <div className={`pullnext${pulled ? ' pulling' : ''}`} aria-hidden="true" style={{ transform: `translateY(${PULL - pulled}px)` }}>
-          <svg viewBox="0 0 36 36">
-            <circle cx="18" cy="18" r="15" pathLength="1" />
-            <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
-            <path d="M18 11v14M12 19l6 6 6-6" />
-          </svg>
-          <span>Pull to read next chapter</span>
         </div>
       )}
       {cover && (
