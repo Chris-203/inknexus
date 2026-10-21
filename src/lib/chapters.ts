@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { why } from './api';
 import { createChanges } from './changes';
+import { saveData } from './preload';
 import { isObj, readJson, writeJson } from './storage';
 import type { ChapterList } from './types';
 import { chapters as fetchChapters } from '../sources/mangadex';
@@ -63,24 +64,60 @@ export function chapterState(md: string): ChaptersState {
   return error ? { status: 'error', error } : { status: 'loading' };
 }
 
+/** Load a series' chapter list and tell every subscriber when it finishes. A failure is kept only with `keepError`. */
+function fetchList(md: string, keepError: boolean): Promise<void> {
+  pending.add(md);
+  return fetchChapters(md)
+    .then((list) => {
+      cache.delete(md);
+      cache.set(md, { at: Date.now(), list });
+      save();
+    })
+    .catch((e) => {
+      if (keepError) errors.set(md, why(e));
+      throw e;
+    })
+    .finally(() => {
+      pending.delete(md);
+      changes.emit();
+    });
+}
+
 /**
  * Load a series' chapter list unless it is fresh, failed, or already loading. Every subscriber hears when it finishes.
  * A failed reload keeps the older list and is not tried again until retried, so a rate limit is not piled on.
  */
 export function loadChapters(md: string) {
   if (cachedChapters(md) || errors.has(md) || pending.has(md)) return;
-  pending.add(md);
-  fetchChapters(md)
-    .then((list) => {
-      cache.delete(md);
-      cache.set(md, { at: Date.now(), list });
-      save();
-    })
-    .catch((e) => void errors.set(md, why(e)))
-    .finally(() => {
-      pending.delete(md);
-      changes.emit();
-    });
+  fetchList(md, true).catch(() => {});
+}
+
+/** Series whose lists are loaded ahead, next first. */
+const ahead: string[] = [];
+let loadingAhead = false;
+
+/**
+ * Load the lists of the first `mds` ahead, one at a time, so they open without "Loading chapters…". Only as many series
+ * as lists are kept, so loading ahead never pushes out a list it loaded itself; only lists missing from the device; none
+ * on slow or data-saving connections. Replaces the series still waiting from an earlier call. The first failure stops
+ * the queue and is not kept, so opening that series tries again.
+ */
+export function prefetchChapters(mds: string[]) {
+  if (saveData()) return;
+  ahead.splice(0, ahead.length, ...mds.slice(0, KEEP));
+  if (loadingAhead) return;
+  loadingAhead = true;
+  void (async () => {
+    try {
+      for (let md = ahead.shift(); md; md = ahead.shift()) {
+        if (listFor(md, MAX_AGE) || errors.has(md) || pending.has(md)) continue;
+        await fetchList(md, false);
+      }
+    } catch {
+      ahead.length = 0;
+    }
+    loadingAhead = false;
+  })();
 }
 
 /** Forget a failed load and try again. */

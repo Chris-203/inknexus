@@ -25,7 +25,8 @@ export function Series({ x }: { x: SeriesT }) {
   const all = sourcesOf(x);
   const vis = all.filter((q) => !q.h);
   const cur = vis.some((q) => q.k === x.src) ? x.src! : vis[0]?.k || '';
-  const chs = useChapters(cur === 'md' ? x.md : null);
+  // Loaded while another source is shown too, so switching to MangaDex shows its chapters at once.
+  const chs = useChapters(x.mdh ? null : x.md);
 
   // Keep the field in step when the number changes elsewhere (− / +, paste).
   useEffect(() => setLastText(String(x.last || 0)), [x.last]);
