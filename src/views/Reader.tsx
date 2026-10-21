@@ -265,17 +265,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   else if (pages?.state === 'error') content = <p className="hint">Could not load this chapter ({pages.error}). Try again, or switch to a different source.</p>;
   else if (!readable || pages?.state !== 'done') content = <p className="hint">Loading pages…</p>;
   else {
-    const credit = (
-      <p className="credit">
-        {readable.grp ? `Scanlation by ${readable.grp}` : 'No scanlation group credited'} · via MangaDex.{' '}
-        <a href={mangadex.chapterUrl(readable.id)} target="_blank" rel="noopener noreferrer">
-          Read on MangaDex ↗
-        </a>
-      </p>
-    );
     content = (
       <>
-        {credit}
         <div id="zwrap" ref={wrap}>
           <div id="pages" ref={pagesRef}>
             {pages.value.map((u, i) => (
@@ -320,7 +311,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
             </button>
           )}
         </div>
-        {credit}
       </>
     );
   }
@@ -349,6 +339,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           <button aria-label={next ? `Chapter ${fmt(next.num)}` : 'No later chapter'} disabled={!next} onClick={() => next && toChapter(next.num)}>
             ›
           </button>
+          {readable && <Credit c={readable} />}
         </div>
         <div className="rtools" role="toolbar" aria-label="Reader" aria-orientation="vertical">
           <button className="ibtn" aria-label={`Back to ${x.title}`} onClick={toSeries}>
@@ -435,6 +426,29 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 /** Smooth scrolling, unless the device asks for reduced motion. */
 function scrollMotion(): ScrollBehavior {
   return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
+/**
+ * The chapter's credit under the chapter switcher: its scanlation group and MangaDex, which MangaDex's API rules require.
+ * A credit too long for the switcher scrolls right to left, or with reduced motion has its group name cut short.
+ */
+function Credit({ c }: { c: Chapter }) {
+  const line = useRef<HTMLParagraphElement>(null);
+  const [long, setLong] = useState(false);
+  useLayoutEffect(() => setLong(line.current!.scrollWidth > line.current!.clientWidth), []);
+  const grp = c.grp || 'No group credited';
+  const credit = (copy: boolean) => (
+    <span aria-hidden={copy || undefined} style={long ? { animationDuration: `${(grp.length + 11) * 0.3}s` } : undefined}>
+      <i>{grp}</i>&nbsp;· MangaDex
+    </span>
+  );
+  // Two copies, each moved by its own width, so the loop starts again exactly where it began.
+  return (
+    <p ref={line} className={`chcredit${long ? ' long' : ''}`}>
+      {credit(false)}
+      {long && credit(true)}
+    </p>
+  );
 }
 
 /** Every chapter of the series, in the library's sort order, opened on the one being read. */
