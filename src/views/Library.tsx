@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../context';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
+import { loadChapters, prefetchChapters } from '../lib/chapters';
 import { fmt } from '../lib/format';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { getState, removeSeries, useStore } from '../lib/store';
@@ -29,6 +30,12 @@ export function Library() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
   const f = updates.failed;
+  const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
+
+  // Waits for the new-chapter checks rather than adding to them.
+  useEffect(() => {
+    if (!updates.checking) prefetchChapters(mds);
+  }, [lib, updates.checking]);
 
   const toggle = (id: string) => setPicked((p) => p && (p.includes(id) ? p.filter((k) => k !== id) : [...p, id]));
   const remove = (ids: string[]) => {
@@ -106,6 +113,10 @@ export function Library() {
               key={x.id}
               className={`card${on ? ' on' : ''}`}
               aria-pressed={picked ? on : undefined}
+              // The press comes a moment before the click, so a list still loading starts that much sooner.
+              onPointerDown={() => {
+                if (x.md && !x.mdh && !picked) loadChapters(x.md);
+              }}
               onClick={() => (picked ? toggle(x.id) : navigate({ name: 'series', id: x.id }))}
             >
               {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}

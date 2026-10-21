@@ -8,7 +8,7 @@ export function nextChapter(list: Chapter[], n: number): Chapter | undefined {
 }
 
 /** True when the browser asks to save data or the connection is 2G. */
-function saveData(): boolean {
+export function saveData(): boolean {
   const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   return !!c?.saveData || c?.effectiveType === 'slow-2g' || c?.effectiveType === '2g';
 }

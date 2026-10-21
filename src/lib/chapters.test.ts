@@ -157,4 +157,57 @@ describe('chapter lists kept on the device', () => {
     expect(store.saved()).toEqual(before);
     off();
   });
+
+  describe('loading lists ahead', () => {
+    /** The series each fetch asked for, in order. */
+    const asked = (fetch: { mock: { calls: unknown[][] } }) => fetch.mock.calls.map(([u]) => decodeURIComponent(String(u)).match(/manga\/([^/]+)\/feed/)![1]);
+
+    it('loads the lists missing from the device one at a time, in order', async () => {
+      const c = await start(storage([['b', { at: Date.now() - 2 * 60 * MIN, list: list(1) }]]));
+      let open = 0;
+      let most = 0;
+      c.fetch.mockImplementation(async () => {
+        most = Math.max(most, ++open);
+        await new Promise((r) => setTimeout(r, 5));
+        open--;
+        return new Response(JSON.stringify({ data: [{ id: 'c9', attributes: { chapter: '9', pages: 3 } }], total: 1 }));
+      });
+      c.prefetchChapters(['a', 'b', 'c']);
+      await vi.waitFor(() => expect(c.chapterState('c')).toMatchObject({ status: 'ready' }));
+      expect(asked(c.fetch)).toEqual(['a', 'c']);
+      expect(most).toBe(1);
+      // The saved list stays as it was until the series opens.
+      expect(c.chapterState('b')).toEqual({ status: 'ready', list: list(1) });
+    });
+
+    it('loads only the first 30 series', async () => {
+      const c = await start(storage([]));
+      c.prefetchChapters(Array.from({ length: 40 }, (_, i) => `s${i}`));
+      await vi.waitFor(() => expect(c.chapterState('s29')).toMatchObject({ status: 'ready' }));
+      expect(c.fetch).toHaveBeenCalledTimes(30);
+      expect(c.chapterState('s30')).toEqual({ status: 'loading' });
+    });
+
+    it('stops at the first failure and does not keep it, so opening the series tries again', async () => {
+      const c = await start(storage([]), () => new Response('', { status: 429 }));
+      const done = vi.fn();
+      const off = c.subscribeChapters(done);
+      c.prefetchChapters(['a', 'b']);
+      await vi.waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+      await new Promise((r) => setTimeout(r, 10));
+      expect(asked(c.fetch)).toEqual(['a']);
+      expect(c.chapterState('a')).toEqual({ status: 'loading' });
+      c.loadChapters('a');
+      expect(c.fetch).toHaveBeenCalledTimes(2);
+      off();
+    });
+
+    it('waits for a list that is already loading instead of asking twice', async () => {
+      const c = await start(storage([]));
+      c.loadChapters('a');
+      c.prefetchChapters(['a']);
+      await vi.waitFor(() => expect(c.chapterState('a')).toMatchObject({ status: 'ready' }));
+      expect(c.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
 });
