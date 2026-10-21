@@ -46,6 +46,9 @@ export function App() {
   const gone = 'id' in view && !x;
 
   useEffect(() => {
+    // The app places every view itself. Left to the browser, going back could scroll the reader, which is still showing,
+    // to where the previous view was, down to the end of the chapter, and mark it read.
+    history.scrollRestoration = 'manual';
     history.replaceState({ v: view, back: hasBack() }, '');
     const pop = (e: PopStateEvent) => setView(viewOf(e.state) || { name: 'library' });
     addEventListener('popstate', pop);

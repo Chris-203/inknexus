@@ -10,6 +10,7 @@ import { useChapters } from '../lib/chapters';
 import { chapterNote, fmt } from '../lib/format';
 import { nextChapter, preloadChapter } from '../lib/preload';
 import { readProgress } from '../lib/progress';
+import { getSpot, setSpot, spotAt, type Spot } from '../lib/spots';
 import { findSeries, setLast, useStore } from '../lib/store';
 import type { Chapter, Series } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
@@ -33,7 +34,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const done = pages?.state === 'done';
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
-  const end = useRef<HTMLDivElement>(null);
   const failedOnce = useRef(false);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
@@ -58,24 +58,34 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   // Where the bar was last shown, or the highest point scrolled to since; scrolling 30px down from there hides it.
   // Scrolling up leaves it hidden; a tap brings it back.
   const base = useRef(0);
+  // Where this chapter was left, to open it there again once the pages down to that spot have loaded.
+  const [resume, setResume] = useState(() => getSpot(x.id, n));
+  // Where the reader is now, saved on leaving; null at the end of the chapter, so it opens at the top again.
+  // Undefined until the pages are measured, so leaving while they load keeps the saved spot.
+  const spot = useRef<Spot | null | undefined>(undefined);
+  const finished = useRef(false);
 
-  // Reaching the end of the chapter marks it read.
   useEffect(() => {
-    if (!done || !end.current) return;
-    const ob = new IntersectionObserver(
-      (en) => {
-        if (!en[0]?.isIntersecting) return;
-        ob.disconnect();
-        if (n > (findSeries(x.id)?.last || 0)) {
-          setLast(x.id, n);
-          toast(`Chapter ${fmt(n)} marked read`, true);
-        }
-      },
-      { threshold: 0.6 },
-    );
-    ob.observe(end.current);
-    return () => ob.disconnect();
-  }, [done, x.id, n, toast]);
+    const save = () => spot.current !== undefined && setSpot(x.id, n, spot.current);
+    const hide = () => document.visibilityState === 'hidden' && save();
+    document.addEventListener('visibilitychange', hide);
+    return () => {
+      document.removeEventListener('visibilitychange', hide);
+      save();
+    };
+  }, [x.id, n]);
+
+  // Opening a chapter where it was left: the pages above that spot load first, so it lands on the same picture.
+  useLayoutEffect(() => {
+    if (!resume || !done) return;
+    const el = pagesRef.current?.children[resume.i];
+    if (!el) return setResume(null);
+    if (pages.value.some((_, i) => i <= resume.i && !shown[i])) return;
+    const b = el.getBoundingClientRect();
+    scrollBy(0, b.top + resume.f * b.height);
+    base.current = scrollY;
+    setResume(null);
+  }, [resume, done, shown]);
 
   useEffect(() => {
     if (!done || !wrap.current || !pagesRef.current) return;
@@ -105,12 +115,23 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   }, []);
 
   // The track along the bottom: how far through the pages, kept up to date as pages load and change height.
+  // Reading to the end of the last page, which it only reaches once every page has loaded or failed, marks the chapter read.
   useEffect(() => {
-    if (!done) return;
+    if (!done || resume) return;
     const loading = pages.value.findIndex((_, i) => !shown[i]);
     const update = () => {
       const boxes = [...(pagesRef.current?.children ?? [])].map((e) => e.getBoundingClientRect());
-      setProgress(readProgress(boxes, innerHeight, loading < 0 ? boxes.length : loading));
+      // The pages are already gone when the reader closes; there is nothing to measure then.
+      if (!boxes.length) return;
+      const p = readProgress(boxes, innerHeight, loading < 0 ? boxes.length : loading);
+      setProgress(p);
+      spot.current = p < 1 ? spotAt(boxes) : null;
+      if (p < 1 || finished.current) return;
+      finished.current = true;
+      if (n > (findSeries(x.id)?.last || 0)) {
+        setLast(x.id, n);
+        toast(`Chapter ${fmt(n)} marked read`, true);
+      }
     };
     update();
     addEventListener('scroll', update, { passive: true });
@@ -119,7 +140,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       removeEventListener('scroll', update);
       removeEventListener('resize', update);
     };
-  }, [done, shown]);
+  }, [done, shown, resume, x.id, n, toast]);
 
   // Auto scroll moves the pages on each frame, and waits while a finger is on the screen or the chapter list is open.
   useEffect(() => {
@@ -153,7 +174,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   // can't be shown (a message says why).
   const failed = chs?.status === 'error' || pages?.state === 'error' || (chs?.status === 'ready' && !readable);
   useLayoutEffect(() => {
-    if (cover !== 'on') return;
+    if (cover !== 'on' || (resume && !failed)) return;
     const waiting = done ? pages.value.findIndex((_, i) => !shown[i]) : 0;
     const el = pagesRef.current?.children[waiting];
     const ready = failed || waiting < 0 || (!!el && el.getBoundingClientRect().top >= innerHeight);
@@ -161,7 +182,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     // Even a chapter that is already loaded keeps it up for COVER_MIN, so it never flashes.
     const t = setTimeout(() => setCover('out'), COVER_MIN - (performance.now() - opened.current));
     return () => clearTimeout(t);
-  }, [cover, failed, done, shown]);
+  }, [cover, failed, done, shown, resume]);
 
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = nextChapter(list, n);
@@ -274,7 +295,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
                 <img
                   src={imageSrc(u.a)}
                   referrerPolicy="same-origin"
-                  loading="lazy"
+                  loading={resume && i <= resume.i ? 'eager' : 'lazy'}
                   alt={`Page ${i + 1}`}
                   onLoad={() => mark(i, 'done')}
                   onError={(e) => onImgError(e.currentTarget, i, u.b && imageSrc(u.b))}
@@ -293,7 +314,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
             ))}
           </div>
         </div>
-        <div className="endbar" ref={end}>
+        <div className="endbar">
           {prev && (
             <button className="btn ghost" onClick={() => toChapter(prev.num)}>
               ‹ Ch. {fmt(prev.num)}
