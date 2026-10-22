@@ -8,9 +8,12 @@ function touch(type: string, touches: { clientX: number; clientY: number }[]) {
   wrap.dispatchEvent(Object.assign(new Event(type, { cancelable: true }), { touches }));
 }
 
-function tap(x = 100, y = 100) {
+// A tap fires a click after its touchend, unless the touchend is cancelled or the tap only stopped the pages gliding.
+function tap(x = 100, y = 100, click = true) {
   touch('touchstart', [{ clientX: x, clientY: y }]);
-  touch('touchend', []);
+  const end = new Event('touchend', { cancelable: true });
+  wrap.dispatchEvent(Object.assign(end, { touches: [] }));
+  if (click && !end.defaultPrevented) wrap.dispatchEvent(Object.assign(new Event('click'), { clientY: y }));
 }
 
 beforeEach(() => {
@@ -54,6 +57,12 @@ describe('zoomable', () => {
     vi.advanceTimersByTime(400);
     expect(onTap).not.toHaveBeenCalled();
     expect(pages.style.get('--z')).toBe('2.5');
+  });
+  it('does not count a touch that only stops the pages gliding as a tap', () => {
+    const { onTap } = setup();
+    tap(100, 100, false);
+    vi.advanceTimersByTime(400);
+    expect(onTap).not.toHaveBeenCalled();
   });
   it('does not count a scroll as a tap', () => {
     const { onTap } = setup();

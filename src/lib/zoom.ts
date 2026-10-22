@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 /**
  * Pinch or double-tap zooms the chapter pages only (1x to 4x), keeping the point under your fingers in place.
  * Zooming widens `pages` (CSS variable --z), so normal scrolling pans up, down and sideways,
- * and it never shrinks below the screen width. A single tap or click calls `onTap` with how far down the screen it was. While the browser has zoomed the
+ * and it never shrinks below the screen width. A single tap or click calls `onTap` with how far down the screen it was,
+ * but not a touch that only stops the pages gliding. While the browser has zoomed the
  * whole page anyway (iPhone Safari can, see TopBar), pinches and double-taps are left to the browser, so they can bring
  * it back to 100%.
  * Returns `zoomBy`, which zooms around the middle of the screen and returns the new zoom, and `stop`, which removes the listeners.
@@ -16,6 +17,8 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
   let raf = 0;
   let single = 0;
   let touchedAt = 0;
+  // Where a single tap was, until the click it fires.
+  let pending: number | null = null;
   let browserZoomed = false;
 
   // #zwrap.pagezoom drops touch-action: pan-x pan-y, which would also stop the browser zooming back out.
@@ -88,18 +91,22 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
     if (last && now - last.at < 320 && Math.hypot(tap.x - last.x, tap.y - last.y) < 30) {
       e.preventDefault();
       clearTimeout(single);
+      pending = null;
       set(z > 1.05 ? 1 : 2.5, tap.x, tap.y);
       last = null;
     } else {
       last = { ...tap, at: now };
-      // Wait out a possible second tap, so a double tap only zooms.
-      single = window.setTimeout(onTap, 320, tap.y);
+      pending = tap.y;
     }
     tap = null;
   };
-  // Mouse clicks; the click a touch also fires is already handled above.
+  // A single tap goes by the click it fires: a touch that only stops the pages gliding fires none, so it is not a tap.
+  // It waits out a possible second tap, so a double tap only zooms. Mouse clicks count at once.
   const click = (e: MouseEvent) => {
-    if (Date.now() - touchedAt > 800) onTap(e.clientY);
+    if (Date.now() - touchedAt > 800) return onTap(e.clientY);
+    if (pending === null) return;
+    single = window.setTimeout(onTap, 320, pending);
+    pending = null;
   };
 
   onViewport();
