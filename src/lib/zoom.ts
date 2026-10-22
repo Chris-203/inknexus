@@ -38,6 +38,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
     const py = scrollY + cy - top;
     z = nz;
     pages.style.setProperty('--z', String(z));
+    wrap.classList.toggle('zoomed', z > 1);
     wrap.scrollLeft = px * r - ox;
     window.scrollTo(0, top + py * r - cy);
   };
@@ -89,7 +90,6 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
     }
     const now = Date.now();
     if (last && now - last.at < 320 && Math.hypot(tap.x - last.x, tap.y - last.y) < 30) {
-      e.preventDefault();
       clearTimeout(single);
       pending = null;
       set(z > 1.05 ? 1 : 2.5, tap.x, tap.y);
@@ -113,7 +113,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
   window.visualViewport?.addEventListener('resize', onViewport);
   wrap.addEventListener('touchstart', start, { passive: true });
   wrap.addEventListener('touchmove', move, { passive: true });
-  wrap.addEventListener('touchend', end);
+  wrap.addEventListener('touchend', end, { passive: true });
   wrap.addEventListener('click', click);
   return {
     zoomBy: (d) => {
