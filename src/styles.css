@@ -178,6 +178,9 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* a page still loading, or one that failed, says so over its empty box */
 .pg{position:relative}
 .pg.failed img{visibility:hidden;aspect-ratio:auto}
+/* a loaded page far off screen is not drawn, so the phone can let go of its decoded image; it keeps its height */
+.pg.done{content-visibility:auto}
+#pages.waszoomed .pg{content-visibility:visible}
 .pgmsg{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;margin:0;padding:16px;text-align:center;color:var(--muted);font-size:var(--font-sm)}
 .pgmsg p{margin:0}
 .pg.failed .pgmsg{color:var(--danger)}

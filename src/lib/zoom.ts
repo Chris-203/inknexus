@@ -39,6 +39,9 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
     z = nz;
     pages.style.setProperty('--z', String(z));
     wrap.classList.toggle('zoomed', z > 1);
+    // Pages skipped off screen keep the height they were last drawn at, which zooming changes, so stop skipping them
+    // for the rest of the chapter.
+    if (z > 1) pages.classList.add('waszoomed');
     wrap.scrollLeft = px * r - ox;
     window.scrollTo(0, top + py * r - cy);
   };
