@@ -24,6 +24,13 @@ export function getSpot(id: string, n: number): Spot | null {
   return { i: Math.max(0, s.i as number), f: Math.min(1, Math.max(0, s.f)) };
 }
 
+/** The chapter of series `id` that was left part way, if any. */
+export function leftChapter(id: string): number | undefined {
+  const all = readJson(SPOTS_KEY);
+  const s = isObj(all) ? all[id] : undefined;
+  return isObj(s) && typeof s.n === 'number' ? s.n : undefined;
+}
+
 /**
  * Remember where chapter `n` of series `id` was left, one chapter per series. Null, or the very top of the chapter,
  * forgets chapter `n`'s spot but keeps another chapter's, so a quick look at another chapter does not lose it.

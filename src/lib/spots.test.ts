@@ -1,4 +1,4 @@
-import { getSpot, setSpot, spotAt } from './spots';
+import { getSpot, leftChapter, setSpot, spotAt } from './spots';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -54,6 +54,14 @@ describe('spots', () => {
     setSpot('a', 93, { i: 4, f: 0.5 });
     setSpot('a', 93, null);
     expect(getSpot('a', 93)).toBeNull();
+  });
+
+  it('tells which chapter was left part way', () => {
+    expect(leftChapter('a')).toBeUndefined();
+    setSpot('a', 93, { i: 4, f: 0.5 });
+    expect(leftChapter('a')).toBe(93);
+    setSpot('a', 93, null);
+    expect(leftChapter('a')).toBeUndefined();
   });
 
   it('ignores bad saved values', () => {

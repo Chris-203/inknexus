@@ -11,6 +11,7 @@ import { chapterLink, host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '..
 import { langName } from '../lib/names';
 import { pasteChapterLink } from '../lib/pasteLink';
 import { opensInBrowser, setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
+import { leftChapter } from '../lib/spots';
 import { removeSeries, setHidden, setLast, sourcesOf, toggleSort, updateSeries, useStore } from '../lib/store';
 import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
@@ -41,8 +42,11 @@ export function Series({ x }: { x: SeriesT }) {
     setLastText(String(shown));
   };
 
-  // The next chapter to read on MangaDex, once its list is loaded. A link source has Continue once it knows its chapter link pattern.
-  const next = cur === 'md' && chs?.status === 'ready' ? chs.list.chapters.find((c) => c.num > shown) : undefined;
+  // The chapter to read on MangaDex, once its list is loaded: one left part way, unless it is older than the last one read,
+  // otherwise the next one. A link source has Continue once it knows its chapter link pattern.
+  const list = cur === 'md' && chs?.status === 'ready' ? chs.list.chapters : [];
+  const left = leftChapter(x.id) ?? -1;
+  const next = (left >= shown && list.find((c) => c.num === left)) || list.find((c) => c.num > shown);
   const i = cur.startsWith('l') ? +cur.slice(1) : -1;
   const l = x.links[i];
   let body: ReactNode;
@@ -90,7 +94,7 @@ export function Series({ x }: { x: SeriesT }) {
       {next && (
         <div className="pad">
           <ReadButton x={x} c={next} className="btn">
-            {shown ? 'Continue' : 'Start'} with ch. {fmt(next.num)}
+            {shown || next.num === left ? 'Continue' : 'Start'} with ch. {fmt(next.num)}
           </ReadButton>
         </div>
       )}
