@@ -284,6 +284,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     t.w += img.naturalWidth;
     t.h += img.naturalHeight;
     pagesRef.current?.style.setProperty('--pa', `${t.w} / ${t.h}`);
+    // A loaded page is skipped while far off screen (see .pg.done); until it has been drawn once it keeps this height.
+    img.parentElement!.style.containIntrinsicBlockSize = `auto ${img.offsetHeight}px`;
     mark(i, 'done');
   };
 

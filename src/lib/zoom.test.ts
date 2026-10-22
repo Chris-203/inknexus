@@ -2,7 +2,7 @@ import { followPageZoom, lockPageZoom, pageZoom, zoomable, type PageZoom } from 
 
 const rect = { top: 0, left: 0 };
 let wrap: EventTarget & { scrollLeft: number; getBoundingClientRect: () => typeof rect; classList: { toggle: () => void } };
-let pages: { style: Map<string, string> & { setProperty: (k: string, v: string) => void }; getBoundingClientRect: () => typeof rect };
+let pages: { style: Map<string, string> & { setProperty: (k: string, v: string) => void }; getBoundingClientRect: () => typeof rect; classList: Set<string> };
 
 function touch(type: string, touches: { clientX: number; clientY: number }[]) {
   wrap.dispatchEvent(Object.assign(new Event(type, { cancelable: true }), { touches }));
@@ -24,7 +24,11 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', () => {});
   wrap = Object.assign(new EventTarget(), { scrollLeft: 0, getBoundingClientRect: () => rect, classList: { toggle: () => {} } });
   const style = new Map<string, string>();
-  pages = { style: Object.assign(style, { setProperty: (k: string, v: string) => void style.set(k, v) }), getBoundingClientRect: () => rect };
+  pages = {
+    style: Object.assign(style, { setProperty: (k: string, v: string) => void style.set(k, v) }),
+    getBoundingClientRect: () => rect,
+    classList: new Set<string>(),
+  };
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -79,6 +83,13 @@ describe('zoomable', () => {
     expect(zoomBy(-1)).toBe(1);
     expect(zoomBy(-0.5)).toBe(1);
     expect(zoomBy(10)).toBe(4);
+  });
+  it('stops skipping off-screen pages for good once zoomed in', () => {
+    const { zoomBy } = setup();
+    zoomBy(0.5);
+    expect(pages.classList.has('zoomed')).toBe(true);
+    zoomBy(-0.5);
+    expect(pages.classList.has('zoomed')).toBe(true);
   });
   it('stop removes the listeners and drops a waiting tap', () => {
     const { onTap, stop } = setup();
@@ -169,7 +180,7 @@ describe('zoomable while the browser has zoomed the whole page', () => {
       getBoundingClientRect: rect,
       classList: { toggle: (c: string, on: boolean) => (on ? classes.add(c) : classes.delete(c)) },
     });
-    const pages = { getBoundingClientRect: rect, style: { setProperty: vi.fn() } };
+    const pages = { getBoundingClientRect: rect, style: { setProperty: vi.fn() }, classList: new Set<string>() };
     zoomable(wrap as unknown as HTMLElement, pages as unknown as HTMLElement, () => {});
     return { vv, wrap, pages, classes };
   }
