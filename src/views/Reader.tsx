@@ -55,6 +55,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   // Pages that showed or failed for good, by index; the rest are still loading.
   const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
   const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
+  // The loaded pages' sizes added up. Pages still loading take their average shape (--pa), so the chapter's length
+  // barely changes as pages load and the scroll bar does not jump back.
+  const loaded = useRef({ w: 0, h: 0 });
   // Where the bar was last shown, or the highest point scrolled to since; scrolling 30px down from there hides it.
   // Scrolling up leaves it hidden; a tap brings it back.
   const base = useRef(0);
@@ -276,6 +279,14 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (z) toast(`Zoom ${Math.round(z * 100)}%`, true);
   };
 
+  const onImgLoad = (img: HTMLImageElement, i: number) => {
+    const t = loaded.current;
+    t.w += img.naturalWidth;
+    t.h += img.naturalHeight;
+    pagesRef.current?.style.setProperty('--pa', `${t.w} / ${t.h}`);
+    mark(i, 'done');
+  };
+
   // Data-saver image first; on error try full quality once, then mark the page failed and say so once for this chapter.
   const onImgError = (img: HTMLImageElement, i: number, b: string) => {
     if (!img.dataset.t && b) {
@@ -309,7 +320,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
                   loading={resume && i <= resume.i ? 'eager' : 'lazy'}
                   decoding="async"
                   alt={`Page ${i + 1}`}
-                  onLoad={() => mark(i, 'done')}
+                  onLoad={(e) => onImgLoad(e.currentTarget, i)}
                   onError={(e) => onImgError(e.currentTarget, i, u.b && imageSrc(u.b))}
                 />
                 {shown[i] === 'failed' ? (
