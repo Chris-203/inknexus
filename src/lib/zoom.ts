@@ -22,7 +22,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
   const onViewport = () => {
     browserZoomed = isPageZoomed(window.visualViewport);
     wrap.classList.toggle('pagezoom', browserZoomed);
-    if (browserZoomed) pinch = null;
+    if (browserZoomed) endPinch();
   };
 
   const set = (target: number, cx: number, cy: number) => {
@@ -40,11 +40,22 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
   };
   const dist = (t: TouchList) => Math.hypot(t[0]!.clientX - t[1]!.clientX, t[0]!.clientY - t[1]!.clientY);
 
+  // Only a pinch cancels touchmove. iPhone waits for a non-passive touchmove listener before it starts each scroll, so
+  // one is added only while two fingers are down.
+  const hold = (e: TouchEvent) => {
+    if (pinch && e.touches.length === 2) e.preventDefault();
+  };
+  const endPinch = () => {
+    pinch = null;
+    wrap.removeEventListener('touchmove', hold);
+  };
+
   const start = (e: TouchEvent) => {
     if (browserZoomed) return;
     if (e.touches.length === 2) {
       pinch = { d: dist(e.touches) || 1, z };
       tap = null;
+      wrap.addEventListener('touchmove', hold, { passive: false });
     } else if (e.touches.length === 1 && !pinch) {
       const t = e.touches[0]!;
       tap = { x: t.clientX, y: t.clientY, at: Date.now() };
@@ -56,7 +67,6 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
       if (Math.hypot(t.clientX - tap.x, t.clientY - tap.y) > 10) tap = null;
     }
     if (!pinch || e.touches.length !== 2) return;
-    e.preventDefault();
     const t = e.touches;
     const nz = (pinch.z * dist(t)) / pinch.d;
     const cx = (t[0]!.clientX + t[1]!.clientX) / 2;
@@ -67,7 +77,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
   const end = (e: TouchEvent) => {
     touchedAt = Date.now();
     if (pinch) {
-      if (!e.touches.length) pinch = null;
+      if (!e.touches.length) endPinch();
       return;
     }
     if (!tap || e.touches.length || Date.now() - tap.at > 250) {
@@ -95,7 +105,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
   onViewport();
   window.visualViewport?.addEventListener('resize', onViewport);
   wrap.addEventListener('touchstart', start, { passive: true });
-  wrap.addEventListener('touchmove', move, { passive: false });
+  wrap.addEventListener('touchmove', move, { passive: true });
   wrap.addEventListener('touchend', end);
   wrap.addEventListener('click', click);
   return {
@@ -109,6 +119,7 @@ export function zoomable(wrap: HTMLElement, pages: HTMLElement, onTap: (y: numbe
       window.visualViewport?.removeEventListener('resize', onViewport);
       wrap.removeEventListener('touchstart', start);
       wrap.removeEventListener('touchmove', move);
+      wrap.removeEventListener('touchmove', hold);
       wrap.removeEventListener('touchend', end);
       wrap.removeEventListener('click', click);
     },

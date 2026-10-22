@@ -191,6 +191,24 @@ describe('zoomable while the browser has zoomed the whole page', () => {
     return move;
   }
 
+  it('has no touchmove listener that can cancel until two fingers are down, so iPhone never waits on one to scroll', () => {
+    const add = vi.spyOn(EventTarget.prototype, 'addEventListener');
+    const { wrap } = setup(1);
+    const blocking = () => add.mock.calls.filter(([type, , o]) => type === 'touchmove' && !(o as AddEventListenerOptions | undefined)?.passive);
+    expect(blocking()).toHaveLength(0);
+    pinch(wrap);
+    expect(blocking()).toHaveLength(1);
+    add.mockRestore();
+  });
+  it('stops cancelling touchmove once the pinch ends', () => {
+    const { wrap } = setup(1);
+    pinch(wrap);
+    wrap.dispatchEvent(touch('touchend', []));
+    wrap.dispatchEvent(touch('touchstart', [[100, 300]]));
+    const move = touch('touchmove', [[100, 200]]);
+    wrap.dispatchEvent(move);
+    expect(move.defaultPrevented).toBe(false);
+  });
   it('zooms the pages on a pinch and keeps the browser from zooming the page', () => {
     const { wrap, pages, classes } = setup(1);
     expect(pinch(wrap).defaultPrevented).toBe(true);
