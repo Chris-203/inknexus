@@ -200,10 +200,10 @@ describe('zoomable while the browser has zoomed the whole page', () => {
     return move;
   }
 
-  it('has no touchmove listener that can cancel until two fingers are down, so iPhone never waits on one to scroll', () => {
+  it('has no touch listener that can cancel until two fingers are down, so iPhone never waits on one to scroll', () => {
     const add = vi.spyOn(EventTarget.prototype, 'addEventListener');
     const { wrap } = setup(1);
-    const blocking = () => add.mock.calls.filter(([type, , o]) => type === 'touchmove' && !(o as AddEventListenerOptions | undefined)?.passive);
+    const blocking = () => add.mock.calls.filter(([type, , o]) => String(type).startsWith('touch') && !(o as AddEventListenerOptions | undefined)?.passive);
     expect(blocking()).toHaveLength(0);
     pinch(wrap);
     expect(blocking()).toHaveLength(1);
