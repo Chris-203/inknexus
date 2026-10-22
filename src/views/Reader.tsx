@@ -34,11 +34,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const done = pages?.state === 'done';
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
   const failedOnce = useRef(false);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [pulled, setPulled] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
   // Auto scroll: `auto` shows its controls, `paused` stops it there. It pauses itself at the end of the chapter.
@@ -116,15 +116,20 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   // The track along the bottom: how far through the pages, kept up to date as pages load and change height.
   // Reading to the end of the last page, which it only reaches once every page has loaded or failed, marks the chapter read.
+  // It is measured once a frame at most and set on the track itself: re-rendering the reader on every scroll event
+  // made scrolling stutter on iPhone.
   useEffect(() => {
     if (!done || resume) return;
     const loading = pages.value.findIndex((_, i) => !shown[i]);
+    let raf = 0;
     const update = () => {
+      raf = 0;
       const boxes = [...(pagesRef.current?.children ?? [])].map((e) => e.getBoundingClientRect());
       // The pages are already gone when the reader closes; there is nothing to measure then.
       if (!boxes.length) return;
       const p = readProgress(boxes, innerHeight, loading < 0 ? boxes.length : loading);
-      setProgress(p);
+      track.current?.style.setProperty('transform', `scaleX(${p})`);
+      track.current?.setAttribute('aria-valuenow', String(Math.round(p * 100)));
       spot.current = p < 1 ? spotAt(boxes) : null;
       if (p < 1 || finished.current) return;
       finished.current = true;
@@ -133,12 +138,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
         toast(`Chapter ${fmt(n)} marked read`, true);
       }
     };
+    const later = () => {
+      raf ||= requestAnimationFrame(update);
+    };
     update();
-    addEventListener('scroll', update, { passive: true });
-    addEventListener('resize', update);
+    addEventListener('scroll', later, { passive: true });
+    addEventListener('resize', later);
     return () => {
-      removeEventListener('scroll', update);
-      removeEventListener('resize', update);
+      cancelAnimationFrame(raf);
+      removeEventListener('scroll', later);
+      removeEventListener('resize', later);
     };
   }, [done, shown, resume, x.id, n, toast]);
 
@@ -203,8 +212,10 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
     const move = (e: TouchEvent) => {
       if (e.touches.length !== 1 || (from === null && !atEnd())) {
+        // Only a pull that started needs undoing; most moves are plain scrolling and change nothing.
+        if (from !== null) setPulled(0);
         from = null;
-        return setPulled(0);
+        return;
       }
       const y = e.touches[0]!.clientY;
       from ??= y;
@@ -220,8 +231,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       setPulled(0);
     };
     addEventListener('touchmove', move, { passive: true });
-    addEventListener('touchend', release);
-    addEventListener('touchcancel', release);
+    addEventListener('touchend', release, { passive: true });
+    addEventListener('touchcancel', release, { passive: true });
     return () => {
       removeEventListener('touchmove', move);
       removeEventListener('touchend', release);
@@ -296,6 +307,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
                   src={imageSrc(u.a)}
                   referrerPolicy="same-origin"
                   loading={resume && i <= resume.i ? 'eager' : 'lazy'}
+                  decoding="async"
                   alt={`Page ${i + 1}`}
                   onLoad={() => mark(i, 'done')}
                   onError={(e) => onImgError(e.currentTarget, i, u.b && imageSrc(u.b))}
@@ -339,15 +351,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const lastNum = list[list.length - 1]?.num;
   return (
     <>
-      {done && (
-        <div
-          className="rtrack"
-          role="progressbar"
-          aria-label="Chapter progress"
-          aria-valuenow={Math.round(progress * 100)}
-          style={{ transform: `scaleX(${progress})` }}
-        />
-      )}
+      {done && <div ref={track} className="rtrack" role="progressbar" aria-label="Chapter progress" aria-valuenow={0} />}
       <TopBar off={!bar} over>
         <div className="chnav">
           <button aria-label={prev ? `Chapter ${fmt(prev.num)}` : 'No earlier chapter'} disabled={!prev} onClick={() => prev && toChapter(prev.num)}>
