@@ -2,13 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta id="vp" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Scroll test</title>
     <style>
       body {
         margin: 0;
         background: #0d0d14;
+        color: #fff;
+        font: 16px system-ui;
+      }
+      form {
+        position: fixed;
+        top: env(safe-area-inset-top, 0px);
+        left: 0;
+        right: 0;
+        z-index: 1;
+        padding: 8px 12px;
+        background: #0d0d14e6;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+      }
+      input {
+        width: 24px;
+        height: 24px;
       }
       div {
         height: 1800px;
@@ -18,8 +39,29 @@
     </style>
   </head>
   <body>
+    <form>
+      <label><input type="checkbox" id="zoom" /> 1. App's no-zoom viewport</label>
+      <label><input type="checkbox" id="action" /> 2. App's touch-action on the page</label>
+      <label><input type="checkbox" id="gesture" /> 3. App's pinch blocker</label>
+      <label><input type="checkbox" id="touchend" /> 4. A touchend listener like React's</label>
+    </form>
     <script>
       for (let i = 0; i < 80; i++) document.body.appendChild(document.createElement('div'));
+      const block = (e) => e.preventDefault();
+      const noop = () => {};
+      const on = {
+        zoom: (v) =>
+          vp.setAttribute(
+            'content',
+            v
+              ? 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+              : 'width=device-width, initial-scale=1, viewport-fit=cover',
+          ),
+        action: (v) => (document.documentElement.style.touchAction = v ? 'pan-x pan-y' : ''),
+        gesture: (v) => ['gesturestart', 'gesturechange'].forEach((t) => document[v ? 'addEventListener' : 'removeEventListener'](t, block)),
+        touchend: (v) => document[v ? 'addEventListener' : 'removeEventListener']('touchend', noop),
+      };
+      for (const k in on) document.getElementById(k).onchange = (e) => on[k](e.target.checked);
     </script>
   </body>
 </html>
