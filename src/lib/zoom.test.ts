@@ -8,9 +8,12 @@ function touch(type: string, touches: { clientX: number; clientY: number }[]) {
   wrap.dispatchEvent(Object.assign(new Event(type, { cancelable: true }), { touches }));
 }
 
-function tap(x = 100, y = 100) {
+// A tap fires a click after its touchend, unless the touchend is cancelled or the tap only stopped the pages gliding.
+function tap(x = 100, y = 100, click = true) {
   touch('touchstart', [{ clientX: x, clientY: y }]);
-  touch('touchend', []);
+  const end = new Event('touchend', { cancelable: true });
+  wrap.dispatchEvent(Object.assign(end, { touches: [] }));
+  if (click && !end.defaultPrevented) wrap.dispatchEvent(Object.assign(new Event('click'), { clientY: y }));
 }
 
 beforeEach(() => {
@@ -54,6 +57,12 @@ describe('zoomable', () => {
     vi.advanceTimersByTime(400);
     expect(onTap).not.toHaveBeenCalled();
     expect(pages.style.get('--z')).toBe('2.5');
+  });
+  it('does not count a touch that only stops the pages gliding as a tap', () => {
+    const { onTap } = setup();
+    tap(100, 100, false);
+    vi.advanceTimersByTime(400);
+    expect(onTap).not.toHaveBeenCalled();
   });
   it('does not count a scroll as a tap', () => {
     const { onTap } = setup();
@@ -191,6 +200,24 @@ describe('zoomable while the browser has zoomed the whole page', () => {
     return move;
   }
 
+  it('has no touch listener that can cancel until two fingers are down, so iPhone never waits on one to scroll', () => {
+    const add = vi.spyOn(EventTarget.prototype, 'addEventListener');
+    const { wrap } = setup(1);
+    const blocking = () => add.mock.calls.filter(([type, , o]) => String(type).startsWith('touch') && !(o as AddEventListenerOptions | undefined)?.passive);
+    expect(blocking()).toHaveLength(0);
+    pinch(wrap);
+    expect(blocking()).toHaveLength(1);
+    add.mockRestore();
+  });
+  it('stops cancelling touchmove once the pinch ends', () => {
+    const { wrap } = setup(1);
+    pinch(wrap);
+    wrap.dispatchEvent(touch('touchend', []));
+    wrap.dispatchEvent(touch('touchstart', [[100, 300]]));
+    const move = touch('touchmove', [[100, 200]]);
+    wrap.dispatchEvent(move);
+    expect(move.defaultPrevented).toBe(false);
+  });
   it('zooms the pages on a pinch and keeps the browser from zooming the page', () => {
     const { wrap, pages, classes } = setup(1);
     expect(pinch(wrap).defaultPrevented).toBe(true);

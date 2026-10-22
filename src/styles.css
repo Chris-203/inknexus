@@ -169,7 +169,8 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* room at the top for the floating controls over the first page */
 #strip{max-width:820px;margin:0 auto;padding-top:60px}
 /* reader zoom: only the pages scale (see lib/zoom.ts); the wrapper scrolls sideways when zoomed */
-#zwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x pan-y}
+#zwrap{overflow:hidden;touch-action:pan-x pan-y}
+#zwrap.zoomed{overflow-x:auto}
 /* while the browser has zoomed the whole page anyway, pinches go back to it so it can return to 100% */
 #zwrap.pagezoom{touch-action:auto}
 #pages{--z:1;width:calc(var(--z) * 100%)}
