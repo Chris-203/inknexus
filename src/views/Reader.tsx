@@ -198,17 +198,18 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   const prev = [...list].reverse().find((k) => k.num < n);
   const next = nextChapter(list, n);
-  const allShown = done && pages.value.every((_, i) => shown[i] === 'done');
+  // Not every page: one that failed, or one scrolled past too fast to load, would keep the end from ever counting.
+  const lastShown = done && !!shown[pages.value.length - 1];
 
-  // Once every page has shown, load the next chapter ahead so it opens at once. Never marks anything read.
+  // Once the last page has shown or failed, load the next chapter ahead so it opens at once. Never marks anything read.
   useEffect(() => {
-    if (allShown) return preloadChapter(next);
-  }, [allShown, next?.id]);
+    if (lastShown) return preloadChapter(next);
+  }, [lastShown, next?.id]);
 
   // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px with
   // the ring that ends them filling, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
-  // Only once every page has shown, so a short or loading chapter never skips ahead.
-  const pullsOn = allShown && next && !next.ext ? next.num : undefined;
+  // Only once the last page has shown or failed, so a loading chapter never skips ahead.
+  const pullsOn = lastShown && next && !next.ext ? next.num : undefined;
   useEffect(() => {
     if (pullsOn === undefined) return;
     let from: number | null = null;
@@ -338,11 +339,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           </div>
         </div>
         <div className="endbar">
-          {prev && (
-            <button className="btn ghost" onClick={() => toChapter(prev.num)}>
-              ‹ Ch. {fmt(prev.num)}
-            </button>
-          )}
           {/* A chapter readable here opens by pulling up at the end; only one on an official site keeps a button. */}
           {next?.ext && (
             <button className="btn" onClick={() => toChapter(next.num)}>
