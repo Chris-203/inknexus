@@ -196,10 +196,13 @@ html:has(.pullnext){overscroll-behavior-y:none}
 .pullnext .ring{stroke:var(--accent);stroke-dasharray:1;transform:rotate(-90deg);transform-origin:center}
 .pullnext path{stroke:var(--text);stroke-width:2.5}
 /* the reader's loading screen until the first screen of pages has shown (Reader.tsx), under the reader's bar so it can still go back. It shows at once, so the pages never flash underneath */
-#rcover{position:fixed;inset:0;z-index:3;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:var(--font-sm)}
+#rcover{position:fixed;inset:0;z-index:3;background:var(--bg);touch-action:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:var(--font-sm)}
 #rcover.out{animation:fade-out .3s forwards;pointer-events:none}
 #rcover img{width:64px;height:64px}
 #rcover b{font-family:var(--head);font-weight:400;font-size:var(--font-xl);letter-spacing:.02em;color:var(--text)}
+/* the pages can't scroll under it: scrolling moved the first screen it waits for and could keep it up. The progress track and back-to-top button wait until it is gone */
+html:has(#rcover.on){overflow:hidden}
+html:has(#rcover) :is(.rtrack,#totop){visibility:hidden}
 /* round buttons floating over the reader's pages or the site */
 .ibtn.float{position:fixed;z-index:5;border-radius:var(--radius-full);box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
