@@ -186,15 +186,12 @@ p.pgmsg{max-height:240px}
 /* room below for the back-to-top button */
 .endbar{display:flex;gap:10px;padding:20px 16px 76px}
 .endbar .btn{flex:1}
-/* pull up at the end of a chapter for the next one (Reader.tsx): this bar ends the pages, with an arrow over its text, and rises with them while its ring fills. The page itself does not bounce there, so the pull is all the pages show */
-html:has(.pullnext){overscroll-behavior-y:none}
+/* pull up at the end of a chapter for the next one (Reader.tsx): this bar ends the pages, with an arrow over its text, and rises with them while its ring fills. The page itself does not bounce there while a finger is down, so the pull is all the pages show */
+html.held:has(.pullnext){overscroll-behavior-y:none}
 #strip{transition:transform .2s ease-out}
 .endbar:has(+ .pullnext){padding-bottom:0}
 .pullnext{padding:8px 16px calc(32px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:var(--font-sm)}
 #strip.pulling{transition:none}
-/* a flick that runs into the end bounces the pages up by --bounce and back, as the page's own bounce would */
-#strip.bounce{animation:end-bounce .45s ease-out}
-@keyframes end-bounce{30%{transform:translateY(var(--bounce));animation-timing-function:ease-in-out}}
 .pullnext svg{width:36px;height:36px;fill:none;stroke:var(--line);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .pullnext .ring{stroke:var(--accent);stroke-dasharray:1;transform:rotate(-90deg);transform-origin:center}
 .pullnext path{stroke:var(--text);stroke-width:2.5}
@@ -246,4 +243,4 @@ html:has(.pullnext){overscroll-behavior-y:none}
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip{transition:none}#strip.bounce{animation:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
