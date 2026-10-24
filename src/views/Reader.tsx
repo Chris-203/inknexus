@@ -63,6 +63,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const base = useRef(0);
   // Where this chapter was left, to open it there again once the pages down to that spot have loaded.
   const [resume, setResume] = useState(() => getSpot(x.id, n));
+  const fromTop = useRef(!resume).current;
   // Where the reader is now, saved on leaving; null at the end of the chapter, so it opens at the top again.
   // Undefined until the pages are measured, so leaving while they load keeps the saved spot.
   const spot = useRef<Spot | null | undefined>(undefined);
@@ -181,6 +182,19 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) removeEventListener(ev, hold);
     };
   }, [auto, paused, chaptersOpen, done, speed]);
+
+  // A chapter opened at its top stays there until the loading screen lifts. After App's scrollTo(0, 0), iPhone Safari
+  // can put back where the previous chapter's pull or flick left the page, part way down this chapter, where the
+  // pages the loading screen waits for never start loading.
+  useLayoutEffect(() => {
+    if (cover !== 'on' || !fromTop) return;
+    const top = () => {
+      if (scrollY) scrollTo(0, 0);
+    };
+    top();
+    addEventListener('scroll', top, { passive: true });
+    return () => removeEventListener('scroll', top);
+  }, [cover, done]);
 
   // The loading screen lifts once every page that starts on the first screen has shown or failed, or the chapter
   // can't be shown (a message says why).
