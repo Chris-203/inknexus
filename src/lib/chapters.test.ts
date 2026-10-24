@@ -143,7 +143,7 @@ describe('chapter lists kept on the device', () => {
     expect(c.chapterState('a')).toMatchObject({ status: 'ready' });
   });
 
-  it('keeps the older list when a reload is rate limited, and does not try again until retried', async () => {
+  it('keeps the older list when a reload is rate limited, says why, and does not try again until retried', async () => {
     const store = storage([['a', { at: Date.now() - 2 * 60 * MIN, list: list(1) }]]);
     const before = store.saved();
     const c = await start(store, () => new Response('', { status: 429 }));
@@ -151,10 +151,16 @@ describe('chapter lists kept on the device', () => {
     const off = c.subscribeChapters(done);
     c.loadChapters('a');
     await vi.waitFor(() => expect(done).toHaveBeenCalledTimes(1));
-    expect(c.chapterState('a')).toEqual({ status: 'ready', list: list(1) });
+    expect(c.chapterState('a')).toStrictEqual({ status: 'ready', list: list(1), error: expect.stringContaining('HTTP 429') });
     c.loadChapters('a');
     expect(c.fetch).toHaveBeenCalledTimes(1);
     expect(store.saved()).toEqual(before);
+
+    // Trying again reloads it in the background, with the older list still shown and no error.
+    c.retryChapters('a');
+    expect(c.chapterState('a')).toStrictEqual({ status: 'ready', list: list(1) });
+    c.loadChapters('a');
+    expect(c.fetch).toHaveBeenCalledTimes(2);
     off();
   });
 
