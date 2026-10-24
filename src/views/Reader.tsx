@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { HouseIcon } from '../components/HouseIcon';
 import { ReadButton } from '../components/ReadButton';
@@ -20,6 +20,9 @@ import * as mangadex from '../sources/mangadex';
 /** How far the pages rise, in px, when pulling up at the end of a chapter to open the next one. */
 const PULL = 80;
 
+/** How far the pages rise at most, in px, when a flick runs into the end of a chapter and bounces back. */
+const BOUNCE = 48;
+
 /** How long the loading screen stays at least, in ms, from when the chapter opens. */
 const COVER_MIN = 1000;
 
@@ -40,6 +43,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
   const [pulled, setPulled] = useState(0);
+  const [bounce, setBounce] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
   // Auto scroll: `auto` shows its controls, `paused` stops it there. It pauses itself at the end of the chapter.
   const [auto, setAuto] = useState(false);
@@ -229,14 +233,43 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       removeEventListener('touchmove', move);
       navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
     };
+    // The page's own bounce is off here, so the pull is all the pages show. Without it a flick that runs into the end
+    // stops dead, so the pages bounce up and back instead, further for a faster flick. Only after the finger lifts, so
+    // auto scroll and a pull never bounce.
+    let lifted = false;
+    let y = scrollY;
+    let t = performance.now();
+    let v = 0;
+    const scroll = () => {
+      const now = performance.now();
+      const fresh = now - t < 100;
+      // The step that reaches the end is cut short by it, so the step before gives the flick's speed too.
+      const step = fresh ? (scrollY - y) / Math.max(1, now - t) : 0;
+      const speed = Math.max(step, fresh ? v : 0);
+      v = step;
+      y = scrollY;
+      t = now;
+      if (!lifted || !atEnd()) return;
+      lifted = false;
+      if (speed > 0.3) setBounce(Math.min(BOUNCE, speed * 15));
+    };
+    const touch = () => {
+      lifted = false;
+      setBounce(0);
+    };
     const release = () => {
       from = null;
+      lifted = true;
       setPulled(0);
     };
+    addEventListener('scroll', scroll, { passive: true });
+    addEventListener('touchstart', touch, { passive: true });
     addEventListener('touchmove', move, { passive: true });
     addEventListener('touchend', release, { passive: true });
     addEventListener('touchcancel', release, { passive: true });
     return () => {
+      removeEventListener('scroll', scroll);
+      removeEventListener('touchstart', touch);
       removeEventListener('touchmove', move);
       removeEventListener('touchend', release);
       removeEventListener('touchcancel', release);
@@ -410,7 +443,12 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           )}
         </div>
       </TopBar>
-      <div id="strip" className={pulled ? 'pulling' : undefined} style={pulled ? { transform: `translateY(${-pulled}px)` } : undefined}>
+      <div
+        id="strip"
+        className={pulled ? 'pulling' : bounce ? 'bounce' : undefined}
+        style={pulled ? { transform: `translateY(${-pulled}px)` } : bounce ? ({ '--bounce': `${-bounce}px` } as CSSProperties) : undefined}
+        onAnimationEnd={(e) => e.target === e.currentTarget && setBounce(0)}
+      >
         {content}
         {pullsOn !== undefined && (
           <div className="pullnext" aria-hidden="true">
