@@ -244,14 +244,22 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       removeEventListener('touchmove', move);
       navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
     };
+    // The page's own bounce is off only while a finger is down, so a pull moves nothing but the pages, while a flick
+    // that glides into the end after the finger lifts still bounces as everywhere else on iPhone.
+    const hold = (on: boolean) => document.documentElement.classList.toggle('held', on);
+    const touch = () => hold(true);
     const release = () => {
       from = null;
+      hold(false);
       setPulled(0);
     };
+    addEventListener('touchstart', touch, { passive: true });
     addEventListener('touchmove', move, { passive: true });
     addEventListener('touchend', release, { passive: true });
     addEventListener('touchcancel', release, { passive: true });
     return () => {
+      hold(false);
+      removeEventListener('touchstart', touch);
       removeEventListener('touchmove', move);
       removeEventListener('touchend', release);
       removeEventListener('touchcancel', release);
