@@ -58,7 +58,7 @@ describe('toDetails', () => {
     );
     expect(d.tags).toEqual(['Action', 'Long Strip', 'Monsters']);
   });
-  it('counts numbered chapters once across volumes and names each author once', () => {
+  it('counts available numbered chapters once across volumes and names each author once', () => {
     const d = toDetails(
       {
         id: 'm',

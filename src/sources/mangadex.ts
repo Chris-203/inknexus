@@ -27,9 +27,9 @@ export interface MdManga {
   };
   relationships?: Rel[];
 }
-/** /manga/{id}/aggregate: chapter numbers by volume. MangaDex sends an empty array instead of an empty object. */
+/** /manga/{id}/aggregate: chapter numbers by volume, with chapters MangaDex no longer has marked unavailable. MangaDex sends an empty array instead of an empty object. */
 export interface MdAggregate {
-  volumes?: Record<string, { chapters?: Record<string, { chapter: string }> }>;
+  volumes?: Record<string, { chapters?: Record<string, { chapter: string; isUnavailable?: boolean }> }>;
 }
 export interface MdChapter {
   id: string;
@@ -184,7 +184,7 @@ export function toDetails(m: MdManga, agg: MdAggregate): Details {
     .filter((t) => group(t) >= 0)
     .sort((x, y) => group(x) - group(y))
     .flatMap((t) => t.attributes.name.en || []);
-  const nums = Object.values(agg.volumes || {}).flatMap((v) => Object.values(v.chapters || {}).map((c) => c.chapter));
+  const nums = Object.values(agg.volumes || {}).flatMap((v) => Object.values(v.chapters || {}).flatMap((c) => (c.isUnavailable ? [] : c.chapter)));
   const authors = (m.relationships || []).filter((r) => (r.type === 'author' || r.type === 'artist') && r.attributes?.name).map((r) => r.attributes!.name!);
   return {
     tags,
