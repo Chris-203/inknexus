@@ -118,6 +118,7 @@ export function Details({ o }: { o: SearchResult }) {
           </button>
         )}
       </div>
+      {d && <MoreInGenre o={o} tags={d.tags} />}
       {chapters}
       {o.src === 'md' && (
         <p className="credit">
@@ -128,5 +129,35 @@ export function Details({ o }: { o: SearchResult }) {
         </p>
       )}
     </>
+  );
+}
+
+/** A row of popular MangaDex series in this series' first MangaDex genre, each opening its own details. Nothing shows when it has no MangaDex genre. */
+function MoreInGenre({ o, tags }: { o: SearchResult; tags: string[] }) {
+  const { navigate } = useApp();
+  const genre = mangadex.GENRES.find((g) => tags.includes(g.name));
+  const more = useLoad(genre ? genre.id : null, () => mangadex.browse(genre!.id, 'follows'));
+  const list = more?.state === 'done' ? more.value.filter((k) => !(k.src === o.src && k.ref === o.ref)) : [];
+  if (!genre || (more?.state === 'done' && !list.length)) return null;
+  return (
+    <section aria-label={`More in ${genre.name}`}>
+      <h3 className="shelfh">More in {genre.name}</h3>
+      {more?.state === 'error' ? (
+        <p className="hint">
+          Could not load more {genre.name} series from MangaDex ({more.error}). Go back and open this series again.
+        </p>
+      ) : more?.state === 'done' ? (
+        <div className="shelf">
+          {list.map((k) => (
+            <button key={k.ref} className="card" onClick={() => navigate({ name: 'details', o: k })}>
+              {k.cover ? <img src={imageSrc(k.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+              <span className="ct">{k.title}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="hint">Loading…</p>
+      )}
+    </section>
   );
 }
