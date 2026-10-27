@@ -99,7 +99,7 @@ export function Search() {
           </>
         }
       >
-        <button className="ibtn" aria-label={`More about ${o.title}`} onClick={() => navigate({ name: 'details', o })}>
+        <button className="ibtn plain" aria-label={`More about ${o.title}`} onClick={() => navigate({ name: 'details', o })}>
           ›
         </button>
       </ResultRow>

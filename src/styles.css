@@ -49,6 +49,8 @@ header .btn,header .ibtn{align-self:center}
 .btn.danger{background:transparent;color:var(--danger);border:1px solid currentColor}
 .btn:disabled{opacity:.5;cursor:default}
 .ibtn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius-md);min-width:44px;height:44px;padding:0 10px;font-size:var(--font-lg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:none}
+/* a bare chevron, like a list row's disclosure arrow, still 44px to tap */
+.ibtn.plain{background:none;border-color:transparent;color:var(--muted)}
 .ibtn.txt{font-size:var(--font-sm);font-weight:700;font-family:var(--body)}
 /* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
 .ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
