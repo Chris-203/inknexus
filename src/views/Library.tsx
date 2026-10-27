@@ -25,6 +25,10 @@ function exportBackup() {
 export function Library() {
   const { navigate, importBackup, toast } = useApp();
   const { lib } = useStore();
+  const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
+  const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
+  // Before useUpdates, so its checks see the lists loading ahead and wait for them.
+  useEffect(() => prefetchChapters(mds), [lib]);
   const updates = useUpdates(lib);
   // The ids picked for removal while selecting, or null when not selecting.
   const [picked, setPicked] = useState<string[] | null>(null);
@@ -33,14 +37,7 @@ export function Library() {
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
-  const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
   const f = updates.failed;
-  const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
-
-  // Waits for the new-chapter checks rather than adding to them.
-  useEffect(() => {
-    if (!updates.checking) prefetchChapters(mds);
-  }, [lib, updates.checking]);
 
   const startHold = (id: string) => {
     held.current = false;

@@ -13,7 +13,7 @@ import { chapters as fetchChapters } from '../sources/mangadex';
  */
 const KEY = 'inknexus-chapters';
 const FRESH = 30 * 60 * 1000;
-const MAX_AGE = 24 * 60 * 60 * 1000;
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 /** How many lists are kept on the device, newest first; long series have big lists and storage is small. */
 const KEEP = 30;
 
@@ -23,7 +23,7 @@ function isEntry(v: unknown): v is Entry {
   return isObj(v) && typeof v.at === 'number' && isObj(v.list) && Array.isArray(v.list.chapters) && typeof v.list.listed === 'number';
 }
 
-/** The saved lists younger than a day, from [md, entry] pairs. Anything unreadable is skipped. */
+/** The saved lists younger than a week, from [md, entry] pairs. Anything unreadable is skipped. */
 function loadSaved(): Map<string, Entry> {
   const saved = readJson(KEY);
   const pairs = Array.isArray(saved) ? saved.filter((v): v is [string, Entry] => Array.isArray(v) && typeof v[0] === 'string' && isEntry(v[1])) : [];
@@ -96,18 +96,24 @@ export function loadChapters(md: string) {
 const ahead: string[] = [];
 let loadingAhead = false;
 
+/** True while lists are loading ahead, which the new-chapter checks wait for. */
+export function isLoadingAhead() {
+  return loadingAhead;
+}
+
 /**
- * Load the lists of the first `mds` ahead, one at a time, so they open without "Loading chapters…". Only as many series
+ * Load the lists of the first `mds` ahead, two at a time, so they open without "Loading chapters…". Only as many series
  * as lists are kept, so loading ahead never pushes out a list it loaded itself; only lists missing from the device; none
  * on slow or data-saving connections. Replaces the series still waiting from an earlier call. The first failure stops
  * the queue and is not kept, so opening that series tries again.
  */
 export function prefetchChapters(mds: string[]) {
   if (saveData()) return;
-  ahead.splice(0, ahead.length, ...mds.slice(0, KEEP));
-  if (loadingAhead) return;
+  ahead.splice(0, ahead.length, ...mds.slice(0, KEEP).filter((md) => !listFor(md, MAX_AGE)));
+  if (loadingAhead || !ahead.length) return;
   loadingAhead = true;
-  void (async () => {
+  changes.emit();
+  const worker = async () => {
     try {
       for (let md = ahead.shift(); md; md = ahead.shift()) {
         if (listFor(md, MAX_AGE) || errors.has(md) || pending.has(md)) continue;
@@ -116,8 +122,11 @@ export function prefetchChapters(mds: string[]) {
     } catch {
       ahead.length = 0;
     }
+  };
+  void Promise.all([worker(), worker()]).then(() => {
     loadingAhead = false;
-  })();
+    changes.emit();
+  });
 }
 
 /** Forget a failed load and try again. */
