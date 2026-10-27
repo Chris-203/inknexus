@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useApp } from '../context';
-import { LinkFields } from '../components/LinkFields';
+import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ResultRow } from '../components/ResultRow';
-import { Sheet, useSheet } from '../components/Sheet';
 import { why } from '../lib/api';
-import { fmt } from '../lib/format';
-import { linkFrom, NOT_WEB } from '../lib/links';
-import { addSeries } from '../lib/store';
+import { isWebUrl } from '../lib/links';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
 
@@ -27,6 +24,7 @@ export function Search() {
   // Counts loads, so only the newest one shows when taps overlap.
   const seq = useRef(0);
   const browsing = !search.q;
+  const pasted = isWebUrl(q.trim());
 
   const browse = async (tag: string | null, sort: mangadex.BrowseSort) => {
     const id = ++seq.current;
@@ -62,6 +60,8 @@ export function Search() {
     e.preventDefault();
     const term = q.trim();
     if (!term) return;
+    // A link is not a title: it opens Add by link instead of a search.
+    if (pasted) return setLinkOpen(true);
     const id = ++seq.current;
     setSearch({ ...search, q: term, res: null });
     setStatus('busy');
@@ -109,9 +109,6 @@ export function Search() {
     <>
       <header>
         <h1>Browse</h1>
-        <button className="btn ghost sm" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
-          Add by link
-        </button>
       </header>
       <form className="row" role="search" onSubmit={onSearch}>
         <div className="field">
@@ -135,6 +132,13 @@ export function Search() {
           />
         </div>
       </form>
+      {pasted && (
+        <div className="row">
+          <button className="btn ghost" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
+            Add the series from this link
+          </button>
+        </div>
+      )}
       {browsing && (
         <div className="seg" role="group" aria-label="Sort by">
           {SORTS.map(([sort, name]) => (
@@ -155,41 +159,14 @@ export function Search() {
         })}
       </div>
       <div id="res">{results}</div>
-      {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
+      {!browsing && (status === 'failed' || search.res?.length === 0) && (
+        <div className="row">
+          <button className="btn ghost" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
+            Add by link
+          </button>
+        </div>
+      )}
+      {linkOpen && <AddByLinkSheet url={pasted ? q.trim() : undefined} onClose={() => setLinkOpen(false)} />}
     </>
-  );
-}
-
-/** Add a series from any other site by its link, opened from the Browse header. */
-function AddByLinkSheet({ onClose }: { onClose: () => void }) {
-  const { navigate, toast } = useApp();
-  const sheet = useSheet(onClose);
-
-  const onAdd = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const d = new FormData(e.currentTarget);
-    const field = (k: string) => String(d.get(k) || '').trim();
-    const made = linkFrom(field('url'), field('label'));
-    if (!made) return toast(NOT_WEB);
-    const given = parseFloat(field('ch'));
-    const n = addSeries({ title: field('title'), links: [made.link], last: given || made.r?.num || 0 });
-    toast(made.r && !given ? `Added. Detected chapter ${fmt(made.r.num)} from the link` : 'Added to My Series');
-    navigate({ name: 'series', id: n.id });
-  };
-
-  return (
-    <Sheet label="Add by link" sheet={sheet}>
-      <h2>Add by link</h2>
-      <p className="hint">For any site besides MangaDex and AniList: paste a series or chapter link.</p>
-      <form className="stack" onSubmit={onAdd}>
-        <input name="title" aria-label="Title" placeholder="Title" required />
-        <LinkFields urlPlaceholder="https://…" />
-        <input name="ch" type="number" step="any" min="0" aria-label="Chapter you're on" placeholder="Chapter you're on (optional if the link has one)" />
-        <button className="btn">Add to My Series</button>
-      </form>
-      <button className="btn ghost" onClick={sheet.close}>
-        Close
-      </button>
-    </Sheet>
   );
 }

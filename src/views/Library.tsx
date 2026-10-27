@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context';
+import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
@@ -28,6 +29,7 @@ export function Library() {
   // The ids picked for removal while selecting, or null when not selecting.
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
   const f = updates.failed;
   const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
@@ -53,7 +55,17 @@ export function Library() {
       </svg>
     </button>
   );
-  const settingsSheet = settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />;
+  const addLink = (
+    <button className="ibtn" aria-label="Add by link" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
+      +
+    </button>
+  );
+  const sheets = (
+    <>
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
+    </>
+  );
 
   if (!list.length)
     return (
@@ -61,6 +73,7 @@ export function Library() {
         <header>
           <h1>My Series</h1>
           <span className="sub">0 series</span>
+          {addLink}
           {settings}
         </header>
         <div className="empty">
@@ -75,7 +88,7 @@ export function Library() {
             Import backup
           </button>
         </div>
-        {settingsSheet}
+        {sheets}
       </>
     );
 
@@ -100,6 +113,7 @@ export function Library() {
           <button className="btn ghost sm" onClick={() => setPicked([])}>
             Select
           </button>
+          {addLink}
           {settings}
         </header>
       )}
@@ -157,7 +171,7 @@ export function Library() {
           Import backup
         </button>
       </div>
-      {settingsSheet}
+      {sheets}
     </>
   );
 }
