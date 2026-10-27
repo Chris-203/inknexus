@@ -24,15 +24,17 @@ button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:18px 16px 10px}
 header h1{font-size:var(--font-xl)}
-/* My Series: the count sits right next to the Select button */
+/* My Series: the count sits right next to the header buttons */
 header .sub{flex:1;text-align:right}
-/* Select and the settings gear: centered, since the gear has no text to line up on */
+/* header buttons: centered, since icons have no text to line up on */
 header .btn,header .ibtn{align-self:center}
 .sub,.hint{color:var(--muted)}
 .hint{padding:8px 16px;margin:0}
 .pad .hint{padding:0}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px 10px;padding:8px 16px}
 .card{background:none;border:0;padding:0;text-align:left;position:relative;cursor:pointer}
+/* holding a card starts selecting, so iOS shows no image menu or text selection there */
+.card{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .card img,.cover{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:var(--radius-sm);background:var(--surface);display:block}
 .badges{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .badge{background:var(--text);color:var(--bg);font-size:var(--font-xs);font-weight:700;padding:1px 7px;border-radius:var(--radius-full)}
