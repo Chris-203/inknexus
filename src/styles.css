@@ -23,7 +23,7 @@ body.nonav{padding-bottom:0}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:18px 16px 10px}
-header h1{font-size:var(--font-xl)}
+header h1{font-size:var(--font-xl);margin-right:auto}
 /* My Series: the count sits right next to the header buttons */
 header .sub{flex:1;text-align:right}
 /* header buttons: centered, since icons have no text to line up on */
@@ -41,9 +41,27 @@ header .btn,header .ibtn{align-self:center}
 .badge.new{background:var(--accent);color:var(--on-accent)}
 /* selecting series to remove: a ring in the corner of each card, filled and checked when picked */
 .tick{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:var(--radius-full);border:2px solid #fff;background:rgba(0,0,0,.4);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font:700 var(--font-base)/1 system-ui,sans-serif}
-.card.on .tick{background:var(--accent);border-color:var(--accent)}
-.card.on img,.card.on .cover{outline:3px solid var(--accent);outline-offset:-3px}
+.card.on .tick,.lrow.on .tick{background:var(--accent);border-color:var(--accent)}
+.card.on img,.card.on .cover,.lrow.on img,.lrow.on .thumb{outline:3px solid var(--accent);outline-offset:-3px}
 .ct{display:block;margin-top:6px;font-size:var(--font-sm);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* My Series: the count, and the switch between cards and the list */
+.lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
+.lbar .seg{margin:0;flex:none}
+.lbar .seg button{min-width:44px;display:flex;align-items:center;justify-content:center}
+/* My Series as a list: a thumbnail, the title, the last chapter and when it was read, and Continue on the right */
+.lrows{padding:4px 0}
+.lrow{display:flex;align-items:center;gap:8px;padding:0 16px 0 0;border-top:1px solid var(--line)}
+.lrow:last-child{border-bottom:1px solid var(--line)}
+.lmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:8px 0 8px 16px;background:none;border:0;color:inherit;font:inherit;text-align:left;position:relative;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.lmain img,.lmain .thumb{width:56px;aspect-ratio:2/3;object-fit:cover;border-radius:var(--radius-sm);background:var(--surface);flex:none}
+.linfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.linfo b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.linfo span{color:var(--muted);font-size:var(--font-sm)}
+.linfo em{font-style:normal;font-weight:700;color:var(--accent)}
+.lrow .tick{position:static;flex:none;border-color:var(--muted);background:none}
+/* Continue, with the chapter it opens under it */
+.btn.go{flex:none;flex-direction:column;min-width:88px;line-height:1.2}
+.btn.go small{font-weight:400;color:var(--muted);font-size:var(--font-xs)}
 /* touch targets stay at least 44px */
 .btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:var(--radius-md);padding:11px 16px;min-height:44px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
 .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
@@ -86,7 +104,7 @@ details.more .pad{padding:0 12px 12px}
 #nav[hidden]{display:none}
 #nav button{flex:1;background:none;border:0;padding:8px 4px 6px;color:var(--muted);font-size:var(--font-sm);font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
 /* icons drawn in the app (the tabs, the settings gear), stroked in the button's color */
-#nav svg,.ibtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#nav svg,.ibtn svg,.lbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #nav button[aria-current]{color:var(--accent)}
 .backbar{padding:10px 14px 0}
 .top{display:flex;gap:14px;padding:16px}

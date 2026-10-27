@@ -1,13 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
+import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
-import { loadChapters, prefetchChapters } from '../lib/chapters';
-import { fmt } from '../lib/format';
+import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
+import { daysAgo, fmt } from '../lib/format';
+import { setLibraryView, useLibraryView } from '../lib/libraryView';
+import { nextWhole } from '../lib/links';
+import { useOpenLink } from '../lib/openLink';
+import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
-import { getState, removeSeries, useStore } from '../lib/store';
+import { leftChapter } from '../lib/spots';
+import { getState, removeSeries, shownSource, useStore } from '../lib/store';
+import type { Link, Series as SeriesT } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
 function exportBackup() {
@@ -30,6 +37,7 @@ export function Library() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const view = useLibraryView();
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
@@ -51,6 +59,27 @@ export function Library() {
     }, 500);
   };
   const endHold = () => clearTimeout(holdTimer.current);
+
+  const freshOf = (x: SeriesT) => (x.md && !x.mdh && x.last ? newCount(latestFor(x.md), x.last) : null);
+  // What pressing a series does, in either view: a tap opens it, or picks it while selecting; holding starts selecting.
+  const press = (x: SeriesT) => ({
+    // The press comes a moment before the click, so a list still loading starts that much sooner.
+    onPointerDown: () => {
+      if (picked) return;
+      if (x.md && !x.mdh) loadChapters(x.md);
+      startHold(x.id);
+    },
+    // Scrolling cancels the pointer, so a swipe through the series never starts selecting.
+    onPointerUp: endHold,
+    onPointerLeave: endHold,
+    onPointerCancel: endHold,
+    onContextMenu: (e: MouseEvent) => e.preventDefault(),
+    onClick: () => {
+      if (held.current) held.current = false;
+      else if (picked) toggle(x.id);
+      else navigate({ name: 'series', id: x.id });
+    },
+  });
 
   const toggle = (id: string) => setPicked((p) => p && (p.includes(id) ? p.filter((k) => k !== id) : [...p, id]));
   const remove = (ids: string[]) => {
@@ -120,9 +149,6 @@ export function Library() {
       ) : (
         <header>
           <h1>My Series</h1>
-          <span className="sub">
-            {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
-          </span>
           <button className="ibtn" aria-label="Remove series" onClick={() => setPicked([])}>
             {/* a trash can: lid with handle, then the can */}
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -134,53 +160,92 @@ export function Library() {
           {settings}
         </header>
       )}
-      <div className="grid">
-        {list.map((x) => {
-          const last = x.last || 0;
-          const fresh = x.md && !x.mdh && last ? newCount(latestFor(x.md), last) : null;
-          const on = picked?.includes(x.id);
-          return (
-            <button
-              key={x.id}
-              className={`card${on ? ' on' : ''}`}
-              aria-pressed={picked ? on : undefined}
-              // The press comes a moment before the click, so a list still loading starts that much sooner.
-              onPointerDown={() => {
-                if (picked) return;
-                if (x.md && !x.mdh) loadChapters(x.md);
-                startHold(x.id);
-              }}
-              // Scrolling cancels the pointer, so a swipe through the grid never starts selecting.
-              onPointerUp={endHold}
-              onPointerLeave={endHold}
-              onPointerCancel={endHold}
-              onContextMenu={(e) => e.preventDefault()}
-              onClick={() => {
-                if (held.current) held.current = false;
-                else if (picked) toggle(x.id);
-                else navigate({ name: 'series', id: x.id });
-              }}
-            >
-              {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
-              <span className="badges">
-                {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
-                {fresh?.n ? (
-                  <span className="badge new">
-                    {fresh.n}
-                    {fresh.more ? '+' : ''} new
-                  </span>
-                ) : null}
-              </span>
-              {picked && (
-                <span className="tick" aria-hidden="true">
-                  {on && '✓'}
-                </span>
-              )}
-              <span className="ct">{x.title}</span>
-            </button>
-          );
-        })}
+      <div className="lbar">
+        <span className="sub">
+          {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+        </span>
+        <div className="seg" role="group" aria-label="Show series as">
+          <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
+            {/* four cards */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+              <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+              <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+              <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+            </svg>
+          </button>
+          <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
+            {/* three rows, each a thumbnail and a line */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
+            </svg>
+          </button>
+        </div>
       </div>
+      {view === 'list' ? (
+        <div className="lrows">
+          {list.map((x) => {
+            const last = x.last || 0;
+            const fresh = freshOf(x);
+            const on = picked?.includes(x.id);
+            return (
+              <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
+                <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
+                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                  <span className="linfo">
+                    <b>{x.title}</b>
+                    <span>
+                      {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
+                      {fresh?.n ? (
+                        <em>
+                          {' · '}
+                          {fresh.n}
+                          {fresh.more ? '+' : ''} new
+                        </em>
+                      ) : null}
+                    </span>
+                    {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
+                  </span>
+                  {picked && (
+                    <span className="tick" aria-hidden="true">
+                      {on && '✓'}
+                    </span>
+                  )}
+                </button>
+                {!picked && <RowContinue x={x} />}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid">
+          {list.map((x) => {
+            const last = x.last || 0;
+            const fresh = freshOf(x);
+            const on = picked?.includes(x.id);
+            return (
+              <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
+                {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+                <span className="badges">
+                  {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
+                  {fresh?.n ? (
+                    <span className="badge new">
+                      {fresh.n}
+                      {fresh.more ? '+' : ''} new
+                    </span>
+                  ) : null}
+                </span>
+                {picked && (
+                  <span className="tick" aria-hidden="true">
+                    {on && '✓'}
+                  </span>
+                )}
+                <span className="ct">{x.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       {f.length > 0 && (
         <div className="pad">
           <p className="hint">
@@ -201,6 +266,44 @@ export function Library() {
       </div>
       {sheets}
     </>
+  );
+}
+
+/**
+ * A list row's Continue: the chapter the series screen would continue with, in the reader or on the site. Until that is
+ * known (the chapter list is still loading, the source has no chapter links, or every chapter is read) it opens the series.
+ */
+function RowContinue({ x }: { x: SeriesT }) {
+  const { navigate } = useApp();
+  const cur = shownSource(x);
+  const chs = useChapterState(cur === 'md' ? x.md : null);
+  const last = x.last || 0;
+  const left = leftChapter(x.id) ?? -1;
+  const c = chs?.status === 'ready' ? continueChapter(chs.list.chapters, last, left) : undefined;
+  const i = cur.startsWith('l') ? +cur.slice(1) : -1;
+  const l = x.links[i];
+  if (c)
+    return (
+      <ReadButton x={x} c={c} className="btn ghost sm go">
+        {last || c.num === left ? 'Continue' : 'Start'}
+        <small>Ch. {fmt(c.num)}</small>
+      </ReadButton>
+    );
+  if (l?.tpl) return <LinkRowContinue x={x} l={l} i={i} />;
+  return (
+    <button className="btn ghost sm go" onClick={() => navigate({ name: 'series', id: x.id })}>
+      {last ? 'Continue' : 'Start'}
+    </button>
+  );
+}
+
+function LinkRowContinue({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
+  const open = useOpenLink(x, l, i, x.last || 0);
+  return (
+    <button className="btn ghost sm go" onClick={() => open('cont')}>
+      Continue
+      <small>Ch. {nextWhole(x.last || 0)}</small>
+    </button>
   );
 }
 

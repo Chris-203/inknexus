@@ -1,4 +1,4 @@
-import { nextChapter, preloadChapter } from './preload';
+import { continueChapter, nextChapter, preloadChapter } from './preload';
 import type { Chapter } from './types';
 
 const chap = (num: number, ext = ''): Chapter => ({ id: `c${num}`, num, title: '', ext, grp: '' });
@@ -41,6 +41,25 @@ describe('nextChapter', () => {
   });
   it('has none after the last chapter', () => {
     expect(nextChapter(list, 53)).toBeUndefined();
+  });
+});
+
+describe('continueChapter', () => {
+  const list = [chap(1), chap(2), chap(2.5), chap(4)];
+  it('is the chapter after the last one read, skipping missing numbers', () => {
+    expect(continueChapter(list, 0)?.num).toBe(1);
+    expect(continueChapter(list, 2)?.num).toBe(2.5);
+    expect(continueChapter(list, 2.5)?.num).toBe(4);
+  });
+  it('is the chapter left part way when it is not older than the last one read', () => {
+    expect(continueChapter(list, 1, 2)?.num).toBe(2);
+    expect(continueChapter(list, 2, 2)?.num).toBe(2);
+    expect(continueChapter(list, 2.5, 1)?.num).toBe(4);
+  });
+  it('skips a left chapter that is not in the list, and is nothing when every chapter is read', () => {
+    expect(continueChapter(list, 2.5, 3)?.num).toBe(4);
+    expect(continueChapter(list, 4)).toBeUndefined();
+    expect(continueChapter([], 0)).toBeUndefined();
   });
 });
 
