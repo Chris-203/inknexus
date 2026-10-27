@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useApp } from '../context';
+import { useApp, type SearchState } from '../context';
 import { LinkFields } from '../components/LinkFields';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
 import { why } from '../lib/api';
 import { fmt, norm } from '../lib/format';
 import { linkFrom, NOT_WEB } from '../lib/links';
+import { browseKey, isFresh, loadBrowse, savedResults, saveResults, searchKey } from '../lib/searchResults';
 import { addSeries, updateSeries, useStore } from '../lib/store';
 import type { SearchResult } from '../lib/types';
 import * as mangadex from '../sources/mangadex';
@@ -28,18 +29,28 @@ export function Search() {
   const seq = useRef(0);
   const browsing = !search.q;
 
+  /** Show the results saved under `key` at once, or "Loading…" without them; true when they are fresh enough to keep. */
+  const showSaved = (key: string, next: Omit<SearchState, 'res'>) => {
+    const saved = savedResults(key);
+    setSearch({ ...next, res: saved ?? null });
+    setStatus(saved ? 'idle' : 'busy');
+    return !!saved && isFresh(key);
+  };
+
   const browse = async (tag: string | null, sort: mangadex.BrowseSort) => {
     const id = ++seq.current;
+    const key = browseKey(tag, sort);
     setQ('');
-    setSearch({ q: '', res: null, tag, sort });
-    setStatus('busy');
+    if (showSaved(key, { q: '', tag, sort })) return;
     try {
-      const res = await mangadex.browse(tag, sort);
+      const res = await loadBrowse(tag, sort);
       if (id !== seq.current) return;
       setSearch({ q: '', res, tag, sort });
       setStatus('idle');
     } catch (e) {
       if (id !== seq.current) return;
+      // A failed reload keeps the results already shown.
+      if (savedResults(key)) return toast(`Could not reload MangaDex (${why(e)}). Showing results from earlier.`);
       setError(why(e));
       setStatus('failed');
     }
@@ -55,13 +66,17 @@ export function Search() {
     const term = q.trim();
     if (!term) return;
     const id = ++seq.current;
-    setSearch({ ...search, q: term, res: null });
-    setStatus('busy');
+    const key = searchKey(term);
+    if (showSaved(key, { ...search, q: term })) return;
     const [md, al] = await Promise.allSettled([mangadex.search(term), anilist.search(term)]);
     if (id !== seq.current) return;
-    if (md.status === 'rejected' && al.status === 'rejected') return setStatus('failed');
+    if (md.status === 'rejected' && al.status === 'rejected')
+      return savedResults(key) ? toast('Could not reach MangaDex or AniList. Showing results from earlier.') : setStatus('failed');
+    const res = [...(md.status === 'fulfilled' ? md.value : []), ...(al.status === 'fulfilled' ? al.value : [])];
+    // Only complete results are saved, so a saved search never stands in for a source that failed.
+    if (md.status === 'fulfilled' && al.status === 'fulfilled') saveResults(key, res);
     setStatus('idle');
-    setSearch({ ...search, q: term, res: [...(md.status === 'fulfilled' ? md.value : []), ...(al.status === 'fulfilled' ? al.value : [])] });
+    setSearch({ ...search, q: term, res });
     if (md.status === 'rejected') toast(`MangaDex failed (${why(md.reason)}). Showing AniList only.`);
     if (al.status === 'rejected') toast(`AniList failed (${why(al.reason)}). Showing MangaDex only.`);
   };
