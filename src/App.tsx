@@ -3,6 +3,7 @@ import { AppContext, type AppApi, type SearchState, type View } from './context'
 import { ImportSheet } from './components/ImportSheet';
 import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
 import { showsReadingUpdates } from './lib/readingUpdates';
+import { preloadBrowse } from './lib/searchResults';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
@@ -56,6 +57,9 @@ export function App() {
     return () => removeEventListener('popstate', pop);
     // Only on mount: this records the first view in history; later views are recorded by navigate().
   }, []);
+
+  // Only on opening the app, so the Search tab opens on its results.
+  useEffect(() => preloadBrowse(search.tag, search.sort), []);
 
   // Braces matter: newer Chrome returns a Promise from scrollTo, and React would call it as the cleanup.
   useLayoutEffect(() => {

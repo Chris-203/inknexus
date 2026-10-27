@@ -25,19 +25,16 @@ function exportBackup() {
 export function Library() {
   const { navigate, importBackup, toast } = useApp();
   const { lib } = useStore();
+  const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
+  const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
+  // Before useUpdates, so its checks see the lists loading ahead and wait for them.
+  useEffect(() => prefetchChapters(mds), [lib]);
   const updates = useUpdates(lib);
   // The ids picked for removal while selecting, or null when not selecting.
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
-  const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
   const f = updates.failed;
-  const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
-
-  // Waits for the new-chapter checks rather than adding to them.
-  useEffect(() => {
-    if (!updates.checking) prefetchChapters(mds);
-  }, [lib, updates.checking]);
 
   const toggle = (id: string) => setPicked((p) => p && (p.includes(id) ? p.filter((k) => k !== id) : [...p, id]));
   const remove = (ids: string[]) => {
