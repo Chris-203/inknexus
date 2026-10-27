@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { statusOf, why } from './api';
 import { createChanges } from './changes';
-import { cachedChapters } from './chapters';
+import { cachedChapters, isLoadingAhead, subscribeChapters } from './chapters';
 import { isObj, readJson, writeJson } from './storage';
 import type { Latest, Series } from './types';
 import { latest } from '../sources/mangadex';
@@ -64,9 +64,15 @@ export function checkUpdates(lib: Series[], force: boolean) {
   });
 }
 
-/** Run the due checks for a library and re-render when they finish. */
+/**
+ * Run the due checks for a library and re-render when they finish. They wait for the chapter lists loading ahead, which
+ * come first so series open on their chapters; a list loaded ahead also stands in for that series' check.
+ */
 export function useUpdates(lib: Series[]) {
   useSyncExternalStore(changes.subscribe, changes.version);
-  useEffect(() => checkUpdates(lib, false), [lib]);
+  const ahead = useSyncExternalStore(subscribeChapters, isLoadingAhead);
+  useEffect(() => {
+    if (!isLoadingAhead()) checkUpdates(lib, false);
+  }, [lib, ahead]);
   return updates;
 }
