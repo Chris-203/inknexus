@@ -98,8 +98,13 @@ describe('chapter lists kept on the device', () => {
     off();
   });
 
-  it('never shows a list older than a day', async () => {
-    const c = await start(storage([['a', { at: Date.now() - 25 * 60 * MIN, list: list(1) }]]));
+  it('shows a list from a few days ago while it reloads', async () => {
+    const c = await start(storage([['a', { at: Date.now() - 3 * 24 * 60 * MIN, list: list(1) }]]));
+    expect(c.chapterState('a')).toEqual({ status: 'ready', list: list(1) });
+  });
+
+  it('never shows a list older than a week', async () => {
+    const c = await start(storage([['a', { at: Date.now() - 8 * 24 * 60 * MIN, list: list(1) }]]));
     expect(c.chapterState('a')).toEqual({ status: 'loading' });
     c.loadChapters('a');
     await vi.waitFor(() => expect(c.chapterState('a')).toMatchObject({ status: 'ready', list: { chapters: [{ num: 9 }] } }));
@@ -162,7 +167,7 @@ describe('chapter lists kept on the device', () => {
     /** The series each fetch asked for, in order. */
     const asked = (fetch: { mock: { calls: unknown[][] } }) => fetch.mock.calls.map(([u]) => decodeURIComponent(String(u)).match(/manga\/([^/]+)\/feed/)![1]);
 
-    it('loads the lists missing from the device one at a time, in order', async () => {
+    it('loads the lists missing from the device two at a time, in order', async () => {
       const c = await start(storage([['b', { at: Date.now() - 2 * 60 * MIN, list: list(1) }]]));
       let open = 0;
       let most = 0;
@@ -172,10 +177,10 @@ describe('chapter lists kept on the device', () => {
         open--;
         return new Response(JSON.stringify({ data: [{ id: 'c9', attributes: { chapter: '9', pages: 3 } }], total: 1 }));
       });
-      c.prefetchChapters(['a', 'b', 'c']);
-      await vi.waitFor(() => expect(c.chapterState('c')).toMatchObject({ status: 'ready' }));
-      expect(asked(c.fetch)).toEqual(['a', 'c']);
-      expect(most).toBe(1);
+      c.prefetchChapters(['a', 'b', 'c', 'd']);
+      await vi.waitFor(() => expect(c.chapterState('d')).toMatchObject({ status: 'ready' }));
+      expect(asked(c.fetch)).toEqual(['a', 'c', 'd']);
+      expect(most).toBe(2);
       // The saved list stays as it was until the series opens.
       expect(c.chapterState('b')).toEqual({ status: 'ready', list: list(1) });
     });
@@ -190,16 +195,21 @@ describe('chapter lists kept on the device', () => {
 
     it('stops at the first failure and does not keep it, so opening the series tries again', async () => {
       const c = await start(storage([]), () => new Response('', { status: 429 }));
-      const done = vi.fn();
-      const off = c.subscribeChapters(done);
-      c.prefetchChapters(['a', 'b']);
-      await vi.waitFor(() => expect(done).toHaveBeenCalledTimes(1));
-      await new Promise((r) => setTimeout(r, 10));
-      expect(asked(c.fetch)).toEqual(['a']);
+      c.prefetchChapters(['a', 'b', 'c']);
+      expect(c.isLoadingAhead()).toBe(true);
+      await vi.waitFor(() => expect(c.isLoadingAhead()).toBe(false));
+      // The two already loading when the first failed, and nothing after them.
+      expect(asked(c.fetch)).toEqual(['a', 'b']);
       expect(c.chapterState('a')).toEqual({ status: 'loading' });
       c.loadChapters('a');
-      expect(c.fetch).toHaveBeenCalledTimes(2);
-      off();
+      expect(c.fetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('is done at once when every list is on the device', async () => {
+      const c = await start(storage([['a', { at: Date.now() - 2 * 60 * MIN, list: list(1) }]]));
+      c.prefetchChapters(['a']);
+      expect(c.isLoadingAhead()).toBe(false);
+      expect(c.fetch).not.toHaveBeenCalled();
     });
 
     it('waits for a list that is already loading instead of asking twice', async () => {
