@@ -4,6 +4,7 @@ import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
+import { WebtoonSheet } from '../components/WebtoonSheet';
 import { imageSrc } from '../lib/api';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
 import { daysAgo, fmt } from '../lib/format';
@@ -41,6 +42,7 @@ export function Library() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [webtoonOpen, setWebtoonOpen] = useState(false);
   const view = useLibraryView();
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
@@ -103,6 +105,7 @@ export function Library() {
     <>
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
+      {webtoonOpen && <WebtoonSheet onClose={() => setWebtoonOpen(false)} />}
     </>
   );
 
@@ -125,6 +128,10 @@ export function Library() {
           </p>
           <button className="btn ghost" onClick={importBackup}>
             Import backup
+          </button>
+          <p className="restore">Reading on Webtoon? Bring in every series from your Recent list.</p>
+          <button className="btn ghost" onClick={() => setWebtoonOpen(true)}>
+            Import from Webtoon
           </button>
         </div>
         {sheets}
@@ -259,6 +266,9 @@ export function Library() {
         </button>
         <button className="btn ghost sm" onClick={importBackup}>
           Import backup
+        </button>
+        <button className="btn ghost sm" onClick={() => setWebtoonOpen(true)}>
+          Import from Webtoon
         </button>
       </div>
       {sheets}

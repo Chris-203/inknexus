@@ -7,6 +7,7 @@ import { preloadBrowse } from './lib/searchResults';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
+import { hasWebtoonList, importWebtoon } from './lib/webtoon';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
 import { Details } from './views/Details';
@@ -56,6 +57,14 @@ export function App() {
     addEventListener('popstate', pop);
     return () => removeEventListener('popstate', pop);
     // Only on mount: this records the first view in history; later views are recorded by navigate().
+  }, []);
+
+  // The bookmarklet opens the app with a Webtoon list in the address; import it once and take it out of the address.
+  useEffect(() => {
+    if (!hasWebtoonList(location.hash)) return;
+    const list = location.hash;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    toast(importWebtoon(list));
   }, []);
 
   // Only on opening the app, so the Search tab opens on its results.
