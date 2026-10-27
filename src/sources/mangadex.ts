@@ -1,6 +1,6 @@
 import { api, MD } from '../lib/api';
 import { mdNames, pickTitle, type Name } from '../lib/names';
-import type { Chapter, ChapterList, Latest, Page, SearchResult } from '../lib/types';
+import type { Chapter, ChapterList, Details, Latest, Page, SearchResult } from '../lib/types';
 
 /** Only safe and suggestive titles, matching what the app has always shown. */
 const RATING = '&contentRating[]=safe&contentRating[]=suggestive';
@@ -15,10 +15,21 @@ interface Rel {
   type: string;
   attributes?: { name?: string; fileName?: string };
 }
-interface MdManga {
+export interface MdManga {
   id: string;
-  attributes: { title?: Record<string, string>; altTitles?: Record<string, string>[]; description?: Record<string, string> };
+  attributes: {
+    title?: Record<string, string>;
+    altTitles?: Record<string, string>[];
+    description?: Record<string, string>;
+    tags?: { attributes: { name: Record<string, string>; group: string } }[];
+    status?: string;
+    year?: number | null;
+  };
   relationships?: Rel[];
+}
+/** /manga/{id}/aggregate: chapter numbers by volume, with chapters MangaDex no longer has marked unavailable. MangaDex sends an empty array instead of an empty object. */
+export interface MdAggregate {
+  volumes?: Record<string, { chapters?: Record<string, { chapter: string; isUnavailable?: boolean }> }>;
 }
 export interface MdChapter {
   id: string;
@@ -160,6 +171,37 @@ async function fetchPages(id: string): Promise<Page[]> {
     a: `${j.baseUrl}/data-saver/${j.chapter.hash}/${f}`,
     b: j.chapter.data[i] ? `${j.baseUrl}/data/${j.chapter.hash}/${j.chapter.data[i]}` : '',
   }));
+}
+
+/** The tag groups a details screen shows, in this order; content warnings and the rest are left out. */
+const TAG_GROUPS = ['genre', 'format', 'theme'];
+const STATUS: Record<string, string> = { ongoing: 'Ongoing', completed: 'Completed', hiatus: 'On hiatus', cancelled: 'Cancelled' };
+
+export function toDetails(m: MdManga, agg: MdAggregate): Details {
+  const a = m.attributes;
+  const group = (t: { attributes: { group: string } }) => TAG_GROUPS.indexOf(t.attributes.group);
+  const tags = (a.tags || [])
+    .filter((t) => group(t) >= 0)
+    .sort((x, y) => group(x) - group(y))
+    .flatMap((t) => t.attributes.name.en || []);
+  const nums = Object.values(agg.volumes || {}).flatMap((v) => Object.values(v.chapters || {}).flatMap((c) => (c.isUnavailable ? [] : c.chapter)));
+  const authors = (m.relationships || []).filter((r) => (r.type === 'author' || r.type === 'artist') && r.attributes?.name).map((r) => r.attributes!.name!);
+  return {
+    tags,
+    status: STATUS[a.status || ''] || '',
+    year: a.year || null,
+    chapters: new Set(nums.filter((n) => !isNaN(parseFloat(n)))).size || null,
+    authors: [...new Set(authors)],
+  };
+}
+
+/** Tags, status, year, authors and English chapter count for a series. */
+export async function details(ref: string): Promise<Details> {
+  const [m, agg] = await Promise.all([
+    api(`${MD}/manga/${ref}?includes[]=author&includes[]=artist`).then((r) => r.json() as Promise<{ data: MdManga }>),
+    api(`${MD}/manga/${ref}/aggregate?translatedLanguage[]=en`).then((r) => r.json() as Promise<MdAggregate>),
+  ]);
+  return toDetails(m.data, agg);
 }
 
 /** Every name MangaDex has for a series. */

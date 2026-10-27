@@ -1,4 +1,4 @@
-import { browse, chapters, GENRES, latest, pages, PAGES_TTL, search, toChapterList, type MdChapter } from './mangadex';
+import { browse, chapters, details, GENRES, latest, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -49,7 +49,51 @@ describe('toChapterList', () => {
   });
 });
 
+describe('toDetails', () => {
+  const tag = (en: string, group: string) => ({ attributes: { name: { en }, group } });
+  it('shows genres, then formats, then themes, and leaves content warnings out', () => {
+    const d = toDetails(
+      { id: 'm', attributes: { tags: [tag('Monsters', 'theme'), tag('Gore', 'content'), tag('Long Strip', 'format'), tag('Action', 'genre')] } },
+      {},
+    );
+    expect(d.tags).toEqual(['Action', 'Long Strip', 'Monsters']);
+  });
+  it('counts available numbered chapters once across volumes and names each author once', () => {
+    const d = toDetails(
+      {
+        id: 'm',
+        attributes: { status: 'hiatus', year: 2019 },
+        relationships: [
+          { id: 'a', type: 'author', attributes: { name: 'Pen Name' } },
+          { id: 'b', type: 'artist', attributes: { name: 'Pen Name' } },
+          { id: 'c', type: 'cover_art', attributes: { fileName: 'x.jpg' } },
+        ],
+      },
+      {
+        volumes: {
+          '1': { chapters: { '1': { chapter: '1' }, '1.5': { chapter: '1.5' } } },
+          none: { chapters: { '1': { chapter: '1' }, none: { chapter: 'none' } } },
+        },
+      },
+    );
+    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'] });
+  });
+  it('gives null for no chapters or year, and an empty status for an unknown one', () => {
+    // MangaDex sends volumes as [] when there are none.
+    const d = toDetails({ id: 'm', attributes: { status: 'odd' } }, { volumes: [] as unknown as Record<string, never> });
+    expect(d).toMatchObject({ status: '', year: null, chapters: null });
+  });
+});
+
 describe('MangaDex requests', () => {
+  it('details asks for the series with its authors and its English chapter numbers', async () => {
+    const seen = relay((u) =>
+      u.includes('/aggregate') ? { volumes: { none: { chapters: { '3': { chapter: '3' } } } } } : { data: { id: 'm1', attributes: { status: 'ongoing' } } },
+    );
+    expect(await details('m1')).toMatchObject({ status: 'Ongoing', chapters: 1 });
+    expect(seen).toContain('https://api.mangadex.org/manga/m1?includes[]=author&includes[]=artist');
+    expect(seen).toContain('https://api.mangadex.org/manga/m1/aggregate?translatedLanguage[]=en');
+  });
   it('chapters pages through the feed with groups and without includeExternalUrl', async () => {
     const seen = relay((u) => {
       const off = +new URL(u).searchParams.get('offset')!;

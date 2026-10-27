@@ -47,6 +47,18 @@ export interface SearchResult {
   links?: { label: string; url: string }[];
 }
 
+/** More about a search result, for its details screen. */
+export interface Details {
+  /** Genres first, then other tags. */
+  tags: string[];
+  /** 'Ongoing', 'Completed', … or '' when unknown. */
+  status: string;
+  year: number | null;
+  /** On MangaDex, the numbered English chapters; on AniList, the count once the series has finished. */
+  chapters: number | null;
+  authors: string[];
+}
+
 export interface Chapter {
   id: string;
   num: number;

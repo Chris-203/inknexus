@@ -49,6 +49,8 @@ header .btn,header .ibtn{align-self:center}
 .btn.danger{background:transparent;color:var(--danger);border:1px solid currentColor}
 .btn:disabled{opacity:.5;cursor:default}
 .ibtn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius-md);min-width:44px;height:44px;padding:0 10px;font-size:var(--font-lg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:none}
+/* a bare chevron, like a list row's disclosure arrow, still 44px to tap */
+.ibtn.plain{background:none;border-color:transparent;color:var(--muted)}
 .ibtn.txt{font-size:var(--font-sm);font-weight:700;font-family:var(--body)}
 /* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
 .ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
@@ -90,6 +92,11 @@ details.more .pad{padding:0 12px 12px}
 .top .info{flex:1;min-width:0}
 .top h2{font-size:var(--font-lg);line-height:1.15}
 .top .sub{margin-top:6px}
+/* Browse details: Add sits under the facts, and the tags and synopsis run full width below */
+.top .add{margin-top:12px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0 16px 8px}
+.tags li{font-size:var(--font-sm);color:var(--muted);border:1px solid var(--line);border-radius:var(--radius-full);padding:2px 10px}
+.about{margin:0;padding:8px 16px 16px;white-space:pre-line}
 .step{display:flex;align-items:center;gap:8px;margin-top:10px}
 .step input{width:78px;text-align:center;-moz-appearance:textfield;appearance:textfield}
 .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}

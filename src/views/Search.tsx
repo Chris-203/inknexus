@@ -4,11 +4,10 @@ import { LinkFields } from '../components/LinkFields';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
 import { why } from '../lib/api';
-import { fmt, norm } from '../lib/format';
+import { fmt } from '../lib/format';
 import { linkFrom, NOT_WEB } from '../lib/links';
 import { browseKey, isFresh, loadBrowse, savedResults, saveResults, searchKey } from '../lib/searchResults';
-import { addSeries, updateSeries, useStore } from '../lib/store';
-import type { SearchResult } from '../lib/types';
+import { addSeries } from '../lib/store';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
 
@@ -17,13 +16,14 @@ const SORTS: [mangadex.BrowseSort, string][] = [
   ['latest', 'Latest upload'],
 ];
 
+/** Where Browse was scrolled to, so coming back from a series' details lands on the same spot. */
+let scrolled = 0;
+
 export function Search() {
   const { navigate, toast, search, setSearch } = useApp();
-  const { lib } = useStore();
   const [q, setQ] = useState(search.q);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [error, setError] = useState('');
-  const [adding, setAdding] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   // Counts loads, so only the newest one shows when taps overlap.
   const seq = useRef(0);
@@ -61,6 +61,14 @@ export function Search() {
     // Only on opening Search: results kept from before are shown as they are.
   }, []);
 
+  useEffect(() => {
+    // App puts every view at the top; results kept from before go back to where they were.
+    if (search.res) window.scrollTo(0, scrolled);
+    const keep = () => (scrolled = window.scrollY);
+    addEventListener('scroll', keep, { passive: true });
+    return () => removeEventListener('scroll', keep);
+  }, []);
+
   const onSearch = async (e: FormEvent) => {
     e.preventDefault();
     const term = q.trim();
@@ -81,27 +89,6 @@ export function Search() {
     if (al.status === 'rejected') toast(`AniList failed (${why(al.reason)}). Showing MangaDex only.`);
   };
 
-  const existing = (o: SearchResult) => (o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title)));
-
-  const add = async (o: SearchResult) => {
-    setAdding(true);
-    const n = addSeries({ title: o.title, cover: o.cover, md: o.src === 'md' ? String(o.ref) : null, al: o.src === 'al' ? o.ref : null, links: o.links || [] });
-    let msg = 'Added to My Series';
-    if (o.src === 'al') {
-      try {
-        const hit = (await mangadex.search(o.title)).find((k) => norm(k.title) === norm(o.title));
-        if (hit) {
-          updateSeries(n.id, () => ({ md: String(hit.ref) }));
-          msg = 'Added. Found it on MangaDex too';
-        }
-      } catch {
-        // MangaDex is optional here: the series is added with its AniList links either way.
-      }
-    }
-    toast(msg);
-    navigate({ name: 'series', id: n.id });
-  };
-
   let results;
   if (status === 'busy') results = <p className="hint">{browsing ? 'Loading…' : 'Searching…'}</p>;
   else if (status === 'failed')
@@ -116,31 +103,22 @@ export function Search() {
   else if (!search.res.length)
     results = <p className="hint">{browsing ? 'Nothing in this genre yet.' : 'No matches. Try another spelling, or add it by link.'}</p>;
   else
-    results = search.res.map((o) => {
-      const ex = existing(o);
-      return (
-        <ResultRow
-          key={`${o.src}:${o.ref}`}
-          o={o}
-          extra={
-            <>
-              <span className="tag">{o.src === 'md' ? 'MangaDex' : 'AniList'}</span>
-              <p>{o.desc}</p>
-            </>
-          }
-        >
-          {ex ? (
-            <button className="btn sm" onClick={() => navigate({ name: 'series', id: ex.id })}>
-              Open
-            </button>
-          ) : (
-            <button className="btn sm" disabled={adding} onClick={() => void add(o)}>
-              Add
-            </button>
-          )}
-        </ResultRow>
-      );
-    });
+    results = search.res.map((o) => (
+      <ResultRow
+        key={`${o.src}:${o.ref}`}
+        o={o}
+        extra={
+          <>
+            <span className="tag">{o.src === 'md' ? 'MangaDex' : 'AniList'}</span>
+            <p>{o.desc}</p>
+          </>
+        }
+      >
+        <button className="ibtn plain" aria-label={`More about ${o.title}`} onClick={() => navigate({ name: 'details', o })}>
+          ›
+        </button>
+      </ResultRow>
+    ));
 
   return (
     <>
