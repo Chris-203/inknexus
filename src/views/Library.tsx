@@ -5,6 +5,7 @@ import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
+import { canBadge, setBadgesIcon, useBadgesIcon } from '../lib/appBadge';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
 import { daysAgo, fmt } from '../lib/format';
 import { setLibraryView, useLibraryView } from '../lib/libraryView';
@@ -15,7 +16,7 @@ import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUp
 import { leftChapter } from '../lib/spots';
 import { getState, removeSeries, shownSource, useStore } from '../lib/store';
 import type { Link, Series as SeriesT } from '../lib/types';
-import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
+import { checkUpdates, freshOf, useUpdates, withNew } from '../lib/updates';
 
 function exportBackup() {
   const u = URL.createObjectURL(new Blob([JSON.stringify(getState())], { type: 'application/json' }));
@@ -46,6 +47,7 @@ export function Library() {
   const holdTimer = useRef(0);
   const held = useRef(false);
   const f = updates.failed;
+  const freshCount = withNew(lib);
 
   const startHold = (id: string) => {
     held.current = false;
@@ -57,7 +59,6 @@ export function Library() {
   };
   const endHold = () => clearTimeout(holdTimer.current);
 
-  const freshOf = (x: SeriesT) => (x.md && !x.mdh && x.last ? newCount(latestFor(x.md), x.last) : null);
   // What pressing a series does, in either view: a tap opens it, or picks it while selecting; holding starts selecting.
   const press = (x: SeriesT) => ({
     // The press comes a moment before the click, so a list still loading starts that much sooner.
@@ -159,7 +160,8 @@ export function Library() {
       )}
       <div className="lbar">
         <span className="sub">
-          {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+          {list.length} series
+          {updates.checking ? ' · checking for new chapters…' : freshCount ? ` · ${freshCount} with new chapters` : ''}
         </span>
         <div className="seg" role="group" aria-label="Show series as">
           <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
@@ -307,7 +309,9 @@ function LinkRowContinue({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
 /** Settings in a drawer from the right edge, opened from the gear. */
 function SettingsSheet({ onClose }: { onClose: () => void }) {
   const sheet = useSheet(onClose);
+  const { toast } = useApp();
   const updates = useShowsReadingUpdates();
+  const badge = useBadgesIcon();
   return (
     <Sheet label="Settings" sheet={sheet} drawer>
       <h2>Settings</h2>
@@ -317,6 +321,20 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
           <input type="checkbox" checked={updates} onChange={(e) => setShowsReadingUpdates(e.target.checked)} />
           Show reading updates, like "Chapter 5 marked read" and "Zoom 150%"
         </label>
+        <label className="opt">
+          <input
+            type="checkbox"
+            checked={badge}
+            disabled={!canBadge()}
+            onChange={(e) => void setBadgesIcon(e.target.checked).then((err) => err && toast(err))}
+          />
+          Show how many series have new chapters on the app icon
+        </label>
+        <p className="hint">
+          {canBadge()
+            ? 'The count changes when InkNexus checks for new chapters, while it is open.'
+            : 'On iPhone, add InkNexus to the Home Screen (Share, Add to Home Screen) and open it from there to use this.'}
+        </p>
       </div>
     </Sheet>
   );

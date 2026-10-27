@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { ImportSheet } from './components/ImportSheet';
+import { showBadge, useBadgesIcon } from './lib/appBadge';
 import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
 import { showsReadingUpdates } from './lib/readingUpdates';
 import { preloadBrowse } from './lib/searchResults';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import type { Series as SeriesT } from './lib/types';
+import { useWithNew } from './lib/updates';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
 import { Details } from './views/Details';
@@ -43,7 +45,9 @@ export function App() {
   const [importing, setImporting] = useState<ReturnType<typeof planImport> | null>(null);
   const toastTimer = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
-  useStore(); // re-render when the library changes
+  const { lib } = useStore(); // re-render when the library changes
+  const fresh = useWithNew(lib);
+  const badge = useBadgesIcon();
   const x = seriesFor(view);
   const gone = 'id' in view && !x;
 
@@ -68,6 +72,7 @@ export function App() {
 
   const full = view.name === 'reader' || view.name === 'frame';
   useEffect(() => void document.body.classList.toggle('nonav', full), [full]);
+  useEffect(() => showBadge(badge ? fresh : 0), [badge, fresh]);
 
   const navigate = useCallback((v: View, replace = false) => {
     if (replace) history.replaceState({ v, back: hasBack() }, '');
@@ -139,13 +144,20 @@ export function App() {
         {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
       </div>
       <nav id="nav" hidden={full}>
-        <button aria-current={tab === 'library' || undefined} onClick={() => view.name !== 'library' && navigate({ name: 'library' })}>
-          {/* a comic book: cover, spine, and a speech bubble */}
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="4" y="2.5" width="16" height="19" rx="2" />
-            <path d="M8 2.5v19" />
-            <path d="M14 6.5c2.2 0 3.5 1.3 3.5 3s-1.3 3-3.5 3c-.4 0-.8 0-1.2-.1L11 13.5l.4-2c-.6-.5-.9-1.2-.9-2 0-1.7 1.3-3 3.5-3z" />
-          </svg>
+        <button
+          aria-current={tab === 'library' || undefined}
+          aria-label={fresh ? `My Series, ${fresh} with new chapters` : undefined}
+          onClick={() => view.name !== 'library' && navigate({ name: 'library' })}
+        >
+          <span className="nicon">
+            {/* a comic book: cover, spine, and a speech bubble */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="2.5" width="16" height="19" rx="2" />
+              <path d="M8 2.5v19" />
+              <path d="M14 6.5c2.2 0 3.5 1.3 3.5 3s-1.3 3-3.5 3c-.4 0-.8 0-1.2-.1L11 13.5l.4-2c-.6-.5-.9-1.2-.9-2 0-1.7 1.3-3 3.5-3z" />
+            </svg>
+            {fresh > 0 && <span className="nbadge">{fresh}</span>}
+          </span>
           My Series
         </button>
         <button aria-current={tab === 'search' || undefined} onClick={() => view.name !== 'search' && navigate({ name: 'search' })}>

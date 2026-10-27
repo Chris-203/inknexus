@@ -32,6 +32,16 @@ export function newCount(l: Latest | undefined, last: number): { n: number; more
   return { n, more: l.full && n > 0 && n === l.nums.length };
 }
 
+/** New chapters for a started MangaDex series, or null for a series that is not checked. */
+export function freshOf(x: Series) {
+  return x.md && !x.mdh && x.last ? newCount(latestFor(x.md), x.last) : null;
+}
+
+/** How many series in `lib` have new chapters. */
+export function withNew(lib: Series[]): number {
+  return lib.filter((x) => freshOf(x)?.n).length;
+}
+
 export const updates = { checking: false, failed: [] as { title: string; error: string }[] };
 const changes = createChanges();
 
@@ -62,6 +72,16 @@ export function checkUpdates(lib: Series[], force: boolean) {
     updates.checking = false;
     changes.emit();
   });
+}
+
+function subscribeNew(l: () => void) {
+  const off = [changes.subscribe(l), subscribeChapters(l)];
+  return () => off.forEach((f) => f());
+}
+
+/** `withNew(lib)`, kept current as checks finish and chapter lists load. */
+export function useWithNew(lib: Series[]): number {
+  return useSyncExternalStore(subscribeNew, () => withNew(lib));
 }
 
 /**
