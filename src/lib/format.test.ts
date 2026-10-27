@@ -1,4 +1,4 @@
-import { chapterNote, daysAgo, fmt, norm, plural } from './format';
+import { chapterNote, daysAgo, fileSize, fmt, norm, plural } from './format';
 
 describe('format', () => {
   it('fmt shows whole and one-decimal chapters', () => {
@@ -25,6 +25,13 @@ describe('format', () => {
   });
   it('daysAgo says today for a time later than now, as from another device with its clock ahead', () => {
     expect(daysAgo(new Date(2026, 9, 29).getTime(), new Date(2026, 9, 27).getTime())).toBe('today');
+  });
+  it('fileSize shows KB under 1 MB and MB above, never 0 KB', () => {
+    expect(fileSize(0)).toBe('1 KB');
+    expect(fileSize(850 * 1024)).toBe('850 KB');
+    expect(fileSize(4.24 * 1024 * 1024)).toBe('4.2 MB');
+    expect(fileSize(1023.9 * 1024)).toBe('1 MB');
+    expect(fileSize(18.4 * 1024 * 1024)).toBe('18 MB');
   });
   it('norm keeps letters and digits only', () => expect(norm('Solo Leveling: Ragnarok!')).toBe('sololevelingragnarok'));
 });

@@ -144,6 +144,11 @@ details.more .pad{padding:0 12px 12px}
 .ch span{color:var(--muted);font-size:var(--font-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch.read{opacity:.45}
 .ch[aria-current] b{color:var(--accent)}
+/* Settings: a chapter saved for reading offline, its series over its number and size, with a remove button */
+.dl{display:flex;align-items:center;gap:8px;padding:6px 0 6px 16px;border-top:1px solid var(--line);font-size:var(--font-sm);color:var(--muted)}
+.dl span{flex:1;min-width:0;display:flex;flex-direction:column}
+.dl b{color:var(--text);font-size:var(--font-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl:last-child{border-bottom:1px solid var(--line)}
 .credit{color:var(--muted);font-size:var(--font-sm);padding:10px 16px;margin:0}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}

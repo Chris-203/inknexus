@@ -6,7 +6,8 @@ import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
-import { daysAgo, fmt } from '../lib/format';
+import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
+import { daysAgo, fileSize, fmt, plural } from '../lib/format';
 import { setLibraryView, useLibraryView } from '../lib/libraryView';
 import { nextWhole } from '../lib/links';
 import { useOpenLink } from '../lib/openLink';
@@ -318,6 +319,46 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
           Show reading updates, like "Chapter 5 marked read" and "Zoom 150%"
         </label>
       </div>
+      <OfflineChapters />
     </Sheet>
+  );
+}
+
+/** The chapters saved for reading offline, by series, with their sizes and a way to remove each or all. */
+function OfflineChapters() {
+  const { saved, saving, can } = useDownloads();
+  if (!can) return null;
+  const total = saved.reduce((t, d) => t + d.bytes, 0);
+  const sorted = [...saved].sort((a, b) => a.t.localeCompare(b.t) || a.c.num - b.c.num);
+  return (
+    <>
+      <p className="hint">Offline chapters</p>
+      <div>
+        {sorted.map((d) => (
+          <div key={d.c.id} className="dl">
+            <span>
+              <b>{d.t}</b>
+              Ch. {fmt(d.c.num)} · {fileSize(d.bytes)}
+            </span>
+            <button className="ibtn plain" aria-label={`Remove ch. ${fmt(d.c.num)} of ${d.t}`} onClick={() => removeDownload(d.c.id)}>
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="pad">
+        <p className="hint">
+          {saved.length
+            ? `${plural(saved.length, 'chapter')}, ${fileSize(total)}. A chapter is removed once you finish reading it.`
+            : "None yet. Save the next chapters from a series' MangaDex chapters."}{' '}
+          They are kept on this device only. On iPhone, add InkNexus to the Home Screen: Safari can clear a site's data after a week without a visit.
+        </p>
+        {saved.length > 0 && (
+          <button className="btn danger sm" disabled={!!saving} onClick={() => confirm('Remove all offline chapters?') && removeAllDownloads()}>
+            Remove all
+          </button>
+        )}
+      </div>
+    </>
   );
 }

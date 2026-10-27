@@ -5,8 +5,9 @@ import { LinkFields } from '../components/LinkFields';
 import { ReadButton } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
-import { imageSrc } from '../lib/api';
+import { imageSrc, why } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
+import { aheadOf, saveChapters, useDownloads } from '../lib/downloads';
 import { chapterNote, fmt, plural } from '../lib/format';
 import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
@@ -16,7 +17,7 @@ import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
 import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries } from '../lib/store';
-import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
+import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
@@ -53,7 +54,7 @@ export function Series({ x }: { x: SeriesT }) {
   const i = cur.startsWith('l') ? +cur.slice(1) : -1;
   const l = x.links[i];
   let body: ReactNode;
-  if (cur === 'md') body = <MangaDexSource x={x} chs={chs} shown={shown} />;
+  if (cur === 'md') body = <MangaDexSource x={x} chs={chs} shown={shown} next={next} />;
   else if (l) body = <LinkSource x={x} l={l} i={i} shown={shown} />;
   else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
 
@@ -144,8 +145,9 @@ export function Series({ x }: { x: SeriesT }) {
   );
 }
 
-/** The MangaDex source: its chapter list, with the ones up to `shown` marked read. */
-function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
+/** The MangaDex source: saving ahead from `next`, and its chapter list, with the ones up to `shown` marked read and saved ones marked. */
+function MangaDexSource({ x, chs, shown, next }: { x: SeriesT; chs: ChaptersState | null; shown: number; next: Chapter | undefined }) {
+  const { saved, can } = useDownloads();
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
   else if (chs.status === 'error')
@@ -170,15 +172,18 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
     );
   } else {
     list = (
-      <ChapterRows
-        all={chs.list.chapters}
-        row={(c) => (
-          <ReadButton key={c.id} x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
-            <b>Ch. {fmt(c.num)}</b>
-            <span>{chapterNote(c)}</span>
-          </ReadButton>
-        )}
-      />
+      <>
+        {can && next && <SaveAhead x={x} list={chs.list.chapters} from={next} />}
+        <ChapterRows
+          all={chs.list.chapters}
+          row={(c) => (
+            <ReadButton key={c.id} x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
+              <b>Ch. {fmt(c.num)}</b>
+              <span>{[saved.some((d) => d.c.id === c.id) && 'Saved', chapterNote(c)].filter(Boolean).join(' · ')}</span>
+            </ReadButton>
+          )}
+        />
+      </>
     );
   }
   return (
@@ -191,6 +196,29 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
         </a>
       </p>
     </>
+  );
+}
+
+/** Saves the next few chapters from `from` for reading offline, with how far it has got, or says they are saved. */
+function SaveAhead({ x, list, from }: { x: SeriesT; list: Chapter[]; from: Chapter }) {
+  const { toast } = useApp();
+  const { saved, saving } = useDownloads();
+  const ahead = aheadOf(list, from);
+  if (!ahead.length) return null;
+  const missing = ahead.filter((c) => !saved.some((d) => d.c.id === c.id));
+  const range = `ch. ${fmt(ahead[0]!.num)}${ahead.length > 1 ? ` to ${fmt(ahead[ahead.length - 1]!.num)}` : ''}`;
+  if (!missing.length && saving?.x !== x.id) return <p className="hint">Saved {range} for reading offline.</p>;
+  const save = () =>
+    saveChapters(x, missing).then(
+      () => toast(`Saved ${range} for reading offline`),
+      (e) => toast(`Could not save chapters for offline (${why(e)}). Chapters saved before the error are kept.`),
+    );
+  return (
+    <div className="pad">
+      <button className="btn ghost" disabled={!!saving} onClick={save}>
+        {saving?.x === x.id ? `Saving ch. ${fmt(saving.n)}: page ${saving.done} of ${saving.total || '…'}` : `Save ${range} for offline`}
+      </button>
+    </div>
   );
 }
 
