@@ -44,6 +44,8 @@ header .btn,header .ibtn{align-self:center}
 .card.on .tick,.lrow.on .tick{background:var(--accent);border-color:var(--accent)}
 .card.on img,.card.on .cover,.lrow.on img,.lrow.on .thumb{outline:3px solid var(--accent);outline-offset:-3px}
 .ct{display:block;margin-top:6px;font-size:var(--font-sm);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* My Series' shelf tabs: each shelf's name and how many series are on it */
+.chip .n{font-weight:400;opacity:.8}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none}
