@@ -87,7 +87,7 @@ export function Library() {
   };
 
   const settings = (
-    <button className="ibtn" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
+    <button className="ibtn plain" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M9.6 4.9 10.1 2.4 13.9 2.4 14.4 4.9 16.9 6.3 19.4 5.6 21.3 8.8 19.4 10.6 19.4 13.4 21.3 15.2 19.4 18.4 16.9 17.7 14.4 19.1 13.9 21.6 10.1 21.6 9.6 19.1 7.1 17.7 4.6 18.4 2.7 15.2 4.6 13.4 4.6 10.6 2.7 8.8 4.6 5.6 7.1 6.3z" />
         <circle cx="12" cy="12" r="3" />
@@ -146,7 +146,7 @@ export function Library() {
       ) : (
         <header>
           <h1>My Series</h1>
-          <button className="ibtn" aria-label="Remove series" onClick={() => setPicked([])}>
+          <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
             {/* a trash can: lid with handle, then the can */}
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h16M9.5 7V4.5h5V7" />
