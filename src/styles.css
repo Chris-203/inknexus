@@ -57,6 +57,14 @@ header .btn,header .ibtn{align-self:center}
 .row input{flex:1;min-width:0}
 .row.mid{align-items:center}
 .row.foot{margin-top:12px}
+/* Browse: the search field with its magnifier inside */
+.field{position:relative;flex:1;min-width:0}
+.field svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;pointer-events:none}
+.field input{appearance:none;padding-left:40px}
+/* Browse: the sort, as two halves of one control */
+.seg{display:flex;gap:4px;margin:4px 16px 12px;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md)}
+.seg button{flex:1;min-height:44px;background:none;border:0;border-radius:var(--radius-sm);color:var(--muted);font-weight:700;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
 /* 16px text stops iOS zooming in when a field is focused */
 input{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:11px 12px;width:100%;font-size:var(--font-base)}
 input:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
