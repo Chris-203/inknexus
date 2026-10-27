@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { Sheet, useSheet } from '../components/Sheet';
@@ -34,7 +34,20 @@ export function Library() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
+  const holdTimer = useRef(0);
+  const held = useRef(false);
   const f = updates.failed;
+
+  const startHold = (id: string) => {
+    held.current = false;
+    holdTimer.current = window.setTimeout(() => {
+      held.current = true;
+      setPicked([id]);
+      navigator.vibrate?.(10);
+    }, 500);
+  };
+  const endHold = () => clearTimeout(holdTimer.current);
 
   const toggle = (id: string) => setPicked((p) => p && (p.includes(id) ? p.filter((k) => k !== id) : [...p, id]));
   const remove = (ids: string[]) => {
@@ -107,8 +120,12 @@ export function Library() {
           <span className="sub">
             {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
           </span>
-          <button className="btn ghost sm" onClick={() => setPicked([])}>
-            Select
+          <button className="ibtn" aria-label="Remove series" onClick={() => setPicked([])}>
+            {/* a trash can: lid with handle, then the can */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M9.5 7V4.5h5V7" />
+              <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+            </svg>
           </button>
           {addLink}
           {settings}
@@ -126,9 +143,20 @@ export function Library() {
               aria-pressed={picked ? on : undefined}
               // The press comes a moment before the click, so a list still loading starts that much sooner.
               onPointerDown={() => {
-                if (x.md && !x.mdh && !picked) loadChapters(x.md);
+                if (picked) return;
+                if (x.md && !x.mdh) loadChapters(x.md);
+                startHold(x.id);
               }}
-              onClick={() => (picked ? toggle(x.id) : navigate({ name: 'series', id: x.id }))}
+              // Scrolling cancels the pointer, so a swipe through the grid never starts selecting.
+              onPointerUp={endHold}
+              onPointerLeave={endHold}
+              onPointerCancel={endHold}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={() => {
+                if (held.current) held.current = false;
+                else if (picked) toggle(x.id);
+                else navigate({ name: 'series', id: x.id });
+              }}
             >
               {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
               <span className="badges">
