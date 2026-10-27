@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useApp } from '../context';
+import { ChapterRows } from '../components/ChapterRows';
+import { useReadChapter } from '../components/ReadButton';
 import { imageSrc } from '../lib/api';
-import { norm, plural } from '../lib/format';
+import { retryChapters, useChapters } from '../lib/chapters';
+import { chapterNote, fmt, norm, plural } from '../lib/format';
 import { addSeries, updateSeries, useStore } from '../lib/store';
-import type { SearchResult } from '../lib/types';
+import type { Chapter, SearchResult } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
 
-/** A Browse result before it is added: tags, status, chapter count and the whole synopsis, with Add to My Series. */
+/** A Browse result before it is added, laid out like a series page on Webtoon: a big cover, the synopsis, tags and facts, Add to My Series and, on MangaDex, its chapters. */
 export function Details({ o }: { o: SearchResult }) {
   const { navigate, goBack, toast } = useApp();
   const { lib } = useStore();
   const [adding, setAdding] = useState(false);
+  // The whole synopsis, rather than its first lines.
+  const [open, setOpen] = useState(false);
   const more = useLoad(`${o.src}:${o.ref}`, () => (o.src === 'md' ? mangadex.details(String(o.ref)) : anilist.details(Number(o.ref))));
   const ex = o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
 
@@ -34,21 +39,45 @@ export function Details({ o }: { o: SearchResult }) {
     toast(msg);
     // Replaces this screen, so going back from the series returns to Browse.
     navigate({ name: 'series', id: n.id }, true);
+    return n;
   };
 
-  let facts;
-  if (more?.state === 'error') facts = <p className="sub">Could not load more about this series ({more.error}). Go back and open it again.</p>;
-  else if (more?.state === 'done') {
-    const d = more.value;
-    const line = [d.status, d.year, d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`].filter(Boolean).join(' · ');
-    facts = (
+  const chs = useChapters(o.src === 'md' ? String(o.ref) : null);
+  const read = useReadChapter();
+  // Reading a chapter adds the series first, so the reader has a series to keep progress in.
+  const readChapter = async (c: Chapter) => read((ex ?? (await add())).id, c);
+
+  const d = more?.state === 'done' ? more.value : null;
+  const line = d && [d.status, d.year, d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`];
+  const long = o.desc.length > 240;
+
+  let chapters: ReactNode = null;
+  if (chs?.status === 'loading') chapters = <p className="hint">Loading chapters…</p>;
+  else if (chs?.status === 'error')
+    chapters = (
       <>
-        {d.authors.length > 0 && <div className="sub">By {d.authors.join(', ')}</div>}
-        {line && <div className="sub">{line}</div>}
+        <p className="hint">Could not load chapters from MangaDex ({chs.error}).</p>
+        <div className="pad">
+          <button className="btn ghost" onClick={() => retryChapters(String(o.ref))}>
+            Try again
+          </button>
+        </div>
       </>
     );
-  } else facts = <p className="sub">Loading…</p>;
-  const tags = more?.state === 'done' ? more.value.tags : [];
+  else if (chs?.status === 'ready')
+    chapters = chs.list.chapters.length ? (
+      <ChapterRows
+        all={chs.list.chapters}
+        row={(c) => (
+          <button key={c.id} className="ch" disabled={adding} onClick={() => void readChapter(c)}>
+            <b>Ch. {fmt(c.num)}</b>
+            <span>{chapterNote(c)}</span>
+          </button>
+        )}
+      />
+    ) : (
+      <p className="hint">MangaDex has no English chapters to read for this title.</p>
+    );
 
   return (
     <>
@@ -57,31 +86,78 @@ export function Details({ o }: { o: SearchResult }) {
           ‹
         </button>
       </div>
-      <div className="top">
-        {o.cover ? <img className="cover" src={imageSrc(o.cover)} referrerPolicy="same-origin" alt="" /> : <span className="cover" />}
-        <div className="info">
-          <h2>{o.title}</h2>
-          <div className="sub">On {o.src === 'md' ? 'MangaDex' : 'AniList'}</div>
-          {facts}
-          {ex ? (
-            <button className="btn add" onClick={() => navigate({ name: 'series', id: ex.id })}>
-              Open in My Series
-            </button>
-          ) : (
-            <button className="btn add" disabled={adding} onClick={() => void add()}>
-              Add to My Series
-            </button>
-          )}
-        </div>
+      <div className="hero">{o.cover ? <img className="cover" src={imageSrc(o.cover)} referrerPolicy="same-origin" alt="" /> : <span className="cover" />}</div>
+      <div className="dtl">
+        <h2>{o.title}</h2>
+        {d && d.authors.length > 0 && <div className="sub">{d.authors.join(', ')}</div>}
+        <p className={`about${open ? ' open' : ''}`}>{o.desc || 'No synopsis yet.'}</p>
+        {long && (
+          <button className="more" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {open ? 'Less' : 'More'}
+          </button>
+        )}
+        {d && d.tags.length > 0 && (
+          <ul className="tags" aria-label="Tags">
+            {d.tags.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        )}
+        {more?.state === 'error' ? (
+          <p className="sub">Could not load more about this series ({more.error}). Go back and open it again.</p>
+        ) : (
+          <p className="sub">{[o.src === 'md' ? 'On MangaDex' : 'On AniList', ...(line || ['Loading…'])].filter(Boolean).join(' · ')}</p>
+        )}
+        {ex ? (
+          <button className="btn" onClick={() => navigate({ name: 'series', id: ex.id })}>
+            Open in My Series
+          </button>
+        ) : (
+          <button className="btn" disabled={adding} onClick={() => void add()}>
+            Add to My Series
+          </button>
+        )}
       </div>
-      {tags.length > 0 && (
-        <ul className="tags" aria-label="Tags">
-          {tags.map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
+      {d && <MoreInGenre o={o} tags={d.tags} />}
+      {chapters}
+      {o.src === 'md' && (
+        <p className="credit">
+          Chapters and data from MangaDex. Scanlation groups are credited on each chapter.{' '}
+          <a href={mangadex.mangaUrl(String(o.ref))} target="_blank" rel="noopener noreferrer">
+            View on MangaDex ↗
+          </a>
+        </p>
       )}
-      <p className="about">{o.desc || 'No synopsis yet.'}</p>
     </>
+  );
+}
+
+/** A row of popular MangaDex series in this series' first MangaDex genre, each opening its own details. Nothing shows when it has no MangaDex genre. */
+function MoreInGenre({ o, tags }: { o: SearchResult; tags: string[] }) {
+  const { navigate } = useApp();
+  const genre = mangadex.GENRES.find((g) => tags.includes(g.name));
+  const more = useLoad(genre ? genre.id : null, () => mangadex.browse(genre!.id, 'follows'));
+  const list = more?.state === 'done' ? more.value.filter((k) => !(k.src === o.src && k.ref === o.ref)) : [];
+  if (!genre || (more?.state === 'done' && !list.length)) return null;
+  return (
+    <section aria-label={`More in ${genre.name}`}>
+      <h3 className="shelfh">More in {genre.name}</h3>
+      {more?.state === 'error' ? (
+        <p className="hint">
+          Could not load more {genre.name} series from MangaDex ({more.error}). Go back and open this series again.
+        </p>
+      ) : more?.state === 'done' ? (
+        <div className="shelf">
+          {list.map((k) => (
+            <button key={k.ref} className="card" onClick={() => navigate({ name: 'details', o: k })}>
+              {k.cover ? <img src={imageSrc(k.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+              <span className="ct">{k.title}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="hint">Loading…</p>
+      )}
+    </section>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
+import { ChapterRows } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
 import { ReadButton } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
@@ -14,7 +15,7 @@ import { pasteChapterLink } from '../lib/pasteLink';
 import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
-import { removeSeries, setHidden, setLast, shownSource, sourcesOf, toggleSort, updateSeries, useStore } from '../lib/store';
+import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries } from '../lib/store';
 import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
@@ -145,7 +146,6 @@ export function Series({ x }: { x: SeriesT }) {
 
 /** The MangaDex source: its chapter list, with the ones up to `shown` marked read. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
-  const { sort } = useStore();
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
   else if (chs.status === 'error')
@@ -169,27 +169,16 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
       </p>
     );
   } else {
-    const all = chs.list.chapters;
-    const asc = sort === 'asc';
-    const first = all[0]!;
     list = (
-      <>
-        <div className="row mid">
-          <button className="btn ghost sm" onClick={toggleSort}>
-            Sort: {asc ? 'oldest first' : 'newest first'}
-          </button>
-          <span className="sub">
-            {all.length} chapters, {fmt(first.num)} to {fmt(all[all.length - 1]!.num)}
-          </span>
-        </div>
-        {first.num > 1 && <p className="hint">Chapters before {fmt(first.num)} are not on MangaDex. Try another source for those.</p>}
-        {(asc ? all : [...all].reverse()).map((c) => (
+      <ChapterRows
+        all={chs.list.chapters}
+        row={(c) => (
           <ReadButton key={c.id} x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
             <b>Ch. {fmt(c.num)}</b>
             <span>{chapterNote(c)}</span>
           </ReadButton>
-        ))}
-      </>
+        )}
+      />
     );
   }
   return (
