@@ -3,11 +3,11 @@ import { PRESETS } from '../lib/links';
 
 /**
  * Site-name and link fields with the preset site buttons. A preset fills its name and main address,
- * unless a real link was already pasted, in which case only the name changes.
+ * unless a real link was already pasted, in which case only the name changes. `url` is the link it starts with.
  */
-export function LinkFields({ urlPlaceholder }: { urlPlaceholder: string }) {
+export function LinkFields({ urlPlaceholder, url: given = '' }: { urlPlaceholder: string; url?: string }) {
   const [label, setLabel] = useState('');
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(given);
   const urlRef = useRef<HTMLInputElement>(null);
   const pick = (name: string, addr: string) => {
     setLabel(name);
