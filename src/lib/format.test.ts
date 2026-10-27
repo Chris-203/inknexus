@@ -1,4 +1,4 @@
-import { chapterNote, fmt, norm, plural } from './format';
+import { chapterNote, daysAgo, fmt, norm, plural } from './format';
 
 describe('format', () => {
   it('fmt shows whole and one-decimal chapters', () => {
@@ -15,6 +15,16 @@ describe('format', () => {
     expect(chapterNote({ ext: '', title: 'The Gate', grp: 'Team A' })).toBe('The Gate · Team A');
     expect(chapterNote({ ext: 'https://example.com/1', title: 'The Gate', grp: '' })).toBe('Official site ↗');
     expect(chapterNote({ ext: '', title: '', grp: '' })).toBe('');
+  });
+  it('daysAgo counts calendar days, not 24-hour spans', () => {
+    const now = new Date(2026, 9, 27, 0, 30).getTime();
+    expect(daysAgo(new Date(2026, 9, 27, 0, 5).getTime(), now)).toBe('today');
+    expect(daysAgo(new Date(2026, 9, 26, 23, 50).getTime(), now)).toBe('yesterday');
+    expect(daysAgo(new Date(2026, 9, 22, 12).getTime(), now)).toBe('5 days ago');
+    expect(daysAgo(new Date(2026, 8, 27, 12).getTime(), now)).toBe('30 days ago');
+  });
+  it('daysAgo says today for a time later than now, as from another device with its clock ahead', () => {
+    expect(daysAgo(new Date(2026, 9, 29).getTime(), new Date(2026, 9, 27).getTime())).toBe('today');
   });
   it('norm keeps letters and digits only', () => expect(norm('Solo Leveling: Ragnarok!')).toBe('sololevelingragnarok'));
 });

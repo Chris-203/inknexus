@@ -7,6 +7,11 @@ export function nextChapter(list: Chapter[], n: number): Chapter | undefined {
   return list.find((k) => k.num > n);
 }
 
+/** The chapter to continue with: chapter `left`, read part way, unless it is older than `last`; otherwise the one after `last`. */
+export function continueChapter(list: Chapter[], last: number, left = -1): Chapter | undefined {
+  return (left >= last && list.find((k) => k.num === left)) || nextChapter(list, last);
+}
+
 /** True when the browser asks to save data or the connection is 2G. */
 export function saveData(): boolean {
   const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;

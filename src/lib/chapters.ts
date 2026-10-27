@@ -135,6 +135,12 @@ export function retryChapters(md: string) {
   changes.emit();
 }
 
+/** A series' chapter list as it stands, without loading it, for screens that leave loading to prefetchChapters(). */
+export function useChapterState(md: string | null | undefined): ChaptersState | null {
+  useSyncExternalStore(changes.subscribe, changes.version);
+  return md ? chapterState(md) : null;
+}
+
 /** The chapter list for a MangaDex series, reloaded when it is older than 30 minutes. */
 export function useChapters(md: string | null | undefined): ChaptersState | null {
   const v = useSyncExternalStore(changes.subscribe, changes.version);

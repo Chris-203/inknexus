@@ -67,3 +67,9 @@ export function setHidden(id: string, k: string, h: boolean) {
     src: h ? '' : k,
   }));
 }
+
+/** The source a series shows: its chosen one while visible, otherwise the first visible one, or '' when all are hidden. */
+export function shownSource(x: Series): string {
+  const vis = sourcesOf(x).filter((q) => !q.h);
+  return vis.some((q) => q.k === x.src) ? x.src! : vis[0]?.k || '';
+}

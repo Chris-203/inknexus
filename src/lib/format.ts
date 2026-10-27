@@ -15,6 +15,13 @@ export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
+/** When `t` was, in whole calendar days before `now`: 'today', 'yesterday' or '5 days ago'. */
+export function daysAgo(t: number, now = Date.now()): string {
+  const day = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
+  const d = Math.max(0, Math.round((day(now) - day(t)) / 864e5));
+  return d === 0 ? 'today' : d === 1 ? 'yesterday' : `${plural(d, 'day')} ago`;
+}
+
 /** Loose title match: lowercase letters and digits only. */
 export function norm(s: unknown): string {
   return String(s || '')

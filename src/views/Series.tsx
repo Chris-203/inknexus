@@ -8,12 +8,14 @@ import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
 import { chapterNote, fmt, plural } from '../lib/format';
-import { chapterLink, host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
+import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
+import { useOpenLink } from '../lib/openLink';
 import { pasteChapterLink } from '../lib/pasteLink';
-import { opensInBrowser, setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
+import { continueChapter } from '../lib/preload';
+import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
-import { removeSeries, setHidden, setLast, sourcesOf, updateSeries } from '../lib/store';
+import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries } from '../lib/store';
 import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
@@ -26,7 +28,7 @@ export function Series({ x }: { x: SeriesT }) {
 
   const all = sourcesOf(x);
   const vis = all.filter((q) => !q.h);
-  const cur = vis.some((q) => q.k === x.src) ? x.src! : vis[0]?.k || '';
+  const cur = shownSource(x);
   // Loaded while another source is shown too, so switching to MangaDex shows its chapters at once.
   const chs = useChapters(x.mdh ? null : x.md);
 
@@ -47,7 +49,7 @@ export function Series({ x }: { x: SeriesT }) {
   // otherwise the next one. A link source has Continue once it knows its chapter link pattern.
   const list = cur === 'md' && chs?.status === 'ready' ? chs.list.chapters : [];
   const left = leftChapter(x.id) ?? -1;
-  const next = (left >= shown && list.find((c) => c.num === left)) || list.find((c) => c.num > shown);
+  const next = continueChapter(list, shown, left);
   const i = cur.startsWith('l') ? +cur.slice(1) : -1;
   const l = x.links[i];
   let body: ReactNode;
@@ -190,21 +192,6 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
       </p>
     </>
   );
-}
-
-/** Opens link source `l` in the app, or in the browser for sites set to that: its series page, the chapter after `shown`, or the saved link. */
-function useOpenLink(x: SeriesT, l: Link, i: number, shown: number) {
-  const { navigate, toast } = useApp();
-  return (mode: 'page' | 'cont' | 'resume') => {
-    const site = host(l.url);
-    const n = mode === 'cont' ? nextWhole(shown) : mode === 'resume' ? l.rn || 0 : 0;
-    const url = mode === 'resume' ? l.resume || '' : n && l.tpl ? chapterLink(l.tpl, n) : '';
-    if (opensInBrowser(site)) {
-      window.open(url || l.url, '_blank', 'noopener');
-      return toast(n ? `Opened chapter ${fmt(n)} in the browser` : 'Opened in the browser', true);
-    }
-    navigate({ name: 'frame', id: x.id, i, ch: n, url });
-  };
 }
 
 /** A link source's Continue, shown above the source chips like MangaDex's. */
