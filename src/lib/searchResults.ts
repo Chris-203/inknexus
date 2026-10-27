@@ -1,18 +1,20 @@
 import { saveData } from './preload';
 import { isObj, readJson, writeJson } from './storage';
 import type { SearchResult } from './types';
-import { browse, type BrowseSort } from '../sources/mangadex';
+import { browse, GENRES, type BrowseSort } from '../sources/mangadex';
 
 /**
  * Search and browse results kept on the device under their own key, never in the library or backups, so the Search tab
- * opens on results instead of "Loading…". Results are used as is for 30 minutes, then shown while they reload, and
- * dropped after a day.
+ * and every genre and order open on results instead of "Loading…". Results are used as is for 30 minutes, then shown
+ * while they reload, and dropped after a week.
  */
 const KEY = 'inknexus-search';
 const FRESH = 30 * 60 * 1000;
-const MAX_AGE = 24 * 60 * 60 * 1000;
-/** How many result lists are kept, newest last; descriptions make them big and storage is shared with chapter lists. */
-const KEEP = 10;
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+/** How many result lists are kept, newest last: every genre in both orders, and the latest title searches. */
+const KEEP = 80;
+/** Descriptions show two lines, so only their start is kept; storage is shared with chapter lists. */
+const DESC = 300;
 
 type Entry = { at: number; res: SearchResult[] };
 
@@ -38,7 +40,7 @@ export function searchKey(term: string): string {
   return `search:${term.toLowerCase()}`;
 }
 
-/** The results saved under `key` in the last day. */
+/** The results saved under `key` in the last week. */
 export function savedResults(key: string): SearchResult[] | undefined {
   return cache.get(key)?.res;
 }
@@ -52,7 +54,7 @@ export function isFresh(key: string): boolean {
 /** Save results under `key`. When storage is full, drop the oldest until they fit. */
 export function saveResults(key: string, res: SearchResult[]) {
   cache.delete(key);
-  cache.set(key, { at: Date.now(), res });
+  cache.set(key, { at: Date.now(), res: res.map((o) => ({ ...o, desc: o.desc.slice(0, DESC) })) });
   const keep = [...cache].slice(-KEEP);
   while (keep.length && !writeJson(KEY, keep)) keep.shift();
 }
@@ -74,10 +76,19 @@ export function loadBrowse(tag: string | null, sort: BrowseSort): Promise<Search
 }
 
 /**
- * Load the browse results the Search tab opens on, unless they are fresh, so they are ready before it opens. None on
- * slow or data-saving connections. A failure is left for the Search tab, which loads and reports it again.
+ * Load the browse results the Search tab opens on unless they are fresh, then every other genre and order missing from
+ * the device, one at a time, so switching between them never waits. None on slow or data-saving connections. The first
+ * failure stops the queue and is left for the Search tab, which loads and reports it again.
  */
 export function preloadBrowse(tag: string | null, sort: BrowseSort) {
-  if (saveData() || isFresh(browseKey(tag, sort))) return;
-  loadBrowse(tag, sort).catch(() => {});
+  if (saveData()) return;
+  const all = [null, ...GENRES.map((g) => g.id)].flatMap((t) => (['follows', 'latest'] as const).map((s): [string | null, BrowseSort] => [t, s]));
+  void (async () => {
+    try {
+      if (!isFresh(browseKey(tag, sort))) await loadBrowse(tag, sort);
+      for (const [t, s] of all) if (!savedResults(browseKey(t, s))) await loadBrowse(t, s);
+    } catch {
+      // Opening that genre loads it again and says what failed.
+    }
+  })();
 }
