@@ -5,6 +5,7 @@ import type { BrowseSort } from './sources/mangadex';
 export type View =
   | { name: 'library' }
   | { name: 'search' }
+  | { name: 'details'; o: SearchResult }
   | { name: 'series'; id: string }
   | { name: 'reader'; id: string; n: number }
   | { name: 'frame'; id: string; i: number; ch: number; url: string };
