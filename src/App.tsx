@@ -143,11 +143,12 @@ export function App() {
           My Series
         </button>
         <button aria-current={tab === 'search' || undefined} onClick={() => view.name !== 'search' && navigate({ name: 'search' })}>
+          {/* a compass */}
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="10.5" cy="10.5" r="6.5" />
-            <path d="m15.5 15.5 5 5" />
+            <circle cx="12" cy="12" r="9" />
+            <path d="m15.5 8.5-2 5-5 2 2-5z" />
           </svg>
-          Search
+          Browse
         </button>
       </nav>
       <div id="toast" role="status" className={message.on ? 'on' : ''}>

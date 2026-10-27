@@ -130,15 +130,42 @@ export function Search() {
   return (
     <>
       <header>
-        <h1>Search</h1>
+        <h1>Browse</h1>
         <button className="btn ghost sm" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
           Add by link
         </button>
       </header>
       <form className="row" role="search" onSubmit={onSearch}>
-        <input id="q" aria-label="Search by title" placeholder="Search by title" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
-        <button className="btn">Search</button>
+        <div className="field">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m15.5 15.5 5 5" />
+          </svg>
+          <input
+            id="q"
+            type="search"
+            enterKeyHint="search"
+            aria-label="Search by title"
+            placeholder="Search by title"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              // Clearing the field goes back to browsing.
+              if (!e.target.value && !browsing) void browse(search.tag, search.sort);
+            }}
+            autoComplete="off"
+          />
+        </div>
       </form>
+      {browsing && (
+        <div className="seg" role="group" aria-label="Sort by">
+          {SORTS.map(([sort, name]) => (
+            <button key={sort} aria-pressed={search.sort === sort} onClick={() => void browse(search.tag, sort)}>
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="chips" role="group" aria-label="Genre">
         {[{ id: null, name: 'All' }, ...mangadex.GENRES].map((g) => {
           const on = browsing && search.tag === g.id;
@@ -149,27 +176,13 @@ export function Search() {
           );
         })}
       </div>
-      {browsing && (
-        <div className="chips" role="group" aria-label="Sort by">
-          {SORTS.map(([sort, name]) => (
-            <button
-              key={sort}
-              className={`chip${search.sort === sort ? ' on' : ''}`}
-              aria-pressed={search.sort === sort}
-              onClick={() => void browse(search.tag, sort)}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      )}
       <div id="res">{results}</div>
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
     </>
   );
 }
 
-/** Add a series from any other site by its link, opened from the Search header. */
+/** Add a series from any other site by its link, opened from the Browse header. */
 function AddByLinkSheet({ onClose }: { onClose: () => void }) {
   const { navigate, toast } = useApp();
   const sheet = useSheet(onClose);
