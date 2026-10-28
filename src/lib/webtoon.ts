@@ -37,8 +37,8 @@ function sendToInkNexus(app: string) {
   const seen = new Map<string, string[]>();
   const clean = (s: string | null | undefined) => (s || '').replace(/\s+/g, ' ').trim().slice(0, 200);
   const grab = () => {
-    document.querySelectorAll<HTMLAnchorElement>('a[href*="title_no="]').forEach((a) => {
-      const title = clean(a.querySelector('.subj, .title, strong, h3')?.textContent) || clean(a.querySelector('img')?.alt) || clean(a.textContent);
+    document.querySelectorAll<HTMLAnchorElement>('a[href*="title_no="], a[href*="titleNo="]').forEach((a) => {
+      const title = clean(a.querySelector('.subject, .subj, .title, strong, h3')?.textContent) || clean(a.querySelector('img')?.alt) || clean(a.textContent);
       if (!seen.has(a.href) && title) seen.set(a.href, [a.href, title, clean((a.closest('li') || a).textContent)]);
     });
   };
@@ -75,7 +75,7 @@ function sendToInkNexus(app: string) {
       t.remove();
       location.href = url;
     };
-    const titles = new Set([...seen.keys()].map((h) => new URL(h).searchParams.get('title_no')));
+    const titles = new Set([...seen.keys()].map((h) => h.match(/title_?no=(\d+)/i)?.[1]));
     bar.textContent = `${titles.size} series ready. `;
     bar.append(go);
   };
@@ -93,17 +93,20 @@ export function parseWebtoonList(raw: unknown): WebtoonItem[] {
   for (const v of Array.isArray(raw) ? raw : []) {
     if (!Array.isArray(v) || typeof v[0] !== 'string' || !isWebtoon(v[0])) continue;
     const u = new URL(v[0]);
-    const no = u.searchParams.get('title_no') || '';
+    const q = u.searchParams;
+    const no = q.get('title_no') || q.get('titleNo') || '';
     const parts = u.pathname.split('/');
-    const at = parts.lastIndexOf('viewer');
-    if (!/^\d+$/.test(no) || (at < 0 && parts.at(-1) !== 'list')) continue;
-    const ep = u.searchParams.get('episode_no') || String(v[2] ?? '').match(/(?:ep(?:isode)?\.?|#)\s*(\d+)/i)?.[1];
+    const page = parts.pop();
+    if (!/^\d+$/.test(no) || !['viewer', 'list', 'episodeList'].includes(page!)) continue;
+    const ep = q.get('episode_no') || q.get('episodeNo') || String(v[2] ?? '').match(/(?:ep(?:isode)?\.?|#)\s*(\d+)/i)?.[1];
     const n = Number(ep) || 0;
-    const page = 'https://www.' + SITE + (at < 0 ? parts : parts.slice(0, at - 1).concat('list')).join('/');
+    // Links are either /en/genre/series/(episode/viewer|list)?title_no= or, on the Recent list, /viewer?titleNo=&episodeNo=.
+    const series = page === 'viewer' ? parts.slice(0, -1) : parts;
+    const base = 'https://www.' + SITE;
     const item = {
       title: typeof v[1] === 'string' ? v[1].trim() : '',
-      url: `${page}?title_no=${no}`,
-      resume: at >= 0 && n ? `https://www.${SITE}${u.pathname}?title_no=${no}&episode_no=${n}` : '',
+      url: series.length > 1 ? `${base}${series.join('/')}/list?title_no=${no}` : `${base}/episodeList?titleNo=${no}`,
+      resume: page === 'viewer' && n ? base + u.pathname + u.search : '',
       n,
     };
     const had = byTitle.get(no);

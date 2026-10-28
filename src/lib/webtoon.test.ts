@@ -31,6 +31,18 @@ describe('parseWebtoonList', () => {
     expect(list[0]!.resume).toBe(viewer(95, 40));
   });
 
+  it('reads the short links on the Recent list, which have no series path', () => {
+    const text = 'Placeholder Title Some Author #7, 2026-09-25 16:00 select';
+    expect(parseWebtoonList([['https://m.webtoons.com/viewer?titleNo=6135&episodeNo=7', 'Placeholder Title', text]])).toEqual([
+      {
+        title: 'Placeholder Title',
+        url: 'https://www.webtoons.com/episodeList?titleNo=6135',
+        resume: 'https://www.webtoons.com/viewer?titleNo=6135&episodeNo=7',
+        n: 7,
+      },
+    ]);
+  });
+
   it('reads the episode from the link text when the link is to the series page', () => {
     const [w] = parseWebtoonList([['https://www.webtoons.com/en/romance/b/list?title_no=5', 'B', 'B Romance Ep. 33 Read']]);
     expect(w).toMatchObject({ n: 33, resume: '' });
