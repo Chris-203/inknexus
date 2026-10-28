@@ -95,7 +95,7 @@ export function Library() {
     </button>
   );
   const addLink = (
-    <button className="ibtn" aria-label="Add by link" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
+    <button className="ibtn plain" aria-label="Add by link" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
       +
     </button>
   );
