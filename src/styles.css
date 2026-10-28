@@ -50,8 +50,11 @@ header .btn,header .ibtn{align-self:center}
 .tabs button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--text)}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
-.lbar .seg{margin:0;flex:none}
-.lbar .seg button{min-width:44px;display:flex;align-items:center;justify-content:center}
+.lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
+/* as tall as the count beside it; each button's tap area still reaches 44px tall, past the frame */
+.lbar .seg button{min-width:44px;min-height:26px;padding:0;position:relative;display:flex;align-items:center;justify-content:center}
+.lbar .seg button::before{content:'';position:absolute;inset:-9px 0}
+.lbar .seg svg{width:20px;height:20px}
 /* My Series as a list: a thumbnail, the title, the last chapter and when it was read, and Continue on the right */
 .lrows{padding:4px 0}
 .lrow{display:flex;align-items:center;gap:8px;padding:0 16px 0 0;border-top:1px solid var(--line)}
