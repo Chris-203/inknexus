@@ -7,14 +7,14 @@ import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
 import { daysAgo, fmt } from '../lib/format';
-import { setLibraryView, useLibraryView } from '../lib/libraryView';
+import { SHELVES, setLibraryShelf, setLibraryView, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
 import { nextWhole } from '../lib/links';
 import { useOpenLink } from '../lib/openLink';
 import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { leftChapter } from '../lib/spots';
-import { getState, removeSeries, shownSource, useStore } from '../lib/store';
-import type { Link, Series as SeriesT } from '../lib/types';
+import { getState, removeSeries, setShelf, shownSource, useStore } from '../lib/store';
+import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
 function exportBackup() {
@@ -41,7 +41,10 @@ export function Library() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const view = useLibraryView();
+  const shelf = useLibraryShelf();
+  const shown = list.filter((x) => shelfOf(x) === shelf);
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
@@ -85,6 +88,11 @@ export function Library() {
     setPicked(null);
     toast(`Removed ${ids.length} series`);
   };
+  const move = (ids: string[], k: Shelf) => {
+    setShelf(ids, k);
+    setPicked(null);
+    toast(`Moved ${ids.length} series to ${SHELVES.find((q) => q.k === k)!.n}`);
+  };
 
   const settings = (
     <button className="ibtn" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
@@ -103,6 +111,7 @@ export function Library() {
     <>
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
+      {moveOpen && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
     </>
   );
 
@@ -139,6 +148,9 @@ export function Library() {
             Cancel
           </button>
           <b>{picked.length ? `${picked.length} selected` : 'Tap series to select'}</b>
+          <button className="btn ghost sm" disabled={!picked.length} aria-expanded={moveOpen} onClick={() => setMoveOpen(true)}>
+            Move
+          </button>
           <button className="btn danger sm" disabled={!picked.length} onClick={() => remove(picked)}>
             Remove
           </button>
@@ -157,9 +169,27 @@ export function Library() {
           {settings}
         </header>
       )}
+      <div className="tabs" role="group" aria-label="Shelves">
+        {SHELVES.map((q) => {
+          const on = q.k === shelf;
+          return (
+            <button
+              key={q.k}
+              aria-pressed={on}
+              onClick={() => {
+                setLibraryShelf(q.k);
+                // Picks stay on the shelf they were made on, so Move and Remove only act on series in view.
+                setPicked((p) => p && []);
+              }}
+            >
+              {q.n}
+            </button>
+          );
+        })}
+      </div>
       <div className="lbar">
         <span className="sub">
-          {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+          {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
         </span>
         <div className="seg" role="group" aria-label="Show series as">
           <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
@@ -179,9 +209,11 @@ export function Library() {
           </button>
         </div>
       </div>
-      {view === 'list' ? (
+      {!shown.length ? (
+        <p className="hint">Nothing in {SHELVES.find((q) => q.k === shelf)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
+      ) : view === 'list' ? (
         <div className="lrows">
-          {list.map((x) => {
+          {shown.map((x) => {
             const last = x.last || 0;
             const fresh = freshOf(x);
             const on = picked?.includes(x.id);
@@ -216,7 +248,7 @@ export function Library() {
         </div>
       ) : (
         <div className="grid">
-          {list.map((x) => {
+          {shown.map((x) => {
             const last = x.last || 0;
             const fresh = freshOf(x);
             const on = picked?.includes(x.id);
@@ -301,6 +333,33 @@ function LinkRowContinue({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
       Continue
       <small>Ch. {nextWhole(x.last || 0)}</small>
     </button>
+  );
+}
+
+/** Pick the shelf to move the selected series to. */
+function MoveSheet({ from, onMove, onClose }: { from: Shelf; onMove: (k: Shelf) => void; onClose: () => void }) {
+  const sheet = useSheet(onClose);
+  return (
+    <Sheet label="Move to" sheet={sheet}>
+      <h2>Move to</h2>
+      <div className="stack">
+        {SHELVES.filter((q) => q.k !== from).map((q) => (
+          <button
+            key={q.k}
+            className="btn ghost"
+            onClick={() => {
+              onMove(q.k);
+              sheet.close();
+            }}
+          >
+            {q.n}
+          </button>
+        ))}
+        <button className="btn ghost" onClick={sheet.close}>
+          Cancel
+        </button>
+      </div>
+    </Sheet>
   );
 }
 
