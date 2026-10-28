@@ -44,10 +44,17 @@ header .btn,header .ibtn{align-self:center}
 .card.on .tick,.lrow.on .tick{background:var(--accent);border-color:var(--accent)}
 .card.on img,.card.on .cover,.lrow.on img,.lrow.on .thumb{outline:3px solid var(--accent);outline-offset:-3px}
 .ct{display:block;margin-top:6px;font-size:var(--font-sm);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* My Series' shelf tabs: plain names in a row, the open one underlined */
+.tabs{display:flex;gap:16px;padding:0 16px;margin-bottom:8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:none;min-height:44px;padding:0;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:700 var(--font-sm)/1 var(--body);text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
+.tabs button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--text)}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
-.lbar .seg{margin:0;flex:none}
-.lbar .seg button{min-width:44px;display:flex;align-items:center;justify-content:center}
+.lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
+/* as tall as the count beside it; each button's tap area still reaches 44px tall, past the frame */
+.lbar .seg button{min-width:44px;min-height:26px;padding:0;position:relative;display:flex;align-items:center;justify-content:center}
+.lbar .seg button::before{content:'';position:absolute;inset:-9px 0}
+.lbar .seg svg{width:20px;height:20px}
 /* My Series as a list: a thumbnail, the title, the last chapter and when it was read, and Continue on the right */
 .lrows{padding:4px 0}
 .lrow{display:flex;align-items:center;gap:8px;padding:0 16px 0 0;border-top:1px solid var(--line)}
@@ -71,6 +78,8 @@ header .btn,header .ibtn{align-self:center}
 .ibtn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius-md);min-width:44px;height:44px;padding:0 10px;font-size:var(--font-lg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:none}
 /* a bare chevron, like a list row's disclosure arrow, still 44px to tap */
 .ibtn.plain{background:none;border-color:transparent;color:var(--muted)}
+/* My Series' header icons: bare like the chevron, but in full text color as icons, not a hint */
+header .ibtn.plain{color:var(--text)}
 .ibtn.txt{font-size:var(--font-sm);font-weight:700;font-family:var(--body)}
 /* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
 .ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
@@ -143,6 +152,17 @@ details.more .pad{padding:0 12px 12px}
 .ch span{color:var(--muted);font-size:var(--font-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch.read{opacity:.45}
 .ch[aria-current] b{color:var(--accent)}
+/* Settings: a chapter saved for reading offline, its series over its number and size, with a remove button */
+.dl{display:flex;align-items:center;gap:8px;padding:6px 0 6px 16px;border-top:1px solid var(--line);font-size:var(--font-sm);color:var(--muted)}
+.dl span{flex:1;min-width:0;display:flex;flex-direction:column}
+.dl b{color:var(--text);font-size:var(--font-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl:last-child{border-bottom:1px solid var(--line)}
+.chrow{display:flex;align-items:center;border-top:1px solid var(--line)}
+.chrow .ch{flex:1;min-width:0;border-top:0}
+/* a chapter's offline button: an arrow to save it, its page count while saving, a check once saved */
+.chrow .ibtn{margin-right:8px}
+.ibtn.on{color:var(--accent)}
+.dlstate{font-size:var(--font-xs);font-family:var(--body);font-variant-numeric:tabular-nums}
 .credit{color:var(--muted);font-size:var(--font-sm);padding:10px 16px;margin:0}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}

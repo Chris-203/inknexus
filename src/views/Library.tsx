@@ -7,15 +7,16 @@ import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
 import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
-import { daysAgo, fmt } from '../lib/format';
-import { setLibraryView, useLibraryView } from '../lib/libraryView';
+import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
+import { daysAgo, fileSize, fmt, plural } from '../lib/format';
+import { SHELVES, setLibraryShelf, setLibraryView, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
 import { nextWhole } from '../lib/links';
 import { useOpenLink } from '../lib/openLink';
 import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { leftChapter } from '../lib/spots';
-import { removeSeries, shownSource, useStore } from '../lib/store';
-import type { Link, Series as SeriesT } from '../lib/types';
+import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
+import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
 export function Library() {
@@ -30,7 +31,10 @@ export function Library() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const view = useLibraryView();
+  const shelf = useLibraryShelf();
+  const shown = list.filter((x) => shelfOf(x) === shelf);
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
@@ -74,9 +78,14 @@ export function Library() {
     setPicked(null);
     toast(`Removed ${ids.length} series`);
   };
+  const move = (ids: string[], k: Shelf) => {
+    setShelf(ids, k);
+    setPicked(null);
+    toast(`Moved ${ids.length} series to ${SHELVES.find((q) => q.k === k)!.n}`);
+  };
 
   const settings = (
-    <button className="ibtn" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
+    <button className="ibtn plain" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M9.6 4.9 10.1 2.4 13.9 2.4 14.4 4.9 16.9 6.3 19.4 5.6 21.3 8.8 19.4 10.6 19.4 13.4 21.3 15.2 19.4 18.4 16.9 17.7 14.4 19.1 13.9 21.6 10.1 21.6 9.6 19.1 7.1 17.7 4.6 18.4 2.7 15.2 4.6 13.4 4.6 10.6 2.7 8.8 4.6 5.6 7.1 6.3z" />
         <circle cx="12" cy="12" r="3" />
@@ -84,7 +93,7 @@ export function Library() {
     </button>
   );
   const addLink = (
-    <button className="ibtn" aria-label="Add by link" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
+    <button className="ibtn plain" aria-label="Add by link" aria-expanded={linkOpen} onClick={() => setLinkOpen(true)}>
       +
     </button>
   );
@@ -92,6 +101,7 @@ export function Library() {
     <>
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
+      {moveOpen && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
     </>
   );
 
@@ -128,6 +138,9 @@ export function Library() {
             Cancel
           </button>
           <b>{picked.length ? `${picked.length} selected` : 'Tap series to select'}</b>
+          <button className="btn ghost sm" disabled={!picked.length} aria-expanded={moveOpen} onClick={() => setMoveOpen(true)}>
+            Move
+          </button>
           <button className="btn danger sm" disabled={!picked.length} onClick={() => remove(picked)}>
             Remove
           </button>
@@ -135,7 +148,7 @@ export function Library() {
       ) : (
         <header>
           <h1>My Series</h1>
-          <button className="ibtn" aria-label="Remove series" onClick={() => setPicked([])}>
+          <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
             {/* a trash can: lid with handle, then the can */}
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h16M9.5 7V4.5h5V7" />
@@ -146,9 +159,27 @@ export function Library() {
           {settings}
         </header>
       )}
+      <div className="tabs" role="group" aria-label="Shelves">
+        {SHELVES.map((q) => {
+          const on = q.k === shelf;
+          return (
+            <button
+              key={q.k}
+              aria-pressed={on}
+              onClick={() => {
+                setLibraryShelf(q.k);
+                // Picks stay on the shelf they were made on, so Move and Remove only act on series in view.
+                setPicked((p) => p && []);
+              }}
+            >
+              {q.n}
+            </button>
+          );
+        })}
+      </div>
       <div className="lbar">
         <span className="sub">
-          {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+          {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
         </span>
         <div className="seg" role="group" aria-label="Show series as">
           <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
@@ -168,9 +199,11 @@ export function Library() {
           </button>
         </div>
       </div>
-      {view === 'list' ? (
+      {!shown.length ? (
+        <p className="hint">Nothing in {SHELVES.find((q) => q.k === shelf)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
+      ) : view === 'list' ? (
         <div className="lrows">
-          {list.map((x) => {
+          {shown.map((x) => {
             const last = x.last || 0;
             const fresh = freshOf(x);
             const on = picked?.includes(x.id);
@@ -205,7 +238,7 @@ export function Library() {
         </div>
       ) : (
         <div className="grid">
-          {list.map((x) => {
+          {shown.map((x) => {
             const last = x.last || 0;
             const fresh = freshOf(x);
             const on = picked?.includes(x.id);
@@ -285,6 +318,33 @@ function LinkRowContinue({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
   );
 }
 
+/** Pick the shelf to move the selected series to. */
+function MoveSheet({ from, onMove, onClose }: { from: Shelf; onMove: (k: Shelf) => void; onClose: () => void }) {
+  const sheet = useSheet(onClose);
+  return (
+    <Sheet label="Move to" sheet={sheet}>
+      <h2>Move to</h2>
+      <div className="stack">
+        {SHELVES.filter((q) => q.k !== from).map((q) => (
+          <button
+            key={q.k}
+            className="btn ghost"
+            onClick={() => {
+              onMove(q.k);
+              sheet.close();
+            }}
+          >
+            {q.n}
+          </button>
+        ))}
+        <button className="btn ghost" onClick={sheet.close}>
+          Cancel
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 /** Settings in a drawer from the right edge, opened from the gear. */
 function SettingsSheet({ onClose }: { onClose: () => void }) {
   const sheet = useSheet(onClose);
@@ -300,6 +360,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
         </label>
       </div>
       <BackupSettings close={sheet.close} />
+      <OfflineChapters />
     </Sheet>
   );
 }
@@ -329,6 +390,45 @@ function BackupSettings({ close }: { close: () => void }) {
       >
         Import backup
       </button>
+    </>
+  );
+}
+
+/** The chapters saved for reading offline, by series, with their sizes and a way to remove each or all. */
+function OfflineChapters() {
+  const { saved, saving, can } = useDownloads();
+  if (!can) return null;
+  const total = saved.reduce((t, d) => t + d.bytes, 0);
+  const sorted = [...saved].sort((a, b) => a.t.localeCompare(b.t) || a.c.num - b.c.num);
+  return (
+    <>
+      <p className="hint">Offline chapters</p>
+      <div>
+        {sorted.map((d) => (
+          <div key={d.c.id} className="dl">
+            <span>
+              <b>{d.t}</b>
+              Ch. {fmt(d.c.num)} · {fileSize(d.bytes)}
+            </span>
+            <button className="ibtn plain" aria-label={`Remove ch. ${fmt(d.c.num)} of ${d.t}`} onClick={() => removeDownload(d.c.id)}>
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="pad">
+        <p className="hint">
+          {saved.length
+            ? `${plural(saved.length, 'chapter')}, ${fileSize(total)}. A chapter is removed once you finish reading it.`
+            : "None yet. Save a chapter with the arrow next to it in a series' MangaDex chapters."}{' '}
+          They are kept on this device only. On iPhone, add InkNexus to the Home Screen: Safari can clear a site's data after a week without a visit.
+        </p>
+        {saved.length > 0 && (
+          <button className="btn danger sm" disabled={!!saving} onClick={() => confirm('Remove all offline chapters?') && removeAllDownloads()}>
+            Remove all
+          </button>
+        )}
+      </div>
     </>
   );
 }
