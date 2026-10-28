@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { createChanges } from './changes';
 import { linkName } from './links';
 import { loadState, newSeries, saveState } from './storage';
-import type { SearchResult, Series, State } from './types';
+import type { SearchResult, Series, Shelf, State } from './types';
 
 /** The library, saved to localStorage under 'longstrip' on every change. Changes replace objects, so React sees them. */
 let state: State = loadState();
@@ -45,6 +45,11 @@ export function addSeries(o: Parameters<typeof newSeries>[0]): Series {
 /** Remove one or more series from the library. */
 export function removeSeries(...ids: string[]) {
   commit({ ...state, lib: state.lib.filter((x) => !ids.includes(x.id)) });
+}
+
+/** Move one or more series to a shelf. Reading is the default, so it is saved as no shelf. */
+export function setShelf(ids: string[], shelf: Shelf) {
+  commit({ ...state, lib: state.lib.map((x) => (ids.includes(x.id) ? { ...x, shelf: shelf === 'reading' ? undefined : shelf } : x)) });
 }
 
 export function toggleSort() {

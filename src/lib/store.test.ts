@@ -1,4 +1,4 @@
-import { getState, removeSeries, replaceState, shownSource, sourceFrom } from './store';
+import { getState, removeSeries, replaceState, setShelf, shownSource, sourceFrom } from './store';
 import type { Series } from './types';
 
 function series(id: string): Series {
@@ -19,6 +19,18 @@ describe('removeSeries', () => {
   it('ignores ids that are not in the library', () => {
     removeSeries('z');
     expect(getState().lib.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('setShelf', () => {
+  it('moves the given series and leaves the rest', () => {
+    setShelf(['a', 'c'], 'done');
+    expect(getState().lib.map((x) => x.shelf)).toEqual(['done', undefined, 'done']);
+  });
+  it('saves Reading as no shelf, so the saved library keeps its old shape', () => {
+    setShelf(['a'], 'drop');
+    setShelf(['a'], 'reading');
+    expect(JSON.stringify(getState().lib[0])).not.toContain('shelf');
   });
 });
 

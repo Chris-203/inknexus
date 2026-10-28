@@ -68,6 +68,11 @@ describe('storage', () => {
     expect(s.lib[1]).toMatchObject({ title: 'No links field', links: [], last: 0 });
     expect(s.lib[1]!.id).toBeTruthy();
   });
+  it('keeps a known shelf from saved data and drops anything else', () => {
+    const shelves = ['plan', 'done', 'drop', 'reading', 'archived', 3];
+    const s = parseBackup(JSON.stringify({ lib: shelves.map((shelf, i) => ({ id: String(i), title: 'T', shelf })) }));
+    expect(s.lib.map((x) => x.shelf)).toEqual(['plan', 'done', 'drop', undefined, undefined, undefined]);
+  });
   it('newSeries fills defaults', () => {
     const s = newSeries({ title: 'T' });
     expect(s).toMatchObject({ title: 'T', cover: '', md: null, al: null, links: [], last: 0 });

@@ -78,6 +78,7 @@ function toSeries(v: unknown): Series | null {
   };
   if (v.mdh === true) s.mdh = true;
   if (typeof v.src === 'string') s.src = v.src;
+  if (v.shelf === 'plan' || v.shelf === 'done' || v.shelf === 'drop') s.shelf = v.shelf;
   return s;
 }
 
