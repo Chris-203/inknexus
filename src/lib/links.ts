@@ -22,6 +22,7 @@ export function isWebUrl(u: string): boolean {
 export function parseChUrl(u: string): ParsedChapterUrl | null {
   if (!isWebUrl(u)) return null;
   const o = new URL(u);
+  if (/(^|\.)webtoons\.com$/.test(o.hostname)) return webtoonUrl(o);
   const rest = u.slice(o.origin.length);
   const re = /(?:^|[\/\-_=])(?:chapter|chap|ch|episode|ep|c)[-_\/ .=]?(\d+)(?:[-_.](\d))?(?!\d)/gi;
   let m: RegExpExecArray | null;
@@ -38,6 +39,24 @@ export function parseChUrl(u: string): ParsedChapterUrl | null {
     tpl: idPrefixed ? '' : o.origin + rest.slice(0, start) + '{n}' + rest.slice(start + tail.length),
     series: o.origin + rest.slice(0, Math.max(cut, 0)),
     idPrefixed,
+  };
+}
+
+/**
+ * Webtoon names an episode by query, in long links (`/en/…/ep-150/viewer?title_no=95&episode_no=567`) and in the short ones
+ * its Recent list uses (`/viewer?titleNo=95&episodeNo=567`). The slug's number can differ from episode_no, which is the #
+ * Webtoon shows, so read that and build the short form, which needs no slug.
+ */
+function webtoonUrl(o: URL): ParsedChapterUrl | null {
+  const q = o.searchParams;
+  const title = q.get('title_no') || q.get('titleNo');
+  const ep = q.get('episode_no') || q.get('episodeNo');
+  if (!title || !ep || !/^\d+$/.test(ep)) return null;
+  return {
+    num: Number(ep),
+    tpl: `${o.origin}/viewer?titleNo=${encodeURIComponent(title)}&episodeNo={n}`,
+    series: `${o.origin}/episodeList?titleNo=${encodeURIComponent(title)}`,
+    idPrefixed: false,
   };
 }
 
