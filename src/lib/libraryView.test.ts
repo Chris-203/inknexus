@@ -1,4 +1,4 @@
-import { libraryView, setLibraryView } from './libraryView';
+import { libraryShelf, libraryView, setLibraryShelf, setLibraryView, shelfOf } from './libraryView';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -20,5 +20,24 @@ describe('library view', () => {
     expect(libraryView()).toBe('list');
     setLibraryView('cards');
     expect(libraryView()).toBe('cards');
+  });
+});
+
+describe('library shelf', () => {
+  it('is Reading until another shelf is chosen, and a bad saved value keeps Reading', () => {
+    expect(libraryShelf()).toBe('reading');
+    memory.set('inknexus-library-shelf', '"archived"');
+    expect(libraryShelf()).toBe('reading');
+  });
+  it('switches shelves', () => {
+    setLibraryShelf('done');
+    expect(libraryShelf()).toBe('done');
+    setLibraryShelf('reading');
+    expect(libraryShelf()).toBe('reading');
+  });
+  it('puts a series with no shelf on Reading', () => {
+    const x = { id: 'a', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0 };
+    expect(shelfOf(x)).toBe('reading');
+    expect(shelfOf({ ...x, shelf: 'plan' })).toBe('plan');
   });
 });

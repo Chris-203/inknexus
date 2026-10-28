@@ -12,6 +12,9 @@ export interface Link {
   h?: boolean;
 }
 
+/** A My Series shelf: the series' reading status. */
+export type Shelf = 'reading' | 'plan' | 'done' | 'drop';
+
 /** One series in the library. Field names match what is already saved in people's browsers. */
 export interface Series {
   id: string;
@@ -30,6 +33,8 @@ export interface Series {
   last: number;
   /** Last touched, for library order. */
   t: number;
+  /** Shelf in My Series; Reading when not set. */
+  shelf?: Shelf;
 }
 
 export interface State {
