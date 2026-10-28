@@ -78,6 +78,8 @@ header .btn,header .ibtn{align-self:center}
 .ibtn{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius-md);min-width:44px;height:44px;padding:0 10px;font-size:var(--font-lg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:none}
 /* a bare chevron, like a list row's disclosure arrow, still 44px to tap */
 .ibtn.plain{background:none;border-color:transparent;color:var(--muted)}
+/* My Series' header icons: bare like the chevron, but in full text color as icons, not a hint */
+header .ibtn.plain{color:var(--text)}
 .ibtn.txt{font-size:var(--font-sm);font-weight:700;font-family:var(--body)}
 /* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
 .ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
