@@ -149,6 +149,12 @@ details.more .pad{padding:0 12px 12px}
 .dl span{flex:1;min-width:0;display:flex;flex-direction:column}
 .dl b{color:var(--text);font-size:var(--font-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dl:last-child{border-bottom:1px solid var(--line)}
+.chrow{display:flex;align-items:center;border-top:1px solid var(--line)}
+.chrow .ch{flex:1;min-width:0;border-top:0}
+/* a chapter's offline button: an arrow to save it, its page count while saving, a check once saved */
+.chrow .ibtn{margin-right:8px}
+.ibtn.on{color:var(--accent)}
+.dlstate{font-size:var(--font-xs);font-family:var(--body);font-variant-numeric:tabular-nums}
 .credit{color:var(--muted);font-size:var(--font-sm);padding:10px 16px;margin:0}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}

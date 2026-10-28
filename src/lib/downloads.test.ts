@@ -51,19 +51,11 @@ afterEach(() => vi.unstubAllGlobals());
 const x = { id: 's1', title: 'Placeholder' };
 const saved = () => JSON.parse(stored.get('inknexus-downloads') || '[]');
 
-describe('aheadOf', () => {
-  it('takes the next chapters from the one given, skipping those hosted elsewhere', async () => {
-    const { aheadOf } = await load();
-    const list = [chap(1), chap(2), chap(3, 'https://example.com/3'), chap(4), chap(5), chap(6)];
-    expect(aheadOf(list, list[1]!).map((c) => c.num)).toEqual([2, 4, 5]);
-    expect(aheadOf(list, list[4]!, 3).map((c) => c.num)).toEqual([5, 6]);
-  });
-});
-
-describe('saveChapters', () => {
+describe('saveChapter', () => {
   it('saves each image and the chapter with its size, with no full-quality fallback, and skips a saved chapter', async () => {
-    const { saveChapters, savedChapter } = await load();
-    await saveChapters(x, [chap(1), chap(2)]);
+    const { saveChapter, savedChapter } = await load();
+    expect(await saveChapter(x, chap(1))).toBe(true);
+    expect(await saveChapter(x, chap(2))).toBe(true);
     expect([...images.keys()]).toHaveLength(6);
     expect(images.has(relayed('c1', '2.jpg'))).toBe(true);
     expect(saved().map((d: { c: Chapter; bytes: number }) => [d.c.num, d.bytes])).toEqual([
@@ -72,30 +64,35 @@ describe('saveChapters', () => {
     ]);
     expect(savedChapter('s1', 2)?.pages[0]).toEqual({ a: 'https://n.mangadex.network/data-saver/c2/1.jpg', b: '' });
     images.clear();
-    await saveChapters(x, [chap(1)]);
+    expect(await saveChapter(x, chap(1))).toBe(false);
     expect(images.size).toBe(0);
   });
 
-  it('on a failed image keeps the chapters saved before it and removes the failed chapter’s images', async () => {
-    const { saveChapters } = await load();
+  it('saves chapters tapped together one at a time, in the order tapped, and a chapter tapped twice once', async () => {
+    const { saveChapter } = await load();
+    const runs = [saveChapter(x, chap(3)), saveChapter(x, chap(1)), saveChapter(x, chap(3))];
+    expect(await Promise.all(runs)).toEqual([true, true, false]);
+    expect(saved().map((d: { c: Chapter }) => d.c.num)).toEqual([3, 1]);
+  });
+
+  it('on a failed image removes that chapter’s images, keeps the ones saved before, and drops the ones waiting', async () => {
+    const { saveChapter } = await load();
     broken.add(relayed('c2', '3.jpg'));
-    await expect(saveChapters(x, [chap(1), chap(2), chap(3)])).rejects.toThrow('HTTP 502');
+    const runs = [saveChapter(x, chap(1)), saveChapter(x, chap(2)), saveChapter(x, chap(3))];
+    expect(await runs[0]).toBe(true);
+    await expect(runs[1]).rejects.toThrow('HTTP 502');
+    expect(await runs[2]).toBe(false);
     expect(saved().map((d: { c: Chapter }) => d.c.num)).toEqual([1]);
     expect([...images.keys()].every((k) => k.includes('c1'))).toBe(true);
+    // The next tap starts again.
+    expect(await saveChapter(x, chap(3))).toBe(true);
   });
 
   it('says to make room when storage is full', async () => {
-    const { saveChapters } = await load();
+    const { saveChapter } = await load();
     full = true;
-    await expect(saveChapters(x, [chap(1)])).rejects.toThrow('no room left');
+    await expect(saveChapter(x, chap(1))).rejects.toThrow('no room left');
     expect(saved()).toEqual([]);
-  });
-
-  it('runs one save at a time', async () => {
-    const { saveChapters } = await load();
-    const first = saveChapters(x, [chap(1)]);
-    await expect(saveChapters(x, [chap(2)])).rejects.toThrow('another series is saving');
-    await first;
   });
 });
 
@@ -109,8 +106,9 @@ describe('savedChapter', () => {
 
 describe('removing', () => {
   it('removeDownload drops the chapter and its images, and leaves the others', async () => {
-    const { saveChapters, removeDownload } = await load();
-    await saveChapters(x, [chap(1), chap(2)]);
+    const { saveChapter, removeDownload } = await load();
+    await saveChapter(x, chap(1));
+    await saveChapter(x, chap(2));
     removeDownload('c1');
     await settle();
     expect(saved().map((d: { c: Chapter }) => d.c.num)).toEqual([2]);
@@ -118,8 +116,8 @@ describe('removing', () => {
   });
 
   it('removeAllDownloads empties the list and the images', async () => {
-    const { saveChapters, removeAllDownloads } = await load();
-    await saveChapters(x, [chap(1)]);
+    const { saveChapter, removeAllDownloads } = await load();
+    await saveChapter(x, chap(1));
     removeAllDownloads();
     await settle();
     expect(saved()).toEqual([]);

@@ -11,8 +11,6 @@ import { pages } from '../sources/mangadex';
  */
 const KEY = 'inknexus-downloads';
 const CACHE = 'inknexus-downloads';
-/** How many chapters a series saves ahead: a few, since a site's storage on iPhone is small. */
-export const AHEAD = 3;
 
 export interface Download {
   /** The series' id, and its title so a series removed from the library is still named. */
@@ -24,10 +22,9 @@ export interface Download {
   bytes: number;
 }
 
-/** The chapter being saved, and how many of its pages are. */
+/** The chapter being saved, by id, and how many of its pages are. */
 export interface Saving {
-  x: string;
-  n: number;
+  id: string;
   done: number;
   total: number;
 }
@@ -51,7 +48,8 @@ function loadSaved(): Download[] {
   return Array.isArray(saved) ? saved.filter(isDownload) : [];
 }
 
-let state: { saved: Download[]; saving: Saving | null } = { saved: loadSaved(), saving: null };
+/** The saved chapters, the one saving, and the ids of those waiting to save after it. */
+let state: { saved: Download[]; saving: Saving | null; waiting: string[] } = { saved: loadSaved(), saving: null, waiting: [] };
 const changes = createChanges();
 
 function update(next: Partial<typeof state>) {
@@ -67,7 +65,7 @@ function canSave(): boolean {
 
 globalThis.navigator?.serviceWorker?.addEventListener('controllerchange', changes.emit);
 
-/** The saved chapters, the one being saved, and whether this browser can save any. */
+/** The saved chapters, the one saving, those waiting, and whether this browser can save any. */
 export function useDownloads() {
   return { ...useSyncExternalStore(changes.subscribe, () => state), can: canSave() };
 }
@@ -77,27 +75,37 @@ export function savedChapter(x: string, n: number): Download | undefined {
   return canSave() ? state.saved.find((d) => d.x === x && d.c.num === n) : undefined;
 }
 
-/** Up to `count` chapters from `from` on that can be read here, to save ahead. */
-export function aheadOf(list: Chapter[], from: Chapter, count = AHEAD): Chapter[] {
-  return list.filter((c) => c.num >= from.num && !c.ext).slice(0, count);
-}
+/** The last chapter asked to save; the next one starts after it. */
+let lastSave: Promise<unknown> = Promise.resolve();
 
-/** Save chapters `cs` of series `x` one at a time, skipping saved ones. A failure keeps the chapters saved before it. */
-export async function saveChapters(x: Pick<Series, 'id' | 'title'>, cs: Chapter[]): Promise<void> {
-  if (state.saving) throw new Error('another series is saving; wait for it to finish');
-  update({ saving: { x: x.id, n: cs[0]?.num ?? 0, done: 0, total: 0 } });
-  try {
-    const cache = await caches.open(CACHE);
-    for (const c of cs) {
-      if (state.saved.some((d) => d.c.id === c.id)) continue;
+/**
+ * Save chapter `c` of series `x`, after the chapters already waiting, one at a time. True once it is saved; false when it
+ * already was, or when it was waiting behind a chapter that failed: a failure drops the waiting chapters, so a rate limit
+ * is not piled on.
+ */
+export function saveChapter(x: Pick<Series, 'id' | 'title'>, c: Chapter): Promise<boolean> {
+  if (state.saved.some((d) => d.c.id === c.id) || state.waiting.includes(c.id) || state.saving?.id === c.id) return Promise.resolve(false);
+  update({ waiting: [...state.waiting, c.id] });
+  const run = lastSave.then(async () => {
+    if (!state.waiting.includes(c.id)) return false;
+    update({ waiting: state.waiting.filter((id) => id !== c.id), saving: { id: c.id, done: 0, total: 0 } });
+    try {
       const list = await pages(c.id);
-      update({ saving: { x: x.id, n: c.num, done: 0, total: list.length } });
-      const bytes = await saveImages(cache, list, (done) => update({ saving: { x: x.id, n: c.num, done, total: list.length } }));
+      update({ saving: { id: c.id, done: 0, total: list.length } });
+      const cache = await caches.open(CACHE);
+      const bytes = await saveImages(cache, list, (done) => update({ saving: { id: c.id, done, total: list.length } }));
       update({ saved: [...state.saved, { x: x.id, t: x.title, c, pages: list.map((p) => ({ a: p.a, b: '' })), bytes }] });
+      return true;
+    } catch (e) {
+      update({ waiting: [] });
+      throw e;
+    } finally {
+      update({ saving: null });
     }
-  } finally {
-    update({ saving: null });
-  }
+  });
+  // Its failure is the caller's to show; the next chapter only waits for it to end.
+  lastSave = run.catch(() => {});
+  return run;
 }
 
 /** Save a chapter's images two at a time and add up their size. On a failure, the ones already saved are removed. */

@@ -350,7 +350,7 @@ function OfflineChapters() {
         <p className="hint">
           {saved.length
             ? `${plural(saved.length, 'chapter')}, ${fileSize(total)}. A chapter is removed once you finish reading it.`
-            : "None yet. Save the next chapters from a series' MangaDex chapters."}{' '}
+            : "None yet. Save a chapter with the arrow next to it in a series' MangaDex chapters."}{' '}
           They are kept on this device only. On iPhone, add InkNexus to the Home Screen: Safari can clear a site's data after a week without a visit.
         </p>
         {saved.length > 0 && (
