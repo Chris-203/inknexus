@@ -35,6 +35,11 @@ describe('library shelf', () => {
     setLibraryShelf('reading');
     expect(libraryShelf()).toBe('reading');
   });
+  it('can open Downloaded', () => {
+    setLibraryShelf('downloads');
+    expect(libraryShelf()).toBe('downloads');
+    setLibraryShelf('reading');
+  });
   it('puts a series with no shelf on Reading', () => {
     const x = { id: 'a', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0 };
     expect(shelfOf(x)).toBe('reading');
