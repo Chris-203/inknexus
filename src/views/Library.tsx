@@ -9,13 +9,14 @@ import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
 import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
 import { daysAgo, fileSize, fmt, plural } from '../lib/format';
-import { SHELVES, setLibraryShelf, setLibraryView, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
+import { SHELVES, setLibraryShelf, type LibraryTab, setLibraryView, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
 import { nextWhole } from '../lib/links';
 import { useOpenLink } from '../lib/openLink';
 import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { leftChapter } from '../lib/spots';
 import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
+import { useSwipe } from '../lib/swipe';
 import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
@@ -39,6 +40,23 @@ export function Library() {
   const shelf = tab === 'downloads' && !downloads.can ? 'reading' : tab;
   const shown = list.filter((x) => shelfOf(x) === shelf);
   const tabs = downloads.can ? [...SHELVES, { k: 'downloads' as const, n: 'Downloaded' }] : SHELVES;
+  const openShelf = (k: LibraryTab) => {
+    setLibraryShelf(k);
+    // Picks stay on the shelf they were made on, so Move and Remove only act on series in view. Downloaded has no series to pick.
+    setPicked((p) => (k === 'downloads' ? null : p && []));
+  };
+  // A swipe to the left opens the shelf on the right of this one, and a swipe to the right the one on its left.
+  const at = tabs.findIndex((q) => q.k === shelf);
+  const swipe = useSwipe(
+    (dir) => !!tabs[at - dir],
+    (dir) => openShelf(tabs[at - dir]!.k),
+  );
+  // A swipe can open a shelf whose tab is scrolled out of the row.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React would call it as the cleanup.
+  useEffect(() => {
+    tabsRef.current?.querySelector('[aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [shelf]);
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
@@ -165,126 +183,120 @@ export function Library() {
           {settings}
         </header>
       )}
-      <div className="tabs" role="group" aria-label="Shelves">
+      <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
         {tabs.map((q) => {
           const on = q.k === shelf;
           return (
-            <button
-              key={q.k}
-              aria-pressed={on}
-              onClick={() => {
-                setLibraryShelf(q.k);
-                // Picks stay on the shelf they were made on, so Move and Remove only act on series in view. Downloaded has no series to pick.
-                setPicked((p) => (q.k === 'downloads' ? null : p && []));
-              }}
-            >
+            <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
               {q.n}
             </button>
           );
         })}
       </div>
-      {shelf !== 'downloads' && (
-        <div className="lbar">
-          <span className="sub">
-            {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
-          </span>
-          <div className="seg" role="group" aria-label="Show series as">
-            <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
-              {/* four cards */}
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
-                <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
-                <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
-                <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
-              </svg>
-            </button>
-            <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
-              {/* three rows, each a thumbnail and a line */}
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
-              </svg>
-            </button>
+      <div ref={swipe}>
+        {shelf !== 'downloads' && (
+          <div className="lbar">
+            <span className="sub">
+              {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+            </span>
+            <div className="seg" role="group" aria-label="Show series as">
+              <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
+                {/* four cards */}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+                  <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+                  <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+                  <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+                </svg>
+              </button>
+              <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
+                {/* three rows, each a thumbnail and a line */}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-      {shelf === 'downloads' ? (
-        <OfflineChapters />
-      ) : !shown.length ? (
-        <p className="hint">Nothing in {SHELVES.find((q) => q.k === shelf)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
-      ) : view === 'list' ? (
-        <div className="lrows">
-          {shown.map((x) => {
-            const last = x.last || 0;
-            const fresh = freshOf(x);
-            const on = picked?.includes(x.id);
-            return (
-              <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
-                <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
-                  <span className="linfo">
-                    <b>{x.title}</b>
-                    <span>
-                      {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
-                      {fresh?.n ? (
-                        <em>
-                          {' · '}
-                          {fresh.n}
-                          {fresh.more ? '+' : ''} new
-                        </em>
-                      ) : null}
+        )}
+        {shelf === 'downloads' ? (
+          <OfflineChapters />
+        ) : !shown.length ? (
+          <p className="hint">Nothing in {SHELVES.find((q) => q.k === shelf)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
+        ) : view === 'list' ? (
+          <div className="lrows">
+            {shown.map((x) => {
+              const last = x.last || 0;
+              const fresh = freshOf(x);
+              const on = picked?.includes(x.id);
+              return (
+                <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
+                  <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
+                    {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                    <span className="linfo">
+                      <b>{x.title}</b>
+                      <span>
+                        {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
+                        {fresh?.n ? (
+                          <em>
+                            {' · '}
+                            {fresh.n}
+                            {fresh.more ? '+' : ''} new
+                          </em>
+                        ) : null}
+                      </span>
+                      {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
                     </span>
-                    {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
+                    {picked && (
+                      <span className="tick" aria-hidden="true">
+                        {on && '✓'}
+                      </span>
+                    )}
+                  </button>
+                  {!picked && <RowContinue x={x} />}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid">
+            {shown.map((x) => {
+              const last = x.last || 0;
+              const fresh = freshOf(x);
+              const on = picked?.includes(x.id);
+              return (
+                <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
+                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+                  <span className="badges">
+                    {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
+                    {fresh?.n ? (
+                      <span className="badge new">
+                        {fresh.n}
+                        {fresh.more ? '+' : ''} new
+                      </span>
+                    ) : null}
                   </span>
                   {picked && (
                     <span className="tick" aria-hidden="true">
                       {on && '✓'}
                     </span>
                   )}
+                  <span className="ct">{x.title}</span>
                 </button>
-                {!picked && <RowContinue x={x} />}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="grid">
-          {shown.map((x) => {
-            const last = x.last || 0;
-            const fresh = freshOf(x);
-            const on = picked?.includes(x.id);
-            return (
-              <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-                {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
-                <span className="badges">
-                  {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
-                  {fresh?.n ? (
-                    <span className="badge new">
-                      {fresh.n}
-                      {fresh.more ? '+' : ''} new
-                    </span>
-                  ) : null}
-                </span>
-                {picked && (
-                  <span className="tick" aria-hidden="true">
-                    {on && '✓'}
-                  </span>
-                )}
-                <span className="ct">{x.title}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {f.length > 0 && (
-        <div className="pad">
-          <p className="hint">
-            Could not check {f.length === 1 ? f[0]!.title : `${f.length} series`} for new chapters ({f[0]!.error}).
-          </p>
-          <button className="btn ghost sm" onClick={() => checkUpdates(lib, true)}>
-            Check again
-          </button>
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+        {f.length > 0 && (
+          <div className="pad">
+            <p className="hint">
+              Could not check {f.length === 1 ? f[0]!.title : `${f.length} series`} for new chapters ({f[0]!.error}).
+            </p>
+            <button className="btn ghost sm" onClick={() => checkUpdates(lib, true)}>
+              Check again
+            </button>
+          </div>
+        )}
+      </div>
       {sheets}
     </>
   );

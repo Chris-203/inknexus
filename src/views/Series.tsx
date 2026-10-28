@@ -16,6 +16,7 @@ import { pasteChapterLink } from '../lib/pasteLink';
 import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
+import { useSwipe } from '../lib/swipe';
 import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries } from '../lib/store';
 import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
@@ -26,6 +27,11 @@ export function Series({ x }: { x: SeriesT }) {
   const { goBack, toast } = useApp();
   const [sheet, setSheet] = useState<'addsrc' | 'names' | null>(null);
   const [lastText, setLastText] = useState(String(x.last || 0));
+  const swipe = useSwipe(
+    (dir) => dir === 1,
+    () => goBack({ name: 'library' }),
+    true,
+  );
 
   const all = sourcesOf(x);
   const vis = all.filter((q) => !q.h);
@@ -59,7 +65,7 @@ export function Series({ x }: { x: SeriesT }) {
   else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
 
   return (
-    <>
+    <div ref={swipe}>
       <div className="backbar">
         <button className="ibtn" aria-label="Back" onClick={() => goBack({ name: 'library' })}>
           ‹
@@ -141,7 +147,7 @@ export function Series({ x }: { x: SeriesT }) {
       </div>
       {sheet === 'addsrc' && <AddSourceSheet x={x} onClose={() => setSheet(null)} />}
       {sheet === 'names' && <NamesSheet x={x} onClose={() => setSheet(null)} />}
-    </>
+    </div>
   );
 }
 

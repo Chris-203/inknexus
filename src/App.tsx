@@ -6,6 +6,7 @@ import { showsReadingUpdates } from './lib/readingUpdates';
 import { preloadBrowse } from './lib/searchResults';
 import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
+import { catchSwipes } from './lib/swipe';
 import type { Series as SeriesT } from './lib/types';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
@@ -67,7 +68,12 @@ export function App() {
   }, [view]);
 
   const full = view.name === 'reader' || view.name === 'frame';
+  // A series' page and a Browse result cover the bottom bar, like a page opened from a list in a native app.
+  const info = view.name === 'series' || view.name === 'details';
   useEffect(() => void document.body.classList.toggle('nonav', full), [full]);
+  useEffect(() => void document.body.classList.toggle('info', info), [info]);
+  // The reader and the site view have their own touches.
+  useEffect(() => (full ? undefined : catchSwipes()), [full]);
 
   const navigate = useCallback((v: View, replace = false) => {
     if (replace) history.replaceState({ v, back: hasBack() }, '');
@@ -138,7 +144,7 @@ export function App() {
         {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
         {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
       </div>
-      <nav id="nav" hidden={full}>
+      <nav id="nav" hidden={full || info}>
         <button aria-current={tab === 'library' || undefined} onClick={() => view.name !== 'library' && navigate({ name: 'library' })}>
           {/* a comic book: cover, spine, and a speech bubble */}
           <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -6,6 +6,7 @@ import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters } from '../lib/chapters';
 import { chapterNote, fmt, norm, plural } from '../lib/format';
 import { addSeries, updateSeries, useStore } from '../lib/store';
+import { useSwipe } from '../lib/swipe';
 import type { Chapter, SearchResult } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
@@ -18,6 +19,11 @@ export function Details({ o }: { o: SearchResult }) {
   const [adding, setAdding] = useState(false);
   // The whole synopsis, rather than its first lines.
   const [open, setOpen] = useState(false);
+  const swipe = useSwipe(
+    (dir) => dir === 1,
+    () => goBack({ name: 'search' }),
+    true,
+  );
   const more = useLoad(`${o.src}:${o.ref}`, () => (o.src === 'md' ? mangadex.details(String(o.ref)) : anilist.details(Number(o.ref))));
   const ex = o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
 
@@ -80,7 +86,7 @@ export function Details({ o }: { o: SearchResult }) {
     );
 
   return (
-    <>
+    <div ref={swipe}>
       <div className="backbar">
         <button className="ibtn" aria-label="Back" onClick={() => goBack({ name: 'search' })}>
           ‹
@@ -128,7 +134,7 @@ export function Details({ o }: { o: SearchResult }) {
           </a>
         </p>
       )}
-    </>
+    </div>
   );
 }
 
