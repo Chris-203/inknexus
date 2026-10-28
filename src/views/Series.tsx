@@ -19,6 +19,7 @@ import { leftChapter } from '../lib/spots';
 import { removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries } from '../lib/store';
 import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
+import { openWebtoonInBrowser } from '../lib/webtoon';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
 
@@ -334,6 +335,7 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
     const made = linkFrom(String(d.get('url') || ''), String(d.get('label') || ''));
     if (!made) return toast(NOT_WEB);
     updateSeries(x.id, (s) => ({ links: [...s.links, made.link], src: 'l' + s.links.length }));
+    openWebtoonInBrowser([made.link]);
     if (made.r && made.r.num > (x.last || 0)) {
       setLast(x.id, made.r.num);
       toast(`Detected chapter ${fmt(made.r.num)} from the link`);

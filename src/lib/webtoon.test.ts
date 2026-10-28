@@ -1,6 +1,7 @@
 import type { Series } from './types';
+import { opensInBrowser } from './siteSettings';
 import { getState, replaceState } from './store';
-import { bookmarklet, hasWebtoonList, importWebtoon, mergeWebtoon, parseWebtoonList, webtoonListIn, withMatches } from './webtoon';
+import { bookmarklet, hasWebtoonList, importWebtoon, mergeWebtoon, openWebtoonInBrowser, parseWebtoonList, webtoonListIn, withMatches } from './webtoon';
 
 const s = (o: Partial<Series>): Series => ({ id: 'x', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0, ...o });
 const viewer = (no: number, ep: number, host = 'www') => `https://${host}.webtoons.com/en/fantasy/a-story/episode-${ep}/viewer?title_no=${no}&episode_no=${ep}`;
@@ -185,5 +186,22 @@ describe('importWebtoon', () => {
     expect(await run('hello')).toEqual(['No Webtoon list found. On webtoons.com, tap the bookmark, then Send to InkNexus']);
     replaceState({ lib: [s({ title: 'Known', last: 9, links: [{ label: 'Webtoon', url: 'https://www.webtoons.com/en/x/k/list?title_no=1' }] })] });
     expect(await run(link('Known'))).toEqual(['Webtoon list imported. Nothing changed']);
+  });
+});
+
+describe('openWebtoonInBrowser', () => {
+  beforeEach(() => {
+    const memory = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => memory.get(k) ?? null, setItem: (k: string, v: string) => void memory.set(k, v) });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('turns on Open in the browser for each Webtoon site among the links, and leaves other sites alone', () => {
+    openWebtoonInBrowser([
+      { label: 'Webtoon', url: 'https://www.webtoons.com/en/x/a/list?title_no=1' },
+      { label: 'Webtoon', url: 'https://m.webtoons.com/viewer?titleNo=2&episodeNo=3' },
+      { label: 'Site', url: 'https://example.com/' },
+    ]);
+    expect(['webtoons.com', 'm.webtoons.com', 'example.com'].map(opensInBrowser)).toEqual([true, true, false]);
   });
 });

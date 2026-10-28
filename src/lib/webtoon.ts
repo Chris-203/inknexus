@@ -1,6 +1,7 @@
 import { why } from './api';
 import { planImport } from './importBackup';
-import { setOpensInBrowser } from './siteSettings';
+import { host } from './links';
+import { opensInBrowser, setOpensInBrowser } from './siteSettings';
 import { newSeries } from './storage';
 import { findSeries, getState, replaceState, sourceFrom, updateSeries } from './store';
 import type { Link, SearchResult, Series } from './types';
@@ -128,6 +129,15 @@ export function hasWebtoonList(text: string): boolean {
   return text.includes(HASH);
 }
 
+/**
+ * Turn on Open in the browser for the Webtoon sites among `links`, as they come into the library. webtoons.com does not
+ * show inside other sites, and in the browser an iPhone opens its pages in the Webtoon app. The setting is kept on the
+ * device, not in backups, so every way in sets it: the Webtoon import, a backup, and a link added by hand.
+ */
+export function openWebtoonInBrowser(links: Link[]) {
+  for (const site of new Set(links.filter((l) => isWebtoon(l.url)).map((l) => host(l.url)))) if (!opensInBrowser(site)) setOpensInBrowser(site, true);
+}
+
 function linkOf(w: WebtoonItem): Link {
   return { label: 'Webtoon', url: w.url, tpl: '', resume: w.resume, rn: w.n };
 }
@@ -198,8 +208,7 @@ export function importWebtoon(text: string, toast: (m: string) => void) {
   if (!items.length) return toast('That Webtoon list has no series. Open your Recent list on webtoons.com and tap the bookmark there');
   const r = mergeWebtoon(getState().lib, items);
   replaceState({ ...getState(), lib: r.lib });
-  // webtoons.com does not show inside other sites, and in the browser an iPhone opens its pages in the Webtoon app.
-  setOpensInBrowser(SITE, true);
+  openWebtoonInBrowser(items.map(linkOf));
   const parts = [r.fresh.length && `${r.fresh.length} added`, r.updated && `${r.updated} updated`].filter(Boolean);
   if (!parts.length) return toast('Webtoon list imported. Nothing changed');
   toast(`Webtoon list imported: ${parts.join(', ')}${r.fresh.length ? '. Looking up covers on AniList and MangaDex…' : ''}`);
