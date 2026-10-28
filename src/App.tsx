@@ -64,7 +64,7 @@ export function App() {
     if (!hasWebtoonList(location.hash)) return;
     const list = location.hash;
     history.replaceState(history.state, '', location.pathname + location.search);
-    toast(importWebtoon(list));
+    importWebtoon(list, toast);
   }, []);
 
   // Only on opening the app, so the Search tab opens on its results.

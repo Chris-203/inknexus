@@ -14,7 +14,7 @@ export function WebtoonSheet({ onClose }: { onClose: () => void }) {
       () => toast('Could not copy. Allow clipboard access for InkNexus, then tap Copy again'),
     );
 
-  const paste = async () => toast(importWebtoon(await pastedText('Paste the list copied from webtoons.com')));
+  const paste = async () => importWebtoon(await pastedText('Paste the list copied from webtoons.com'), toast);
 
   return (
     <Sheet label="Import from Webtoon" sheet={sheet}>

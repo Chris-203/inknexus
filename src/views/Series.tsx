@@ -15,7 +15,7 @@ import { pasteChapterLink } from '../lib/pasteLink';
 import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
-import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries } from '../lib/store';
+import { removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries } from '../lib/store';
 import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
@@ -266,11 +266,11 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
   const hidden = sourcesOf(x).filter((q) => q.h);
 
   const use = (o: SearchResult) => {
-    if (kind === 'md') updateSeries(x.id, (s) => ({ md: String(o.ref), mdh: false, cover: s.cover || o.cover, src: 'md' }));
+    if (kind === 'md') updateSeries(x.id, (s) => ({ ...sourceFrom(s, o), src: 'md' }));
     else {
-      const fresh = (o.links || []).filter((l) => !x.links.some((k) => k.url === l.url));
-      updateSeries(x.id, (s) => ({ al: o.ref, cover: s.cover || o.cover, links: [...s.links, ...fresh] }));
-      toast(fresh.length ? `Added ${plural(fresh.length, 'official link')}` : 'No official links listed for this one');
+      const added = sourceFrom(x, o).links!.length - x.links.length;
+      updateSeries(x.id, (s) => sourceFrom(s, o));
+      toast(added ? `Added ${plural(added, 'official link')}` : 'No official links listed for this one');
     }
     sheet.close();
   };

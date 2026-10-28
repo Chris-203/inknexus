@@ -1,5 +1,6 @@
 import type { Series } from './types';
-import { bookmarklet, hasWebtoonList, mergeWebtoon, parseWebtoonList, webtoonListIn } from './webtoon';
+import { getState, replaceState } from './store';
+import { bookmarklet, hasWebtoonList, importWebtoon, mergeWebtoon, parseWebtoonList, webtoonListIn, withMatches } from './webtoon';
 
 const s = (o: Partial<Series>): Series => ({ id: 'x', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0, ...o });
 const viewer = (no: number, ep: number, host = 'www') => `https://${host}.webtoons.com/en/fantasy/a-story/episode-${ep}/viewer?title_no=${no}&episode_no=${ep}`;
@@ -74,7 +75,7 @@ describe('mergeWebtoon', () => {
 
   it('adds new series as Webtoon link sources, keeping the list order', () => {
     const r = mergeWebtoon([], [w('First', 5), w('Second', 2)], 1000);
-    expect(r.added).toBe(2);
+    expect(r.fresh).toHaveLength(2);
     expect(r.lib.map((x) => [x.title, x.last, x.t, x.links[0]!.label, x.links[0]!.rn])).toEqual([
       ['First', 5, 1000, 'Webtoon', 5],
       ['Second', 2, 999, 'Webtoon', 2],
@@ -90,7 +91,7 @@ describe('mergeWebtoon', () => {
       s({ id: 'c', title: 'Plain', last: 1, md: 'm' }),
     ];
     const r = mergeWebtoon(lib, [w('Ahead', 20), w('Behind', 4), w('Plain', 1)], 1000);
-    expect(r).toMatchObject({ added: 0, updated: 2 });
+    expect(r).toMatchObject({ fresh: [], updated: 2 });
     expect(r.lib[0]).toMatchObject({ last: 20, t: 1000, links: [site, { label: 'Mine', rn: 20, url: w('Ahead', 20).url }] });
     expect(r.lib[1]).toBe(lib[1]);
     // A series with no Webtoon link gains one, at the end so its other sources keep their places.
@@ -105,5 +106,72 @@ describe('bookmarklet', () => {
     expect(b).not.toMatch(/[\n#%]/);
     expect(b).toContain('"https://app.example"');
     expect(() => new Function(b.slice('javascript:'.length))).not.toThrow();
+  });
+});
+
+describe('withMatches', () => {
+  const wt = { label: 'Webtoon', url: 'https://www.webtoons.com/en/x/a/list?title_no=1' };
+  const r = (src: 'md' | 'al', ref: string | number) => ({ src, ref, title: 'A', desc: '', cover: `https://c/${src}.jpg` });
+
+  it('adds both sources, takes the AniList cover, and keeps the Webtoon link selected', () => {
+    const x = withMatches(s({ links: [wt] }), r('al', 7), r('md', 'm1'));
+    expect(x).toMatchObject({ al: 7, md: 'm1', cover: 'https://c/al.jpg', src: 'l0' });
+  });
+
+  it('keeps sources, a cover and a choice the series already has', () => {
+    const mine = s({ al: 3, md: 'm0', cover: 'https://mine', src: 'md', links: [wt] });
+    expect(withMatches(mine, r('al', 7), r('md', 'm1'))).toEqual(mine);
+  });
+
+  it('works with one match or none', () => {
+    expect(withMatches(s({ links: [wt] }), null, r('md', 'm1'))).toMatchObject({ al: null, md: 'm1', cover: 'https://c/md.jpg', src: 'l0' });
+    expect(withMatches(s({ links: [wt] }), null, null)).toEqual(s({ links: [wt] }));
+  });
+});
+
+describe('importWebtoon', () => {
+  const link = (...titles: string[]) => 'https://app.example/#webtoon=' + encodeURIComponent(JSON.stringify(titles.map((t, i) => [viewer(i + 1, 5), t, ''])));
+  // AniList knows only 'Known'; MangaDex answers with `md` or fails with `status`.
+  const stub = (md: unknown, status = 200) =>
+    vi.stubGlobal('fetch', async (u: string, init?: RequestInit) => {
+      if (!u.includes('anilist')) return new Response(JSON.stringify(md), { status });
+      const vars: Record<string, string> = JSON.parse(String(init!.body)).variables;
+      const data = Object.fromEntries(
+        Object.entries(vars).map(([k, q]) => ['m' + k.slice(1), { media: q === 'Known' ? [{ id: 9, title: { english: q } }] : [] }]),
+      );
+      return new Response(JSON.stringify({ data }));
+    });
+  const run = async (text: string) => {
+    const said: string[] = [];
+    importWebtoon(text, (m) => said.push(m));
+    if (said[0]!.includes('Looking up')) await vi.waitFor(() => expect(said).toHaveLength(2));
+    return said;
+  };
+
+  beforeEach(() => replaceState({ lib: [] }));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('adds the series, then the exact matches as sources with the Webtoon link still selected', async () => {
+    stub({ data: [{ id: 'm1', attributes: { title: { en: 'Other' } } }] });
+    const said = await run(link('Known', 'Other', 'Unknown'));
+    expect(said).toEqual(['Webtoon list imported: 3 added. Looking up covers on AniList and MangaDex…', 'Found 2 of 3 Webtoon series on AniList or MangaDex']);
+    expect(getState().lib.map((x) => [x.title, x.al, x.md, x.src])).toEqual([
+      ['Known', 9, null, undefined],
+      ['Other', null, 'm1', 'l0'],
+      ['Unknown', null, null, undefined],
+    ]);
+  });
+
+  it('keeps the AniList matches and says what failed when MangaDex fails', async () => {
+    stub({}, 429);
+    const said = await run(link('Known'));
+    expect(said[1]).toMatch(/^Stopped looking up series on AniList and MangaDex \(HTTP 429: .*\)\. 1 matched/);
+    expect(getState().lib[0]).toMatchObject({ al: 9, md: null });
+  });
+
+  it('says when there is no list, and looks nothing up when nothing was added', async () => {
+    expect(await run('hello')).toEqual(['No Webtoon list found. On webtoons.com, tap the bookmark, then Send to InkNexus']);
+    replaceState({ lib: [s({ title: 'Known', last: 9, links: [{ label: 'Webtoon', url: 'https://www.webtoons.com/en/x/k/list?title_no=1' }] })] });
+    expect(await run(link('Known'))).toEqual(['Webtoon list imported. Nothing changed']);
   });
 });

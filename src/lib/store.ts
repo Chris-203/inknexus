@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { createChanges } from './changes';
 import { linkName } from './links';
 import { loadState, newSeries, saveState } from './storage';
-import type { Series, State } from './types';
+import type { SearchResult, Series, State } from './types';
 
 /** The library, saved to localStorage under 'longstrip' on every change. Changes replace objects, so React sees them. */
 let state: State = loadState();
@@ -58,6 +58,13 @@ export function replaceState(next: State) {
 /** Every source of a series as a chip: 'md' for MangaDex, 'l<index>' for each link. */
 export function sourcesOf(x: Series) {
   return [...(x.md ? [{ k: 'md', n: 'MangaDex', h: !!x.mdh }] : []), ...x.links.map((l, i) => ({ k: 'l' + i, n: linkName(l), h: !!l.h }))];
+}
+
+/** A MangaDex or AniList search result as a source of `x`: its id, its cover when `x` has none, and for AniList the official links `x` lacks. */
+export function sourceFrom(x: Series, o: SearchResult): Partial<Series> {
+  if (o.src === 'md') return { md: String(o.ref), mdh: false, cover: x.cover || o.cover };
+  const fresh = (o.links || []).filter((l) => !x.links.some((k) => k.url === l.url));
+  return { al: o.ref, cover: x.cover || o.cover, links: [...x.links, ...fresh] };
 }
 
 /** Hide or show source `k` of a series. Showing it also selects it; hiding clears the selection. */

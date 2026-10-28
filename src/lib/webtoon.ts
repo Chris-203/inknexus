@@ -1,8 +1,11 @@
+import { why } from './api';
 import { planImport } from './importBackup';
 import { setOpensInBrowser } from './siteSettings';
 import { newSeries } from './storage';
-import { getState, replaceState } from './store';
-import type { Link, Series } from './types';
+import { findSeries, getState, replaceState, sourceFrom, updateSeries } from './store';
+import type { Link, SearchResult, Series } from './types';
+import * as anilist from '../sources/anilist';
+import * as mangadex from '../sources/mangadex';
 
 /** One Webtoon series from the list the bookmarklet sends: its series page, the last episode's page, and that episode number. */
 export interface WebtoonItem {
@@ -141,22 +144,61 @@ export function mergeWebtoon(lib: Series[], items: WebtoonItem[], now = Date.now
   const { fresh, dupes } = planImport(lib, incoming);
   const merged = new Map(dupes.map((d) => [d.mine.id, mergeOne(d.mine, d.theirs)]));
   const next = [...lib.map((x) => merged.get(x.id) ?? x), ...fresh];
-  return { lib: next, added: fresh.length, updated: lib.filter((x) => merged.has(x.id) && merged.get(x.id) !== x).length };
+  return { lib: next, fresh: fresh.map((x) => x.id), updated: lib.filter((x) => merged.has(x.id) && merged.get(x.id) !== x).length };
 }
 
-/** Import the Webtoon list in `text` into the library, and return what to tell the user. */
-export function importWebtoon(text: string): string {
+/** `x` with its exact title matches on AniList and MangaDex added as sources, where it has none yet. Its Webtoon link stays the selected source. */
+export function withMatches(x: Series, al: SearchResult | null, md: SearchResult | null): Series {
+  let y = x;
+  if (al && y.al === null) y = { ...y, ...sourceFrom(y, al) };
+  if (md && !y.md) {
+    const i = y.links.findIndex((l) => isWebtoon(l.url));
+    y = { ...y, ...sourceFrom(y, md), src: y.src || (i >= 0 ? 'l' + i : '') };
+  }
+  return y;
+}
+
+/** How many titles go to AniList in one request. */
+const BATCH = 10;
+
+/** Look up newly imported series on AniList and MangaDex, a batch at a time, and add the exact title matches as sources. */
+async function lookUp(ids: string[], toast: (m: string) => void) {
+  const found = new Set<string>();
+  const add = (x: Series, al: SearchResult | null, md: SearchResult | null) => {
+    if (!al && !md) return;
+    found.add(x.id);
+    updateSeries(x.id, (cur) => withMatches(cur, al, md));
+  };
+  try {
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const batch = ids.slice(i, i + BATCH).flatMap((id) => findSeries(id) ?? []);
+      if (!batch.length) continue;
+      const al = await anilist.matchTitles(batch.map((x) => x.title));
+      batch.forEach((x, k) => add(x, al[k] ?? null, null));
+      // One MangaDex search at a time stays well under its rate limit while the library checks for new chapters.
+      for (const x of batch) add(x, null, await mangadex.matchTitle(x.title));
+    }
+  } catch (e) {
+    return toast(`Stopped looking up series on AniList and MangaDex (${why(e)}). ${found.size} matched; add the rest from a series with + Source`);
+  }
+  toast(`Found ${found.size} of ${ids.length} Webtoon series on AniList or MangaDex`);
+}
+
+/** Import the Webtoon list in `text` into the library and say how it went, then look up the new series on AniList and MangaDex. */
+export function importWebtoon(text: string, toast: (m: string) => void) {
   let items: WebtoonItem[];
   try {
     items = webtoonListIn(text);
   } catch {
-    return 'No Webtoon list found. On webtoons.com, tap the bookmark, then Send to InkNexus';
+    return toast('No Webtoon list found. On webtoons.com, tap the bookmark, then Send to InkNexus');
   }
-  if (!items.length) return 'That Webtoon list has no series. Open your Recent list on webtoons.com and tap the bookmark there';
+  if (!items.length) return toast('That Webtoon list has no series. Open your Recent list on webtoons.com and tap the bookmark there');
   const r = mergeWebtoon(getState().lib, items);
   replaceState({ ...getState(), lib: r.lib });
   // webtoons.com does not show inside other sites, and in the browser an iPhone opens its pages in the Webtoon app.
   setOpensInBrowser(SITE, true);
-  const parts = [r.added && `${r.added} added`, r.updated && `${r.updated} updated`].filter(Boolean);
-  return parts.length ? `Webtoon list imported: ${parts.join(', ')}` : 'Webtoon list imported. Nothing changed';
+  const parts = [r.fresh.length && `${r.fresh.length} added`, r.updated && `${r.updated} updated`].filter(Boolean);
+  if (!parts.length) return toast('Webtoon list imported. Nothing changed');
+  toast(`Webtoon list imported: ${parts.join(', ')}${r.fresh.length ? '. Looking up covers on AniList and MangaDex…' : ''}`);
+  if (r.fresh.length) void lookUp(r.fresh, toast);
 }
