@@ -33,8 +33,12 @@ export function Library() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const view = useLibraryView();
-  const shelf = useLibraryShelf();
+  const downloads = useDownloads();
+  const tab = useLibraryShelf();
+  // Downloaded shows only where chapters can be saved; a browser that cannot opens Reading instead.
+  const shelf = tab === 'downloads' && !downloads.can ? 'reading' : tab;
   const shown = list.filter((x) => shelfOf(x) === shelf);
+  const tabs = downloads.can ? [...SHELVES, { k: 'downloads' as const, n: 'Downloaded' }] : SHELVES;
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
@@ -101,11 +105,11 @@ export function Library() {
     <>
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
-      {moveOpen && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
+      {moveOpen && shelf !== 'downloads' && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
     </>
   );
 
-  if (!list.length)
+  if (!list.length && !downloads.saved.length)
     return (
       <>
         <header>
@@ -148,19 +152,21 @@ export function Library() {
       ) : (
         <header>
           <h1>My Series</h1>
-          <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
-            {/* a trash can: lid with handle, then the can */}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M9.5 7V4.5h5V7" />
-              <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
-            </svg>
-          </button>
+          {shelf !== 'downloads' && (
+            <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
+              {/* a trash can: lid with handle, then the can */}
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M9.5 7V4.5h5V7" />
+                <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+              </svg>
+            </button>
+          )}
           {addLink}
           {settings}
         </header>
       )}
       <div className="tabs" role="group" aria-label="Shelves">
-        {SHELVES.map((q) => {
+        {tabs.map((q) => {
           const on = q.k === shelf;
           return (
             <button
@@ -168,8 +174,8 @@ export function Library() {
               aria-pressed={on}
               onClick={() => {
                 setLibraryShelf(q.k);
-                // Picks stay on the shelf they were made on, so Move and Remove only act on series in view.
-                setPicked((p) => p && []);
+                // Picks stay on the shelf they were made on, so Move and Remove only act on series in view. Downloaded has no series to pick.
+                setPicked((p) => (q.k === 'downloads' ? null : p && []));
               }}
             >
               {q.n}
@@ -177,29 +183,33 @@ export function Library() {
           );
         })}
       </div>
-      <div className="lbar">
-        <span className="sub">
-          {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
-        </span>
-        <div className="seg" role="group" aria-label="Show series as">
-          <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
-            {/* four cards */}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
-              <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
-              <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
-              <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
-            </svg>
-          </button>
-          <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
-            {/* three rows, each a thumbnail and a line */}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
-            </svg>
-          </button>
+      {shelf !== 'downloads' && (
+        <div className="lbar">
+          <span className="sub">
+            {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+          </span>
+          <div className="seg" role="group" aria-label="Show series as">
+            <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
+              {/* four cards */}
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+                <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+                <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+                <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+              </svg>
+            </button>
+            <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
+              {/* three rows, each a thumbnail and a line */}
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-      {!shown.length ? (
+      )}
+      {shelf === 'downloads' ? (
+        <OfflineChapters />
+      ) : !shown.length ? (
         <p className="hint">Nothing in {SHELVES.find((q) => q.k === shelf)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
       ) : view === 'list' ? (
         <div className="lrows">
@@ -360,7 +370,6 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
         </label>
       </div>
       <BackupSettings close={sheet.close} />
-      <OfflineChapters />
     </Sheet>
   );
 }
@@ -394,15 +403,13 @@ function BackupSettings({ close }: { close: () => void }) {
   );
 }
 
-/** The chapters saved for reading offline, by series, with their sizes and a way to remove each or all. */
+/** My Series' Downloaded tab: the chapters saved for reading offline, by series, with their sizes and a way to remove each or all. */
 function OfflineChapters() {
-  const { saved, saving, can } = useDownloads();
-  if (!can) return null;
+  const { saved, saving } = useDownloads();
   const total = saved.reduce((t, d) => t + d.bytes, 0);
   const sorted = [...saved].sort((a, b) => a.t.localeCompare(b.t) || a.c.num - b.c.num);
   return (
     <>
-      <p className="hint">Offline chapters</p>
       <div>
         {sorted.map((d) => (
           <div key={d.c.id} className="dl">
