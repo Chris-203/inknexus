@@ -15,6 +15,14 @@ export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
+/** A size in bytes for display, in whole KB up to 1000 KB, otherwise MB with one decimal under 10: '850 KB', '4.2 MB', '18 MB'. */
+export function fileSize(bytes: number): string {
+  // From 1000 KB on, so it never shows '1024 KB'.
+  if (bytes < 1000 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  const mb = bytes / 1024 / 1024;
+  return `${mb < 10 ? +mb.toFixed(1) : Math.round(mb)} MB`;
+}
+
 /** When `t` was, in whole calendar days before `now`: 'today', 'yesterday' or '5 days ago'. */
 export function daysAgo(t: number, now = Date.now()): string {
   const day = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);

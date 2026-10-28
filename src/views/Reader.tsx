@@ -7,6 +7,7 @@ import { TopBar } from '../components/TopBar';
 import { imageSrc } from '../lib/api';
 import { getScrollSpeed, getTapScroll, scrollDistance, setScrollSpeed, setTapScroll, SPEEDS, stepSpeed, tapAction } from '../lib/autoScroll';
 import { useChapters } from '../lib/chapters';
+import { removeDownload, savedChapter } from '../lib/downloads';
 import { chapterNote, fmt } from '../lib/format';
 import { nextChapter, preloadChapter } from '../lib/preload';
 import { readProgress } from '../lib/progress';
@@ -28,9 +29,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const { navigate, goBack, toast } = useApp();
   const chs = useChapters(x.md);
   const list = chs?.status === 'ready' ? chs.list.chapters : [];
-  const c = list.find((k) => k.num === n);
+  // A chapter saved for offline reading opens from the device, even with no chapter list to find it in.
+  const saved = useRef(savedChapter(x.id, n)).current;
+  const c = list.find((k) => k.num === n) ?? saved?.c;
   const readable = c && !c.ext ? c : undefined;
-  const pages = useLoad(readable?.id ?? null, () => mangadex.pages(readable!.id));
+  const pages = useLoad(readable?.id ?? null, () => (saved ? Promise.resolve(saved.pages) : mangadex.pages(readable!.id)));
   const done = pages?.state === 'done';
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -137,6 +140,8 @@ export function Reader({ x, n }: { x: Series; n: number }) {
       spot.current = p < 1 ? spotAt(boxes) : null;
       if (p < 1 || finished.current) return;
       finished.current = true;
+      // Saved chapters are for reading ahead; once read, the room goes to the next ones.
+      if (saved) removeDownload(saved.c.id);
       if (n > (findSeries(x.id)?.last || 0)) {
         setLast(x.id, n);
         toast(`Chapter ${fmt(n)} marked read`, true);
@@ -198,7 +203,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   // The loading screen lifts once every page that starts on the first screen has shown or failed, or the chapter
   // can't be shown (a message says why).
-  const failed = chs?.status === 'error' || pages?.state === 'error' || (chs?.status === 'ready' && !readable);
+  const failed = (chs?.status === 'error' && !readable) || pages?.state === 'error' || (chs?.status === 'ready' && !readable);
   useLayoutEffect(() => {
     if (cover !== 'on' || (resume && !failed)) return;
     const waiting = done ? pages.value.findIndex((_, i) => !shown[i]) : 0;
@@ -217,7 +222,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 
   // Once the last page has shown or failed, load the next chapter ahead so it opens at once. Never marks anything read.
   useEffect(() => {
-    if (lastShown) return preloadChapter(next);
+    if (lastShown && next && !savedChapter(x.id, next.num)) return preloadChapter(next);
   }, [lastShown, next?.id]);
 
   // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px with
@@ -325,7 +330,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   };
 
   let content: ReactNode;
-  if (chs?.status === 'error') content = <p className="hint">Could not load this chapter ({chs.error}). Go back and try again.</p>;
+  if (chs?.status === 'error' && !readable) content = <p className="hint">Could not load this chapter ({chs.error}). Go back and try again.</p>;
   else if (chs?.status === 'ready' && !readable)
     content = <p className="hint">Chapter {fmt(n)} can't be read here. Go back and pick another chapter or source.</p>;
   else if (pages?.state === 'error') content = <p className="hint">Could not load this chapter ({pages.error}). Try again, or switch to a different source.</p>;

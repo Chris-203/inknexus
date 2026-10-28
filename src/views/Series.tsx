@@ -5,8 +5,9 @@ import { LinkFields } from '../components/LinkFields';
 import { ReadButton } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
-import { imageSrc } from '../lib/api';
+import { imageSrc, why } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
+import { removeDownload, saveChapter, useDownloads } from '../lib/downloads';
 import { chapterNote, fmt, plural } from '../lib/format';
 import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
@@ -16,7 +17,7 @@ import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
 import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries } from '../lib/store';
-import type { Link, SearchResult, Series as SeriesT } from '../lib/types';
+import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
@@ -144,8 +145,9 @@ export function Series({ x }: { x: SeriesT }) {
   );
 }
 
-/** The MangaDex source: its chapter list, with the ones up to `shown` marked read. */
+/** The MangaDex source: its chapter list, with the ones up to `shown` marked read, and each one's offline button. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
+  const { can } = useDownloads();
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
   else if (chs.status === 'error')
@@ -173,10 +175,13 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
       <ChapterRows
         all={chs.list.chapters}
         row={(c) => (
-          <ReadButton key={c.id} x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
-            <b>Ch. {fmt(c.num)}</b>
-            <span>{chapterNote(c)}</span>
-          </ReadButton>
+          <div key={c.id} className="chrow">
+            <ReadButton x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
+              <b>Ch. {fmt(c.num)}</b>
+              <span>{chapterNote(c)}</span>
+            </ReadButton>
+            {can && !c.ext && <SaveButton x={x} c={c} />}
+          </div>
         )}
       />
     );
@@ -191,6 +196,55 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
         </a>
       </p>
     </>
+  );
+}
+
+/** Saves chapter `c` for reading offline, shows how far it has got or that it waits its turn, and removes it once saved. */
+function SaveButton({ x, c }: { x: SeriesT; c: Chapter }) {
+  const { toast } = useApp();
+  const { saved, saving, waiting } = useDownloads();
+  const ch = `ch. ${fmt(c.num)}`;
+  if (saving?.id === c.id)
+    return (
+      <span className="ibtn plain dlstate" role="status" aria-label={`Saving ${ch}`}>
+        {saving.total ? `${saving.done}/${saving.total}` : '…'}
+      </span>
+    );
+  if (waiting.includes(c.id))
+    return (
+      <span className="ibtn plain dlstate" role="status" aria-label={`${ch} waits to save`}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l3 2" />
+        </svg>
+      </span>
+    );
+  if (saved.some((d) => d.c.id === c.id))
+    return (
+      <button
+        className="ibtn plain on"
+        aria-label={`Remove ${ch} from offline`}
+        onClick={() => {
+          removeDownload(c.id);
+          toast(`Removed ${ch} from offline`, true);
+        }}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+      </button>
+    );
+  const save = () =>
+    saveChapter(x, c).then(
+      (done) => done && toast(`Saved ${ch} for reading offline`, true),
+      (e) => toast(`Could not save ${ch} for offline (${why(e)}). Tap it to try again.`),
+    );
+  return (
+    <button className="ibtn plain" aria-label={`Save ${ch} for offline`} onClick={save}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
+      </svg>
+    </button>
   );
 }
 
