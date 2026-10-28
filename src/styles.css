@@ -87,8 +87,8 @@ header .btn,header .ibtn{align-self:center}
 .seg{display:flex;margin:4px 16px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md)}
 .seg button{flex:1;min-height:44px;background:none;border:4px solid transparent;background-clip:padding-box;border-radius:calc(var(--radius-md) + 4px);color:var(--muted);font-weight:700;cursor:pointer}
 .seg button[aria-pressed=true]{background-color:var(--accent);color:var(--on-accent)}
-/* 16px text stops iOS zooming in when a field is focused */
-input{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:11px 12px;width:100%;font-size:var(--font-base)}
+/* 16px text stops iOS zooming in when a field is focused; fields draw at 40px inside a 44px tap area, like text buttons */
+input{background:var(--surface);border:solid transparent;border-width:2px 0;background-clip:padding-box;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--radius-md)/calc(var(--radius-md) + 2px);padding:0 12px;height:44px;width:100%;font-size:var(--font-base)}
 input:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* the focus ring hugs the drawn box, not the transparent border around it */
 :is(.ibtn,.chip,.seg button,.step input):focus-visible{outline-offset:-2px}
@@ -195,9 +195,9 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 /* hidden at once while the browser's zoom is changing, so they do not lag behind the fingers; faded back in when it stops */
 .rbar.moving,#unzoom.moving{opacity:0;pointer-events:none;transition:none}
 .opt{display:flex;gap:10px;align-items:center;min-height:44px;font-size:var(--font-sm);color:var(--muted);cursor:pointer}
-.opt input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--accent)}
+.opt input{width:22px;height:22px;flex:none;margin:0;box-shadow:none;accent-color:var(--accent)}
 .opt:has(input:disabled){opacity:.5;cursor:default}
-.presets{display:flex;flex-wrap:wrap}
+.presets{display:flex;flex-wrap:wrap;margin:-4px}
 /* theme cards: data-theme on .tprev gives the preview that theme's colors; --ring keeps the app's own accent for the outline */
 .themes{--ring:var(--accent);display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 16px 16px}
 .tcol{display:flex;flex-direction:column;gap:14px}
