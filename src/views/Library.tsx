@@ -5,6 +5,7 @@ import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { imageSrc } from '../lib/api';
+import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
 import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
 import { daysAgo, fileSize, fmt, plural } from '../lib/format';
@@ -14,21 +15,9 @@ import { useOpenLink } from '../lib/openLink';
 import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { leftChapter } from '../lib/spots';
-import { getState, removeSeries, setShelf, shownSource, useStore } from '../lib/store';
+import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
 import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
-
-function exportBackup() {
-  const u = URL.createObjectURL(new Blob([JSON.stringify(getState())], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = u;
-  a.download = 'inknexus-backup.json';
-  document.body.append(a);
-  a.click();
-  a.remove();
-  // Revoking right away can cancel the download on iOS Safari.
-  setTimeout(() => URL.revokeObjectURL(u), 1000);
-}
 
 export function Library() {
   const { navigate, importBackup, toast } = useApp();
@@ -286,14 +275,6 @@ export function Library() {
           </button>
         </div>
       )}
-      <div className="row foot">
-        <button className="btn ghost sm" onClick={exportBackup}>
-          Export backup
-        </button>
-        <button className="btn ghost sm" onClick={importBackup}>
-          Import backup
-        </button>
-      </div>
       {sheets}
     </>
   );
@@ -378,8 +359,38 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
           Show reading updates, like "Chapter 5 marked read" and "Zoom 150%"
         </label>
       </div>
+      <BackupSettings close={sheet.close} />
       <OfflineChapters />
     </Sheet>
+  );
+}
+
+/** Export and import of the library, with when it was last backed up. Each browser keeps its own library, so a file is how it moves. */
+function BackupSettings({ close }: { close: () => void }) {
+  const { importBackup } = useApp();
+  const state = useStore();
+  const at = useLastBackup();
+  return (
+    <>
+      <p className="hint">Backup</p>
+      <p className="credit">Each browser keeps its own library. Export a backup file to keep your reading safe or move it to another phone.</p>
+      <p className="credit" aria-live="polite">
+        {backupStatus(state, at)}
+      </p>
+      <button className="btn" onClick={() => saveBackup(state)}>
+        Export backup
+      </button>
+      <button
+        className="btn ghost"
+        onClick={() => {
+          importBackup();
+          // The import's choices open in a sheet of their own.
+          close();
+        }}
+      >
+        Import backup
+      </button>
+    </>
   );
 }
 
