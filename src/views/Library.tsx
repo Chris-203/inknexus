@@ -169,13 +169,12 @@ export function Library() {
           {settings}
         </header>
       )}
-      <div className="chips" role="group" aria-label="Shelves">
+      <div className="tabs" role="group" aria-label="Shelves">
         {SHELVES.map((q) => {
           const on = q.k === shelf;
           return (
             <button
               key={q.k}
-              className={`chip${on ? ' on' : ''}`}
               aria-pressed={on}
               onClick={() => {
                 setLibraryShelf(q.k);
@@ -183,14 +182,14 @@ export function Library() {
                 setPicked((p) => p && []);
               }}
             >
-              {q.n} <span className="n">{list.filter((x) => shelfOf(x) === q.k).length}</span>
+              {q.n}
             </button>
           );
         })}
       </div>
       <div className="lbar">
         <span className="sub">
-          {list.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+          {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
         </span>
         <div className="seg" role="group" aria-label="Show series as">
           <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
