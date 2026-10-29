@@ -4,6 +4,7 @@ import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
 import { Sheet, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
+import { WebtoonSheet } from '../components/WebtoonSheet';
 import { imageSrc } from '../lib/api';
 import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
@@ -32,6 +33,7 @@ export function Library() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [webtoonOpen, setWebtoonOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const view = useLibraryView();
   const downloads = useDownloads();
@@ -221,8 +223,9 @@ export function Library() {
   );
   const sheets = (
     <>
-      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} onWebtoon={() => setWebtoonOpen(true)} />}
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
+      {webtoonOpen && <WebtoonSheet onClose={() => setWebtoonOpen(false)} />}
       {moveOpen && shelf !== 'downloads' && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
     </>
   );
@@ -246,6 +249,10 @@ export function Library() {
           </p>
           <button className="btn ghost" onClick={importBackup}>
             Import backup
+          </button>
+          <p className="restore">Reading on Webtoon? Bring in every series from your Recent list.</p>
+          <button className="btn ghost" onClick={() => setWebtoonOpen(true)}>
+            Import from Webtoon
           </button>
         </div>
         {sheets}
@@ -381,8 +388,8 @@ function MoveSheet({ from, onMove, onClose }: { from: Shelf; onMove: (k: Shelf) 
   );
 }
 
-/** Settings in a drawer from the right edge, opened from the gear. */
-function SettingsSheet({ onClose }: { onClose: () => void }) {
+/** Settings in a drawer from the right edge, opened from the gear. `onWebtoon` opens the Webtoon import. */
+function SettingsSheet({ onClose, onWebtoon }: { onClose: () => void; onWebtoon: () => void }) {
   const sheet = useSheet(onClose);
   const updates = useShowsReadingUpdates();
   return (
@@ -395,13 +402,13 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
           Show reading updates, like "Chapter 5 marked read" and "Zoom 150%"
         </label>
       </div>
-      <BackupSettings close={sheet.close} />
+      <BackupSettings close={sheet.close} onWebtoon={onWebtoon} />
     </Sheet>
   );
 }
 
-/** Export and import of the library, with when it was last backed up. Each browser keeps its own library, so a file is how it moves. */
-function BackupSettings({ close }: { close: () => void }) {
+/** Export and import of the library, with when it was last backed up, and the Webtoon import. Each browser keeps its own library, so a file is how it moves. */
+function BackupSettings({ close, onWebtoon }: { close: () => void; onWebtoon: () => void }) {
   const { importBackup } = useApp();
   const state = useStore();
   const at = useLastBackup();
@@ -424,6 +431,15 @@ function BackupSettings({ close }: { close: () => void }) {
         }}
       >
         Import backup
+      </button>
+      <button
+        className="btn ghost"
+        onClick={() => {
+          onWebtoon();
+          close();
+        }}
+      >
+        Import from Webtoon
       </button>
     </>
   );

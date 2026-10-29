@@ -1,4 +1,4 @@
-import { browse, chapters, details, GENRES, latest, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
+import { browse, chapters, details, GENRES, latest, matchTitle, mdMatch, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -194,5 +194,20 @@ describe('pages cache', () => {
     const seen = nodes();
     expect(await pages('fail')).toHaveLength(1);
     expect(seen).toHaveLength(1);
+  });
+});
+
+describe('mdMatch', () => {
+  const m = (id: string, en: string, alt: string[] = []) => ({ id, attributes: { title: { en }, altTitles: alt.map((n) => ({ en: n })) } });
+  it('takes the series with the title among any of its names, comparing letters and digits only', () => {
+    expect(mdMatch('A Story', [m('m1', 'A Story 2'), m('m2', 'Other', ['a story!'])])?.ref).toBe('m2');
+  });
+  it('is null when no name is exactly the title', () => {
+    expect(mdMatch('A Story', [m('m1', 'A Story Returns')])).toBeNull();
+  });
+  it('matchTitle searches by title with covers', async () => {
+    const seen = relay(() => ({ data: [m('m1', 'A Story')] }));
+    expect((await matchTitle('A Story'))?.ref).toBe('m1');
+    expect(seen[0]).toContain('/manga?title=A%20Story&limit=5&includes[]=cover_art');
   });
 });

@@ -8,6 +8,7 @@ import { parseBackup } from './lib/storage';
 import { findSeries, getState, replaceState, useStore } from './lib/store';
 import { catchSwipes } from './lib/swipe';
 import type { Series as SeriesT } from './lib/types';
+import { hasWebtoonList, importWebtoon, openWebtoonInBrowser } from './lib/webtoon';
 import { Library } from './views/Library';
 import { Search } from './views/Search';
 import { Details } from './views/Details';
@@ -57,6 +58,14 @@ export function App() {
     addEventListener('popstate', pop);
     return () => removeEventListener('popstate', pop);
     // Only on mount: this records the first view in history; later views are recorded by navigate().
+  }, []);
+
+  // The bookmarklet opens the app with a Webtoon list in the address; import it once and take it out of the address.
+  useEffect(() => {
+    if (!hasWebtoonList(location.hash)) return;
+    const list = location.hash;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    importWebtoon(list, toast);
   }, []);
 
   // Only on opening the app, so the Search tab opens on its results.
@@ -113,6 +122,7 @@ export function App() {
     const lib = getState().lib;
     const next = mergeImport(lib, plan.fresh, plan.dupes, fromBackup);
     replaceState({ ...getState(), lib: next });
+    openWebtoonInBrowser(next.flatMap((x) => x.links));
     const updated = lib.filter((x, i) => JSON.stringify(x) !== JSON.stringify(next[i])).length;
     const parts = [plan.fresh.length && `${plan.fresh.length} added`, updated && `${updated} updated`].filter(Boolean);
     toast(parts.length ? `Backup imported: ${parts.join(', ')}` : 'Backup imported. Nothing changed');

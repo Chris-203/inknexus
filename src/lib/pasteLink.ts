@@ -2,15 +2,18 @@ import { fmt } from './format';
 import { parseChUrl } from './links';
 import { setLast, updateSeries } from './store';
 
+/** The text on the clipboard, or typed into a prompt that says `ask` where the clipboard cannot be read. */
+export async function pastedText(ask: string): Promise<string> {
+  try {
+    return (await navigator.clipboard.readText()).trim();
+  } catch {
+    return (prompt(ask) || '').trim();
+  }
+}
+
 /** Read a chapter link from the clipboard (or a prompt), set the chapter from it, and teach link source `i` its URL pattern. */
 export async function pasteChapterLink(seriesId: string, i: number, toast: (m: string, update?: boolean) => void) {
-  let t = '';
-  try {
-    t = await navigator.clipboard.readText();
-  } catch {
-    t = prompt('Paste the chapter link') || '';
-  }
-  t = t.trim();
+  const t = await pastedText('Paste the chapter link');
   const r = parseChUrl(t);
   if (!r) return toast('No chapter number found. Copy a chapter link first.');
   updateSeries(seriesId, (x) => ({
