@@ -20,18 +20,18 @@ const relay = (answer: (u: string) => unknown) => {
 };
 
 describe('toChapterList', () => {
-  it('keeps one readable chapter per number, sorted, with groups', () => {
+  it('keeps one readable chapter per number, sorted, with groups and dates', () => {
     const list = toChapterList([
       ch('c2', '2', 20, {}, ['Alpha', 'Beta']),
-      ch('c1', '1', 20, { title: 'Start' }, ['Alpha']),
+      ch('c1', '1', 20, { title: 'Start', readableAt: '2026-01-16T12:00:00+00:00' }, ['Alpha']),
       ch('c1b', '1', 18, {}, ['Other']),
       ch('gone', '3', 0),
       ch('extra', null, 5),
     ]);
     expect(list.listed).toBe(5);
     expect(list.chapters).toEqual([
-      { id: 'c1', num: 1, title: 'Start', ext: '', grp: 'Alpha' },
-      { id: 'c2', num: 2, title: '', ext: '', grp: 'Alpha & Beta' },
+      { id: 'c1', num: 1, title: 'Start', ext: '', grp: 'Alpha', date: '2026-01-16T12:00:00+00:00' },
+      { id: 'c2', num: 2, title: '', ext: '', grp: 'Alpha & Beta', date: undefined },
     ]);
   });
   it('prefers a chapter readable on MangaDex over an official-site link for the same number', () => {

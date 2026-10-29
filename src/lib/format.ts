@@ -10,6 +10,11 @@ export function chapterNote(c: Pick<Chapter, 'ext' | 'title' | 'grp'>): string {
   return [c.ext ? 'Official site ↗' : c.title, c.grp].filter(Boolean).join(' · ');
 }
 
+/** A chapter's date for its row: 'Jan 16, 2026'. */
+export function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 /** `n` and the word, plural unless n is 1: plural(3, 'chapter') is '3 chapters'. */
 export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;

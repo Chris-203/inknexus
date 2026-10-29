@@ -1,4 +1,4 @@
-import { chapterNote, daysAgo, fileSize, fmt, norm, plural } from './format';
+import { chapterNote, daysAgo, fileSize, fmt, norm, plural, shortDate } from './format';
 
 describe('format', () => {
   it('fmt shows whole and one-decimal chapters', () => {
@@ -10,6 +10,10 @@ describe('format', () => {
     expect(plural(1, 'official link')).toBe('1 official link');
     expect(plural(0, 'official link')).toBe('0 official links');
     expect(plural(3, 'chapter')).toBe('3 chapters');
+  });
+  it('shortDate shows month, day and year', () => {
+    expect(shortDate('2026-01-16T12:00:00+00:00')).toBe('Jan 16, 2026');
+    expect(shortDate('2025-12-03T12:00:00')).toBe('Dec 3, 2025');
   });
   it('chapterNote shows the title or official site, then the group', () => {
     expect(chapterNote({ ext: '', title: 'The Gate', grp: 'Team A' })).toBe('The Gate · Team A');

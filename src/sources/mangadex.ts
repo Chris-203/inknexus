@@ -34,7 +34,7 @@ export interface MdAggregate {
 }
 export interface MdChapter {
   id: string;
-  attributes: { chapter?: string | null; title?: string | null; pages?: number; externalUrl?: string | null };
+  attributes: { chapter?: string | null; title?: string | null; pages?: number; externalUrl?: string | null; readableAt?: string };
   relationships?: Rel[];
 }
 
@@ -131,7 +131,7 @@ export function toChapterList(raw: MdChapter[]): ChapterList {
       .filter((r) => r.type === 'scanlation_group' && r.attributes?.name)
       .map((r) => r.attributes!.name)
       .join(' & ');
-    byNum.set(n, { id: c.id, num: n, title: c.attributes.title || '', ext, grp });
+    byNum.set(n, { id: c.id, num: n, title: c.attributes.title || '', ext, grp, date: c.attributes.readableAt });
   }
   return { chapters: [...byNum.values()].sort((a, b) => a.num - b.num), listed: raw.length };
 }
