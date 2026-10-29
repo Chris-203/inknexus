@@ -15,6 +15,8 @@ interface Swipe {
 const EDGE = 24;
 /** How far a finger moves before its touch is a swipe or a scroll rather than a tap. */
 const SLOP = 10;
+/** How long a page takes to settle after the finger lets go, in ms: about as long as WEBTOON's tabs take. */
+const SETTLE = 350;
 
 let target: Swipe | null = null;
 
@@ -40,7 +42,7 @@ function scroller(el: Element | null, axis: 'x' | 'y'): Element | null {
 }
 
 function slide(el: HTMLElement, x: number, ms: number) {
-  el.style.transition = ms ? `transform ${ms}ms cubic-bezier(.2,.8,.2,1)` : '';
+  el.style.transition = ms ? `transform ${ms}ms ease` : '';
   el.style.transform = x ? `translateX(${x}px)` : '';
 }
 
@@ -58,7 +60,7 @@ export function catchSwipes(): () => void {
     // Safari's swipe through history starts at the screen's sides and only a cancelled touchstart stops it.
     // A cancelled touch neither taps nor scrolls, so end() and move() do that for it.
     if (edge) e.preventDefault();
-    if (g?.axis === 'x' && g.sw) slide(g.sw.el, 0, 200);
+    if (g?.axis === 'x' && g.sw) slide(g.sw.el, 0, SETTLE);
     g = null;
     if (e.touches.length !== 1) return;
     const at = e.target as Element;
@@ -101,7 +103,7 @@ export function catchSwipes(): () => void {
       else at.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     }
     if (axis !== 'x' || !sw) return;
-    const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250;
+    const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : SETTLE;
     const w = sw.el.offsetWidth;
     const dir = e.type === 'touchend' ? swipeEnd(dx, v, w) : 0;
     if (!dir || !sw.can(dir)) return slide(sw.el, 0, ms);
