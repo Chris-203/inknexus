@@ -16,7 +16,8 @@ const SORTS: [mangadex.BrowseSort, string][] = [
 /** Where Browse was scrolled to, so coming back from a series' details lands on the same spot. */
 let scrolled = 0;
 
-export function Search() {
+/** `on` is false while Search stays mounted under another view. */
+export function Search({ on }: { on: boolean }) {
   const { navigate, toast, search, setSearch } = useApp();
   const [q, setQ] = useState(search.q);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
@@ -60,12 +61,13 @@ export function Search() {
   }, []);
 
   useEffect(() => {
+    if (!on) return;
     // App puts every view at the top; results kept from before go back to where they were.
     if (search.res) window.scrollTo(0, scrolled);
     const keep = () => (scrolled = window.scrollY);
     addEventListener('scroll', keep, { passive: true });
     return () => removeEventListener('scroll', keep);
-  }, []);
+  }, [on]);
 
   const onSearch = async (e: FormEvent) => {
     e.preventDefault();
