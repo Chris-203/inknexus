@@ -6,8 +6,20 @@ export function useSheet(onClose: () => void) {
   return { closing, close: () => setClosing(true), onClose };
 }
 
-/** Bottom sheet dialog, or with `drawer` a panel from the right edge: it slides in, focus moves into it, Escape or a tap outside closes it, and focus returns to what opened it. */
-export function Sheet({ label, sheet, drawer, children }: { label: string; sheet: ReturnType<typeof useSheet>; drawer?: boolean; children: ReactNode }) {
+/** Bottom sheet dialog, with `full` one that fills the screen, or with `drawer` a panel from the right edge: it slides in, focus moves into it, Escape or a tap outside closes it, and focus returns to what opened it. */
+export function Sheet({
+  label,
+  sheet,
+  drawer,
+  full,
+  children,
+}: {
+  label: string;
+  sheet: ReturnType<typeof useSheet>;
+  drawer?: boolean;
+  full?: boolean;
+  children: ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(sheet.close);
   close.current = sheet.close;
@@ -27,7 +39,7 @@ export function Sheet({ label, sheet, drawer, children }: { label: string; sheet
     <div id="modal" className={`on${drawer ? ' side' : ''}${sheet.closing ? ' closing' : ''}`} onClick={(e) => e.target === e.currentTarget && sheet.close()}>
       <div
         ref={ref}
-        className={drawer ? 'sheet drawer' : 'sheet'}
+        className={`sheet${drawer ? ' drawer' : ''}${full ? ' full' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={label}

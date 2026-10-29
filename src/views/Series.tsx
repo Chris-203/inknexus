@@ -1,13 +1,13 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
-import { ChapterRows } from '../components/ChapterRows';
+import { chapterText, ChapterRows, savedCheck } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
 import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc, why } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
-import { removeDownload, saveChapter, useDownloads } from '../lib/downloads';
+import { saveChapter, useDownloads } from '../lib/downloads';
 import { fmt, plural } from '../lib/format';
 import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
@@ -17,7 +17,7 @@ import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
 import { useSwipe } from '../lib/swipe';
-import { removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries } from '../lib/store';
+import { removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries, useStore } from '../lib/store';
 import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { openWebtoonInBrowser } from '../lib/webtoon';
@@ -157,10 +157,11 @@ export function Series({ x }: { x: SeriesT }) {
   );
 }
 
-/** The MangaDex source: its chapter list, with the ones up to `shown` marked read, and each one's offline button. */
+/** The MangaDex source: its chapter list, with the ones up to `shown` marked read, and a button to choose chapters to save offline. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
-  const { can } = useDownloads();
+  const { can, saved } = useDownloads();
   const read = useReadChapter();
+  const [picking, setPicking] = useState(false);
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
   else if (chs.status === 'error')
@@ -184,7 +185,28 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
       </p>
     );
   } else {
-    list = <ChapterRows all={chs.list.chapters} shown={shown} open={(c) => read(x.id, c)} after={(c) => can && !c.ext && <SaveButton x={x} c={c} />} />;
+    const all = chs.list.chapters;
+    list = (
+      <>
+        <ChapterRows
+          all={all}
+          shown={shown}
+          open={(c) => read(x.id, c)}
+          saved={(c) => saved.some((d) => d.c.id === c.id)}
+          tools={
+            can &&
+            all.some((c) => !c.ext) && (
+              <button className="ibtn plain" aria-label="Download chapters" onClick={() => setPicking(true)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
+                </svg>
+              </button>
+            )
+          }
+        />
+        {picking && <DownloadSheet x={x} all={all} onClose={() => setPicking(false)} />}
+      </>
+    );
   }
   return (
     <>
@@ -199,52 +221,86 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
   );
 }
 
-/** Saves chapter `c` for reading offline, shows how far it has got or that it waits its turn, and removes it once saved. */
-function SaveButton({ x, c }: { x: SeriesT; c: Chapter }) {
+/**
+ * Choose chapters to save for reading offline, as on WEBTOON: tap a chapter to tick it, or drag along the circles to
+ * tick or untick several. It fills the screen; saved chapters show a check, and saving and waiting ones their state, instead of a circle.
+ */
+function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClose: () => void }) {
   const { toast } = useApp();
+  const { sort } = useStore();
   const { saved, saving, waiting } = useDownloads();
-  const ch = `ch. ${fmt(c.num)}`;
-  if (saving?.id === c.id)
-    return (
-      <span className="ibtn plain dlstate" role="status" aria-label={`Saving ${ch}`}>
-        {saving.total ? `${saving.done}/${saving.total}` : '…'}
-      </span>
-    );
-  if (waiting.includes(c.id))
-    return (
-      <span className="ibtn plain dlstate" role="status" aria-label={`${ch} waits to save`}>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 8v4l3 2" />
-        </svg>
-      </span>
-    );
-  if (saved.some((d) => d.c.id === c.id))
-    return (
-      <button
-        className="ibtn plain on"
-        aria-label={`Remove ${ch} from offline`}
-        onClick={() => {
-          removeDownload(c.id);
-          toast(`Removed ${ch} from offline`, true);
-        }}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 12.5l4.5 4.5L19 7.5" />
-        </svg>
-      </button>
-    );
-  const save = () =>
-    saveChapter(x, c).then(
-      (done) => done && toast(`Saved ${ch} for reading offline`, true),
-      (e) => toast(`Could not save ${ch} for offline (${why(e)}). Tap it to try again.`),
-    );
+  const sheet = useSheet(onClose);
+  const [picked, setPicked] = useState<string[]>([]);
+  // What a drag along the circles does to each chapter it passes: tick (true) or untick (false); null when not dragging.
+  const drag = useRef<boolean | null>(null);
+  const list = all.filter((c) => !c.ext);
+  const pick = (id: string, on: boolean) => setPicked((p) => (on === p.includes(id) ? p : on ? [...p, id] : p.filter((k) => k !== id)));
+  const state = (c: Chapter) => {
+    if (saved.some((d) => d.c.id === c.id)) return <span className="dlstate">{savedCheck()}</span>;
+    if (saving?.id === c.id) return <span className="dlstate">{saving.total ? `${saving.done}/${saving.total}` : 'Saving'}</span>;
+    if (waiting.includes(c.id)) return <span className="dlstate">Waiting</span>;
+  };
+  const download = () => {
+    for (const c of list.filter((c) => picked.includes(c.id)))
+      saveChapter(x, c).then(
+        (done) => done && toast(`Saved ch. ${fmt(c.num)} for reading offline`, true),
+        (e) => toast(`Could not save ch. ${fmt(c.num)} for offline (${why(e)}). Choose it in Download to try again.`),
+      );
+    toast(`Saving ${plural(picked.length, 'chapter')}. Find them in My Series under Downloaded.`);
+    sheet.close();
+  };
   return (
-    <button className="ibtn plain" aria-label={`Save ${ch} for offline`} onClick={save}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
-      </svg>
-    </button>
+    <Sheet label="Download" sheet={sheet} full>
+      <div className="pickhead">
+        <h2>Download</h2>
+        <button className="ibtn plain" aria-label="Close" onClick={sheet.close}>
+          ×
+        </button>
+      </div>
+      <p className="hint">Tap chapters to choose them, or drag along the circles to choose several.</p>
+      <div
+        className="picklist"
+        onPointerMove={(e) => {
+          const id = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-ch]')?.dataset.ch;
+          if (id && drag.current !== null) pick(id, drag.current);
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
+        {(sort === 'asc' ? list : [...list].reverse()).map((c) => {
+          const on = picked.includes(c.id);
+          const st = state(c);
+          return (
+            <div key={c.id} className="chrow" data-ch={st ? undefined : c.id}>
+              <button className="ch" role="checkbox" aria-checked={on} disabled={!!st} onClick={() => pick(c.id, !on)}>
+                {chapterText(c)}
+              </button>
+              {st || (
+                <span
+                  className={`circ${on ? ' on' : ''}`}
+                  aria-hidden="true"
+                  onPointerDown={(e) => {
+                    // A touch would otherwise keep sending its moves to this circle and scroll the list.
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                    drag.current = !on;
+                    pick(c.id, !on);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="pickfoot">
+        <button className="btn" disabled={!picked.length} onClick={download}>
+          Download{picked.length > 0 && ` (${picked.length})`}
+        </button>
+      </div>
+    </Sheet>
   );
 }
 

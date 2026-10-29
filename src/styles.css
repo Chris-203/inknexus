@@ -175,7 +175,8 @@ button.more{background:none;border:0;padding:0 2px;min-height:44px;margin:-10px 
 .dl b{color:var(--text);font-size:var(--font-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dl:last-child{border-bottom:1px solid var(--line)}
 /* a series' chapter list: a header kept in view with the count and sort, then rows of chapter and Read */
-.chhead{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;font-weight:600}
+.chhead{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);display:flex;align-items:center;padding:0 8px 0 16px;font-weight:600}
+.chhead > span{flex:1}
 .chsort{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 8px;background:none;border:0;color:var(--muted);font:inherit;font-size:var(--font-sm);cursor:pointer}
 .chsort svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .chrow{display:flex;align-items:center;position:relative}
@@ -184,10 +185,19 @@ button.more{background:none;border:0;padding:0 2px;min-height:44px;margin:-10px 
 .chtxt{flex:1;min-width:0;display:flex;flex-direction:column}
 .chtxt b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch .pill{flex:none;color:var(--text);border:1px solid var(--line);border-radius:var(--radius-full);padding:5px 16px}
-/* a chapter's offline button: an arrow to save it, its page count while saving, a check once saved */
-.chrow .ibtn{margin-right:8px}
-.ibtn.on{color:var(--accent)}
-.dlstate{font-size:var(--font-xs);font-family:var(--body);font-variant-numeric:tabular-nums}
+/* the Download sheet fills the screen: its title and close at the top, the chapters scrolling between, Download at the bottom. Each chapter has a circle to tick, which a drag along the circles ticks too, or its saving state. */
+#modal .sheet.full{display:flex;flex-direction:column;height:100%;max-height:none;border-top:0;border-radius:0;padding-top:calc(8px + env(safe-area-inset-top,0px));box-shadow:none}
+.pickhead{display:flex;align-items:center;padding:0 8px 0 0}
+#modal .pickhead h2{flex:1;padding:0 16px}
+.picklist{flex:1;overflow:auto}
+.circ{flex:none;align-self:stretch;width:56px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer}
+.circ svg{width:26px;height:26px;padding:4px;border-radius:var(--radius-full);box-shadow:inset 0 0 0 1.5px var(--muted);fill:none;stroke:transparent;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.circ.on svg{background:var(--accent);box-shadow:none;stroke:var(--on-accent)}
+.dlstate{flex:none;min-width:56px;padding:0 8px;text-align:center;color:var(--muted);font-size:var(--font-xs);font-variant-numeric:tabular-nums}
+.pickfoot{padding-top:10px;border-top:1px solid var(--line)}
+/* a chapter saved for offline: after its date in the chapter list, in place of its circle in Download */
+svg.saved{width:18px;height:18px;margin-left:6px;vertical-align:-3px;fill:none;stroke:var(--accent);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.dlstate svg.saved{width:24px;height:24px;margin:0;vertical-align:middle}
 .credit{color:var(--muted);font-size:var(--font-sm);padding:10px 16px;margin:0}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}
