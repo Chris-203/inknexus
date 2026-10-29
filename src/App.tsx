@@ -144,11 +144,25 @@ export function App() {
   };
 
   const tab = view.name === 'search' || view.name === 'details' ? 'search' : 'library';
+  // My Series and Browse stay mounted once opened, hidden under the other views, so coming back to one shows its covers
+  // at once instead of making each cover load again, a gray box and then the image. The reader and the site view let
+  // them go, so a hidden My Series never checks for new chapters while a chapter loads.
+  const [kept, setKept] = useState<(typeof tab)[]>([]);
+  const keep: typeof kept = full ? [] : kept.includes(tab) ? kept : [...kept, tab];
+  if (keep.length !== kept.length) setKept(keep);
   return (
     <AppContext.Provider value={api}>
       <div id="app">
-        {view.name === 'library' && <Library />}
-        {view.name === 'search' && <Search />}
+        {kept.includes('library') && (
+          <div hidden={view.name !== 'library'}>
+            <Library />
+          </div>
+        )}
+        {kept.includes('search') && (
+          <div hidden={view.name !== 'search'}>
+            <Search on={view.name === 'search'} />
+          </div>
+        )}
         {view.name === 'details' && <Details key={`${view.o.src}:${view.o.ref}`} o={view.o} />}
         {x && view.name === 'series' && <Series key={x.id} x={x} />}
         {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
