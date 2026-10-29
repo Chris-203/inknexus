@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 
 /** Which way the finger moves: 1 to the right, toward what is before it (going back, the shelf on the left), -1 to the left. */
 export type Dir = 1 | -1;
@@ -39,7 +40,7 @@ function scroller(el: Element | null, axis: 'x' | 'y'): Element | null {
 }
 
 function slide(el: HTMLElement, x: number, ms: number) {
-  el.style.transition = ms ? `transform ${ms}ms ease-out` : '';
+  el.style.transition = ms ? `transform ${ms}ms cubic-bezier(.2,.8,.2,1)` : '';
   el.style.transform = x ? `translateX(${x}px)` : '';
 }
 
@@ -50,8 +51,6 @@ function slide(el: HTMLElement, x: number, ms: number) {
  */
 export function catchSwipes(): () => void {
   let g: { x: number; y: number; t: number; at: Element; edge: boolean; axis: 'x' | 'y' | null; dx: number; v: number; sw: Swipe | null } | null = null;
-  // Once a touch is a swipe, the page does not scroll along with it.
-  const hold = (e: TouchEvent) => e.cancelable && e.preventDefault();
 
   const start = (e: TouchEvent) => {
     const t = e.touches[0]!;
@@ -79,13 +78,14 @@ export function catchSwipes(): () => void {
     if (!g.axis) {
       if (Math.hypot(dx, dy) < SLOP) return;
       g.axis = g.sw && Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-      if (g.axis === 'x') addEventListener('touchmove', hold, { passive: false });
     }
     if (g.axis === 'y') {
       if (g.edge) (scroller(g.at, 'y') ?? document.scrollingElement)?.scrollBy(0, g.y - t.clientY);
       g.y = t.clientY;
       return;
     }
+    // Once a touch is a swipe, the page does not scroll or bounce along with it.
+    if (e.cancelable) e.preventDefault();
     g.v = (dx - g.dx) / Math.max(1, e.timeStamp - g.t);
     g.t = e.timeStamp;
     g.dx = dx;
@@ -93,7 +93,6 @@ export function catchSwipes(): () => void {
   };
 
   const end = (e: TouchEvent) => {
-    removeEventListener('touchmove', hold);
     if (!g || e.touches.length) return;
     const { sw, axis, dx, v, edge, at } = g;
     g = null;
@@ -102,22 +101,22 @@ export function catchSwipes(): () => void {
       else at.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     }
     if (axis !== 'x' || !sw) return;
-    const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
-    const dir = e.type === 'touchend' ? swipeEnd(dx, v, innerWidth) : 0;
+    const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250;
+    const w = sw.el.offsetWidth;
+    const dir = e.type === 'touchend' ? swipeEnd(dx, v, w) : 0;
     if (!dir || !sw.can(dir)) return slide(sw.el, 0, ms);
-    slide(sw.el, dir * innerWidth, ms);
+    // The element moves a whole width, which brings in what sits beside it.
+    slide(sw.el, dir * w, ms);
     setTimeout(() => {
-      sw.go(dir);
-      if (sw.leaves) return;
-      // What comes next slides in from the other side.
-      slide(sw.el, -dir * innerWidth, 0);
-      sw.el.getBoundingClientRect();
-      slide(sw.el, 0, ms);
+      if (sw.leaves) return sw.go(dir);
+      // The element now shows what was beside it in its own place, in the same frame as it moves back.
+      flushSync(() => sw.go(dir));
+      slide(sw.el, 0, 0);
     }, ms);
   };
 
   addEventListener('touchstart', start, { passive: false });
-  addEventListener('touchmove', move, { passive: true });
+  addEventListener('touchmove', move, { passive: false });
   addEventListener('touchend', end, { passive: true });
   addEventListener('touchcancel', end, { passive: true });
   return () => {
@@ -125,13 +124,12 @@ export function catchSwipes(): () => void {
     removeEventListener('touchmove', move);
     removeEventListener('touchend', end);
     removeEventListener('touchcancel', end);
-    removeEventListener('touchmove', hold);
   };
 }
 
 /**
  * A ref for the element a sideways swipe moves. `can` says whether there is something that way; `go` goes there.
- * The element then slides back in with what it shows next, or with `leaves` stays out, for a view that closes.
+ * The element holds what is beside it, which `go` moves into its place, or with `leaves` it slides out, for a view that closes.
  */
 export function useSwipe(can: (dir: Dir) => boolean, go: (dir: Dir) => void, leaves = false) {
   const latest = useRef({ can, go });

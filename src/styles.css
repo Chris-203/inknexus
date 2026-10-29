@@ -51,6 +51,10 @@ header .btn,header .ibtn{align-self:center}
 .tabs{display:flex;gap:16px;padding:0 16px;margin-bottom:8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 .tabs button{flex:none;min-height:44px;padding:0;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:700 var(--font-sm)/1 var(--body);text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
 .tabs button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--text)}
+/* My Series' shelves in a row, moved to the open one; the others take no height, and show only while a swipe pulls one in */
+.track{display:flex}
+.track>div{flex:none;width:100%}
+.track>:not(.on){height:0}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none;padding:2px;gap:2px}

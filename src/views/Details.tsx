@@ -43,8 +43,9 @@ export function Details({ o }: { o: SearchResult }) {
       }
     }
     toast(msg);
-    // Replaces this screen, so going back from the series returns to Browse.
-    navigate({ name: 'series', id: n.id }, true);
+    // The series opens in My Series, in place of this screen, so going back from it goes to My Series.
+    navigate({ name: 'library' }, true);
+    navigate({ name: 'series', id: n.id });
     return n;
   };
 

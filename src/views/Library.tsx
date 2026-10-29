@@ -38,7 +38,6 @@ export function Library() {
   const tab = useLibraryShelf();
   // Downloaded shows only where chapters can be saved; a browser that cannot opens Reading instead.
   const shelf = tab === 'downloads' && !downloads.can ? 'reading' : tab;
-  const shown = list.filter((x) => shelfOf(x) === shelf);
   const tabs = downloads.can ? [...SHELVES, { k: 'downloads' as const, n: 'Downloaded' }] : SHELVES;
   const openShelf = (k: LibraryTab) => {
     setLibraryShelf(k);
@@ -104,6 +103,107 @@ export function Library() {
     setShelf(ids, k);
     setPicked(null);
     toast(`Moved ${ids.length} series to ${SHELVES.find((q) => q.k === k)!.n}`);
+  };
+
+  // Each shelf's series, or its saved chapters for Downloaded.
+  const shelfBody = (k: LibraryTab) => {
+    const shown = list.filter((x) => shelfOf(x) === k);
+    return (
+      <>
+        {k !== 'downloads' && (
+          <div className="lbar">
+            <span className="sub">
+              {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+            </span>
+            <div className="seg" role="group" aria-label="Show series as">
+              <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
+                {/* four cards */}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+                  <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+                  <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+                  <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+                </svg>
+              </button>
+              <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
+                {/* three rows, each a thumbnail and a line */}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+        {k === 'downloads' ? (
+          <OfflineChapters />
+        ) : !shown.length ? (
+          <p className="hint">Nothing in {SHELVES.find((q) => q.k === k)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
+        ) : view === 'list' ? (
+          <div className="lrows">
+            {shown.map((x) => {
+              const last = x.last || 0;
+              const fresh = freshOf(x);
+              const on = picked?.includes(x.id);
+              return (
+                <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
+                  <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
+                    {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                    <span className="linfo">
+                      <b>{x.title}</b>
+                      <span>
+                        {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
+                        {fresh?.n ? (
+                          <em>
+                            {' · '}
+                            {fresh.n}
+                            {fresh.more ? '+' : ''} new
+                          </em>
+                        ) : null}
+                      </span>
+                      {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
+                    </span>
+                    {picked && (
+                      <span className="tick" aria-hidden="true">
+                        {on && '✓'}
+                      </span>
+                    )}
+                  </button>
+                  {!picked && <RowContinue x={x} />}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid">
+            {shown.map((x) => {
+              const last = x.last || 0;
+              const fresh = freshOf(x);
+              const on = picked?.includes(x.id);
+              return (
+                <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
+                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+                  <span className="badges">
+                    {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
+                    {fresh?.n ? (
+                      <span className="badge new">
+                        {fresh.n}
+                        {fresh.more ? '+' : ''} new
+                      </span>
+                    ) : null}
+                  </span>
+                  {picked && (
+                    <span className="tick" aria-hidden="true">
+                      {on && '✓'}
+                    </span>
+                  )}
+                  <span className="ct">{x.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
   };
 
   const settings = (
@@ -193,110 +293,24 @@ export function Library() {
           );
         })}
       </div>
-      <div ref={swipe}>
-        {shelf !== 'downloads' && (
-          <div className="lbar">
-            <span className="sub">
-              {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
-            </span>
-            <div className="seg" role="group" aria-label="Show series as">
-              <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
-                {/* four cards */}
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
-                  <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
-                  <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
-                  <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
-                </svg>
-              </button>
-              <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
-                {/* three rows, each a thumbnail and a line */}
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
-                </svg>
-              </button>
-            </div>
+      {/* Every shelf side by side, so a swipe pulls the next one in beside this one */}
+      <div ref={swipe} className="track" style={{ translate: `${-at * 100}%` }}>
+        {tabs.map((q) => (
+          <div key={q.k} className={q.k === shelf ? 'on' : undefined} inert={q.k !== shelf}>
+            {shelfBody(q.k)}
           </div>
-        )}
-        {shelf === 'downloads' ? (
-          <OfflineChapters />
-        ) : !shown.length ? (
-          <p className="hint">Nothing in {SHELVES.find((q) => q.k === shelf)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
-        ) : view === 'list' ? (
-          <div className="lrows">
-            {shown.map((x) => {
-              const last = x.last || 0;
-              const fresh = freshOf(x);
-              const on = picked?.includes(x.id);
-              return (
-                <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
-                  <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                    {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
-                    <span className="linfo">
-                      <b>{x.title}</b>
-                      <span>
-                        {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
-                        {fresh?.n ? (
-                          <em>
-                            {' · '}
-                            {fresh.n}
-                            {fresh.more ? '+' : ''} new
-                          </em>
-                        ) : null}
-                      </span>
-                      {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
-                    </span>
-                    {picked && (
-                      <span className="tick" aria-hidden="true">
-                        {on && '✓'}
-                      </span>
-                    )}
-                  </button>
-                  {!picked && <RowContinue x={x} />}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid">
-            {shown.map((x) => {
-              const last = x.last || 0;
-              const fresh = freshOf(x);
-              const on = picked?.includes(x.id);
-              return (
-                <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
-                  <span className="badges">
-                    {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
-                    {fresh?.n ? (
-                      <span className="badge new">
-                        {fresh.n}
-                        {fresh.more ? '+' : ''} new
-                      </span>
-                    ) : null}
-                  </span>
-                  {picked && (
-                    <span className="tick" aria-hidden="true">
-                      {on && '✓'}
-                    </span>
-                  )}
-                  <span className="ct">{x.title}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {f.length > 0 && (
-          <div className="pad">
-            <p className="hint">
-              Could not check {f.length === 1 ? f[0]!.title : `${f.length} series`} for new chapters ({f[0]!.error}).
-            </p>
-            <button className="btn ghost sm" onClick={() => checkUpdates(lib, true)}>
-              Check again
-            </button>
-          </div>
-        )}
+        ))}
       </div>
+      {f.length > 0 && (
+        <div className="pad">
+          <p className="hint">
+            Could not check {f.length === 1 ? f[0]!.title : `${f.length} series`} for new chapters ({f[0]!.error}).
+          </p>
+          <button className="btn ghost sm" onClick={() => checkUpdates(lib, true)}>
+            Check again
+          </button>
+        </div>
+      )}
       {sheets}
     </>
   );
