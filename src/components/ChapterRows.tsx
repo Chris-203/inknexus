@@ -6,7 +6,7 @@ import type { Chapter } from '../lib/types';
 /**
  * A loaded MangaDex chapter list under a header that stays in view with its count and sort button, oldest or newest
  * first as the library sorts. Each row shows the chapter with its title, group and date, and Read; chapters up to
- * `shown` look read, and those `saved` for offline say Saved. `tools` adds buttons to the header, before the sort.
+ * `shown` look read, and those `saved` for offline have a check. `tools` adds buttons to the header, before the sort.
  */
 export function ChapterRows({
   all,
@@ -51,14 +51,27 @@ export function ChapterRows({
   );
 }
 
-/** A chapter row's text: its number, then its title and group, then its date and whether it is saved for offline. */
+/** A chapter row's text: its number, then its title and group, then its date with a check when it is saved for offline. */
 export function chapterText(c: Chapter, saved?: boolean): ReactNode {
-  const last = [c.date && shortDate(c.date), saved && 'Saved'].filter(Boolean).join(' · ');
   return (
     <span className="chtxt">
       <b>Ch. {fmt(c.num)}</b>
       {chapterNote(c) && <span>{chapterNote(c)}</span>}
-      {last && <span>{last}</span>}
+      {(c.date || saved) && (
+        <span>
+          {c.date && shortDate(c.date)}
+          {saved && savedCheck()}
+        </span>
+      )}
     </span>
+  );
+}
+
+/** The check that marks a chapter saved for offline. */
+export function savedCheck(): ReactNode {
+  return (
+    <svg className="saved" viewBox="0 0 24 24" role="img" aria-label="Saved">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
   );
 }

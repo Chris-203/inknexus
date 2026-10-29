@@ -195,6 +195,9 @@ button.more{background:none;border:0;padding:0 2px;min-height:44px;margin:-10px 
 .circ.on svg{background:var(--accent);box-shadow:none;stroke:var(--on-accent)}
 .dlstate{flex:none;min-width:56px;padding:0 8px;text-align:center;color:var(--muted);font-size:var(--font-xs);font-variant-numeric:tabular-nums}
 .pickfoot{padding-top:10px;border-top:1px solid var(--line)}
+/* a chapter saved for offline: after its date in the chapter list, in place of its circle in Download */
+svg.saved{width:18px;height:18px;margin-left:6px;vertical-align:-3px;fill:none;stroke:var(--accent);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.dlstate svg.saved{width:24px;height:24px;margin:0;vertical-align:middle}
 .credit{color:var(--muted);font-size:var(--font-sm);padding:10px 16px;margin:0}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}

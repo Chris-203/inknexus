@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
-import { chapterText, ChapterRows } from '../components/ChapterRows';
+import { chapterText, ChapterRows, savedCheck } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
 import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
@@ -223,7 +223,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
 
 /**
  * Choose chapters to save for reading offline, as on WEBTOON: tap a chapter to tick it, or drag along the circles to
- * tick or untick several. It fills the screen; saved, saving and waiting chapters show their state instead of a circle.
+ * tick or untick several. It fills the screen; saved chapters show a check, and saving and waiting ones their state, instead of a circle.
  */
 function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClose: () => void }) {
   const { toast } = useApp();
@@ -236,7 +236,7 @@ function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClos
   const list = all.filter((c) => !c.ext);
   const pick = (id: string, on: boolean) => setPicked((p) => (on === p.includes(id) ? p : on ? [...p, id] : p.filter((k) => k !== id)));
   const state = (c: Chapter) => {
-    if (saved.some((d) => d.c.id === c.id)) return <span className="dlstate">Saved</span>;
+    if (saved.some((d) => d.c.id === c.id)) return <span className="dlstate">{savedCheck()}</span>;
     if (saving?.id === c.id) return <span className="dlstate">{saving.total ? `${saving.done}/${saving.total}` : 'Saving'}</span>;
     if (waiting.includes(c.id)) return <span className="dlstate">Waiting</span>;
   };
