@@ -123,7 +123,9 @@ export function Series({ x }: { x: SeriesT }) {
                   toast('Hidden. Bring it back from + Source');
                 }}
               >
-                ×
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 5l14 14M19 5 5 19" />
+                </svg>
               </button>
             )}
             <button aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
@@ -131,8 +133,11 @@ export function Series({ x }: { x: SeriesT }) {
             </button>
           </span>
         ))}
-        <button className="chip" onClick={() => setSheet('addsrc')}>
-          + Source
+        <button className="chip add" aria-label="+ Source" onClick={() => setSheet('addsrc')}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v18M3 12h18" />
+          </svg>
+          Source
         </button>
       </div>
       {body}
