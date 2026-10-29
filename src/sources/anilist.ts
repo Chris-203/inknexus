@@ -18,6 +18,25 @@ export interface AlDetails {
   chapters?: number | null;
   startDate?: { year?: number | null };
   staff?: { edges?: { role: string; node: { name: { full: string } } }[] };
+  trailer?: AlTrailer | null;
+  relations?: { edges?: { relationType: string; node: { type: string; trailer?: AlTrailer | null } }[] };
+}
+
+interface AlTrailer {
+  id: string;
+  site: string;
+}
+
+const TRAILER_SITES: Record<string, string> = {
+  youtube: 'https://www.youtube.com/watch?v=',
+  dailymotion: 'https://www.dailymotion.com/video/',
+};
+
+/** The page of the series' own trailer or, as manga rarely have one, of its anime adaptation's; '' when there is none on a known site. */
+export function trailerUrl(m: AlDetails): string {
+  const anime = (m.relations?.edges || []).filter((e) => e.relationType === 'ADAPTATION' && e.node.type === 'ANIME').map((e) => e.node.trailer);
+  const t = [m.trailer, ...anime].find((a) => a && TRAILER_SITES[a.site]);
+  return t ? TRAILER_SITES[t.site] + encodeURIComponent(t.id) : '';
 }
 
 /** Send a GraphQL query to AniList and return its `data`. */
@@ -99,12 +118,13 @@ export function toDetails(m: AlDetails): Details {
     year: m.startDate?.year || null,
     chapters: m.chapters || null,
     authors: [...new Set(authors)],
+    trailer: trailerUrl(m),
   };
 }
 
 export async function details(id: number): Promise<Details> {
   const data = await query<{ Media?: AlDetails | null }>(
-    `query($id:Int){Media(id:$id,type:MANGA){genres tags{name rank isMediaSpoiler} status chapters startDate{year} staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
+    `query($id:Int){Media(id:$id,type:MANGA){genres tags{name rank isMediaSpoiler} status chapters startDate{year} staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}} trailer{id site} relations{edges{relationType node{type trailer{id site}}}}}}`,
     { id },
   );
   if (!data.Media) throw new Error('AniList no longer has this series');

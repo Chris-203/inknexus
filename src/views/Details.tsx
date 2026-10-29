@@ -116,6 +116,11 @@ export function Details({ o }: { o: SearchResult }) {
             Add to My Series
           </button>
         )}
+        {d?.trailer && (
+          <a className="btn ghost" href={d.trailer} target="_blank" rel="noopener noreferrer">
+            Watch the trailer ↗
+          </a>
+        )}
       </div>
       {d && <MoreInGenre o={o} tags={d.tags} />}
       {chapters}

@@ -62,6 +62,8 @@ export interface Details {
   /** On MangaDex, the numbered English chapters; on AniList, the count once the series has finished. */
   chapters: number | null;
   authors: string[];
+  /** AniList only: the trailer's page, or '' when there is none. */
+  trailer?: string;
 }
 
 export interface Chapter {

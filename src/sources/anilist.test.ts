@@ -1,4 +1,4 @@
-import { alMatch, details, matchTitles, search, toDetails, type AlMedia } from './anilist';
+import { alMatch, details, matchTitles, search, toDetails, trailerUrl, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -32,10 +32,31 @@ describe('toDetails', () => {
         ],
       },
     });
-    expect(d).toEqual({ tags: ['Action', 'Fantasy', 'Dungeon'], status: 'Completed', year: 2018, chapters: 120, authors: ['Pen Name'] });
+    expect(d).toEqual({ tags: ['Action', 'Fantasy', 'Dungeon'], status: 'Completed', year: 2018, chapters: 120, authors: ['Pen Name'], trailer: '' });
   });
   it('gives null for an ongoing series with no chapter count and an empty status when it is missing', () => {
-    expect(toDetails({ status: null, chapters: null })).toEqual({ tags: [], status: '', year: null, chapters: null, authors: [] });
+    expect(toDetails({ status: null, chapters: null })).toEqual({ tags: [], status: '', year: null, chapters: null, authors: [], trailer: '' });
+  });
+});
+
+describe('trailerUrl', () => {
+  const anime = (id: string, site = 'youtube', relationType = 'ADAPTATION', type = 'ANIME') => ({ relationType, node: { type, trailer: { id, site } } });
+  it("takes the series' own trailer before its anime adaptation's", () => {
+    expect(trailerUrl({ trailer: { id: 'own', site: 'youtube' }, relations: { edges: [anime('adapted')] } })).toBe('https://www.youtube.com/watch?v=own');
+    expect(trailerUrl({ trailer: null, relations: { edges: [anime('x7k', 'dailymotion')] } })).toBe('https://www.dailymotion.com/video/x7k');
+  });
+  it('skips other relations, sites it does not know and adaptations without a trailer', () => {
+    const edges = [
+      anime('seq', 'youtube', 'SEQUEL'),
+      anime('film', 'youtube', 'ADAPTATION', 'MANGA'),
+      anime('v', 'vimeo'),
+      { relationType: 'ADAPTATION', node: { type: 'ANIME', trailer: null } },
+    ];
+    expect(trailerUrl({ relations: { edges } })).toBe('');
+    expect(trailerUrl({})).toBe('');
+  });
+  it('escapes the id', () => {
+    expect(trailerUrl({ trailer: { id: 'a&b', site: 'youtube' } })).toBe('https://www.youtube.com/watch?v=a%26b');
   });
 });
 
