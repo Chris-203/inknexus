@@ -77,7 +77,7 @@ async function mangas(q: string, limit: number): Promise<MdManga[]> {
   return j.data || [];
 }
 
-function toResult(m: MdManga): SearchResult {
+export function toResult(m: MdManga): SearchResult {
   const c = m.relationships?.find((x) => x.type === 'cover_art')?.attributes;
   return {
     src: 'md',
@@ -102,6 +102,29 @@ export function mdMatch(title: string, list: MdManga[]): SearchResult | null {
 /** The MangaDex series with exactly the name `title`, or null. */
 export async function matchTitle(title: string): Promise<SearchResult | null> {
   return mdMatch(title, await mangas(`title=${encodeURIComponent(title)}`, 5));
+}
+
+/** /manga/{id}/recommendation: pairs of the series and one MangaDex finds like it, with how alike they are (0 to 1). */
+export interface MdRecommendation {
+  attributes: { score: number };
+  relationships: { id: string; type: string }[];
+}
+
+/** The ids of the series MangaDex finds most like `ref`, closest first: up to `max`. MangaDex sends them in no order. */
+export function recIds(recs: MdRecommendation[], ref: string, max: number): string[] {
+  return [...recs]
+    .sort((a, b) => b.attributes.score - a.attributes.score)
+    .flatMap((r) => r.relationships.filter((x) => x.type === 'manga' && x.id !== ref).map((x) => x.id))
+    .slice(0, max);
+}
+
+/** Up to 12 series MangaDex finds like `ref`, closest first. Two requests: the recommendations, then the series with covers. */
+export async function recommended(ref: string): Promise<MdManga[]> {
+  const j: { data?: MdRecommendation[] } = await (await api(`${MD}/manga/${ref}/recommendation`)).json();
+  const ids = recIds(j.data || [], ref, 12);
+  if (!ids.length) return [];
+  const list = await mangas(ids.map((id) => `ids[]=${id}`).join('&'), ids.length);
+  return ids.flatMap((id) => list.find((m) => m.id === id) || []);
 }
 
 export function search(q: string): Promise<SearchResult[]> {

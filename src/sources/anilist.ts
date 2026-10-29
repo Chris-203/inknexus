@@ -9,6 +9,10 @@ export interface AlMedia {
   coverImage?: { large?: string };
   description?: string | null;
   externalLinks?: { site: string; url: string; type?: string; language?: string | null }[];
+  /** 'MANGA' or 'ANIME'; asked for only where both can come back. */
+  type?: string;
+  /** 'MANGA', 'ONE_SHOT', 'NOVEL', …; asked for only where novels can come back. */
+  format?: string | null;
 }
 
 export interface AlDetails {
@@ -109,4 +113,32 @@ export async function details(id: number): Promise<Details> {
   );
   if (!data.Media) throw new Error('AniList no longer has this series');
   return toDetails(data.Media);
+}
+
+export interface AlLikeThis {
+  relations?: { edges?: { relationType: string; node: AlMedia }[] };
+  recommendations?: { nodes?: { rating: number; mediaRecommendation: AlMedia | null }[] };
+}
+
+/** Comics to read, not anime or light novels. */
+function readable(m: AlMedia | null): m is AlMedia {
+  return !!m && m.type === 'MANGA' && m.format !== 'NOVEL';
+}
+
+/** Related series (sequels, prequels, spin-offs, …), then the ones AniList users recommend, best rated first. Comics only, each once. */
+export function toLikeThis(m: AlLikeThis): SearchResult[] {
+  const related = (m.relations?.edges || []).map((e) => e.node);
+  const liked = (m.recommendations?.nodes || []).filter((r) => r.rating > 0).map((r) => r.mediaRecommendation);
+  const all = [...related, ...liked].filter(readable);
+  return all.filter((k, i) => all.findIndex((o) => o.id === k.id) === i).map(toResult);
+}
+
+export async function likeThis(id: number): Promise<SearchResult[]> {
+  const f = `type format ${FIELDS}`;
+  const data = await query<{ Media?: AlLikeThis | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){relations{edges{relationType node{${f}}}} recommendations(sort:RATING_DESC,perPage:10){nodes{rating mediaRecommendation{${f}}}}}}`,
+    { id },
+  );
+  if (!data.Media) throw new Error('AniList no longer has this series');
+  return toLikeThis(data.Media);
 }

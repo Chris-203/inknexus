@@ -1,4 +1,20 @@
-import { browse, chapters, details, GENRES, latest, matchTitle, mdMatch, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
+import {
+  browse,
+  chapters,
+  details,
+  GENRES,
+  latest,
+  matchTitle,
+  mdMatch,
+  pages,
+  PAGES_TTL,
+  recIds,
+  recommended,
+  search,
+  toChapterList,
+  toDetails,
+  type MdChapter,
+} from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -209,5 +225,40 @@ describe('mdMatch', () => {
     const seen = relay(() => ({ data: [m('m1', 'A Story')] }));
     expect((await matchTitle('A Story'))?.ref).toBe('m1');
     expect(seen[0]).toContain('/manga?title=A%20Story&limit=5&includes[]=cover_art');
+  });
+});
+
+describe('recommendations', () => {
+  const rec = (other: string, score: number) => ({
+    attributes: { score },
+    relationships: [
+      { id: 'me', type: 'manga' },
+      { id: other, type: 'manga' },
+    ],
+  });
+  it('recIds takes the other series of each pair, closest first, up to max', () => {
+    expect(recIds([rec('b', 0.9), rec('a', 1), rec('c', 0.95)], 'me', 2)).toEqual(['a', 'c']);
+  });
+  it('recommended loads the series in one request and keeps the closest first', async () => {
+    const seen = relay((u) =>
+      u.includes('/recommendation')
+        ? { data: [rec('b', 0.9), rec('a', 1)] }
+        : {
+            data: [
+              { id: 'b', attributes: { title: { en: 'B' } } },
+              { id: 'a', attributes: { title: { en: 'A' } } },
+            ],
+          },
+    );
+    expect((await recommended('me')).map((m) => m.id)).toEqual(['a', 'b']);
+    expect(seen).toEqual([
+      'https://api.mangadex.org/manga/me/recommendation',
+      'https://api.mangadex.org/manga?ids[]=a&ids[]=b&limit=2&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive',
+    ]);
+  });
+  it('recommended asks once when MangaDex has none', async () => {
+    const seen = relay(() => ({ data: [] }));
+    expect(await recommended('me')).toEqual([]);
+    expect(seen).toHaveLength(1);
   });
 });

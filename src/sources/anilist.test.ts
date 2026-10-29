@@ -1,4 +1,4 @@
-import { alMatch, details, matchTitles, search, toDetails, type AlMedia } from './anilist';
+import { alMatch, details, likeThis, matchTitles, search, toDetails, toLikeThis, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -68,5 +68,38 @@ describe('matchTitles', () => {
     const sent = answer({ m0: { media: [{ id: 1, title: { english: 'One' } }] }, m1: { media: [{ id: 2, title: { english: 'Not Two' } }] } });
     expect((await matchTitles(['One', 'Two'])).map((r) => r?.ref ?? null)).toEqual([1, null]);
     expect(sent).toEqual([{ q0: 'One', q1: 'Two' }]);
+  });
+});
+
+describe('toLikeThis', () => {
+  const m = (id: number, type = 'MANGA', format = 'MANGA'): AlMedia => ({ id, title: { english: `S${id}` }, type, format });
+  it('lists related comics, then recommended ones that people rated up, each once', () => {
+    const list = toLikeThis({
+      relations: {
+        edges: [
+          { relationType: 'SEQUEL', node: m(1) },
+          { relationType: 'ADAPTATION', node: m(2, 'ANIME', 'TV') },
+          { relationType: 'SOURCE', node: m(3, 'MANGA', 'NOVEL') },
+        ],
+      },
+      recommendations: {
+        nodes: [
+          { rating: 40, mediaRecommendation: m(4, 'MANGA', 'ONE_SHOT') },
+          { rating: 12, mediaRecommendation: m(1) },
+          { rating: 0, mediaRecommendation: m(5) },
+          { rating: 9, mediaRecommendation: null },
+        ],
+      },
+    });
+    expect(list.map((r) => r.ref)).toEqual([1, 4]);
+    expect(list[0]).toMatchObject({ src: 'al', title: 'S1' });
+  });
+  it('is empty when AniList has neither', () => {
+    expect(toLikeThis({})).toEqual([]);
+  });
+  it('likeThis asks by id and says when the series is gone', async () => {
+    const sent = answer({ Media: null });
+    await expect(likeThis(7)).rejects.toThrow('AniList no longer has this series');
+    expect(sent).toEqual([{ id: 7 }]);
   });
 });
