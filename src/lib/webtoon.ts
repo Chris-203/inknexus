@@ -1,6 +1,6 @@
 import { why } from './api';
 import { planImport } from './importBackup';
-import { host } from './links';
+import { host, parseChUrl } from './links';
 import { opensInBrowser, setOpensInBrowser } from './siteSettings';
 import { newSeries } from './storage';
 import { findSeries, getState, replaceState, sourceFrom, updateSeries } from './store';
@@ -138,17 +138,23 @@ export function openWebtoonInBrowser(links: Link[]) {
   for (const site of new Set(links.filter((l) => isWebtoon(l.url)).map((l) => host(l.url)))) if (!opensInBrowser(site)) setOpensInBrowser(site, true);
 }
 
+/** A Webtoon link source, with the episode pattern read from its last episode's link so Continue follows the chapter number. */
 function linkOf(w: WebtoonItem): Link {
-  return { label: 'Webtoon', url: w.url, tpl: '', resume: w.resume, rn: w.n };
+  return { label: 'Webtoon', url: w.url, tpl: parseChUrl(w.resume)?.tpl || '', resume: w.resume, rn: w.n };
 }
 
-/** A series already in the library takes the Webtoon episode and link when the list is further along, or when it has no Webtoon link yet. */
+/**
+ * A series already in the library takes the Webtoon episode and link when the list is further along, or when it has no
+ * Webtoon link yet. A Webtoon link from before links had a pattern gets the pattern either way.
+ */
 function mergeOne(mine: Series, theirs: Series): Series {
   const l = theirs.links[0]!;
   const i = mine.links.findIndex((m) => isWebtoon(m.url));
-  if (i >= 0 && theirs.last <= mine.last) return mine;
-  const links = i < 0 ? [...mine.links, l] : mine.links.map((m, k) => (k === i ? { ...m, url: l.url, resume: l.resume, rn: l.rn } : m));
-  return theirs.last > mine.last ? { ...mine, links, last: theirs.last, t: theirs.t } : { ...mine, links };
+  const ahead = theirs.last > mine.last;
+  if (i >= 0 && !ahead && (mine.links[i]!.tpl || !l.tpl)) return mine;
+  const take = ahead ? { url: l.url, resume: l.resume, rn: l.rn, tpl: l.tpl } : { tpl: l.tpl };
+  const links = i < 0 ? [...mine.links, l] : mine.links.map((m, k) => (k === i ? { ...m, ...take } : m));
+  return ahead ? { ...mine, links, last: theirs.last, t: theirs.t } : { ...mine, links };
 }
 
 /** The library with a Webtoon list merged in. New series keep the list's order, most recent first. */

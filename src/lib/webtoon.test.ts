@@ -110,6 +110,17 @@ describe('mergeWebtoon', () => {
     // A series with no Webtoon link gains one, at the end so its other sources keep their places.
     expect(r.lib[2]).toMatchObject({ last: 1, t: 0, md: 'm', links: [{ label: 'Webtoon' }] });
   });
+
+  it('gives Webtoon links the episode pattern, so Continue follows the chapter number', () => {
+    const resume = 'https://www.webtoons.com/viewer?titleNo=1&episodeNo=5';
+    const tpl = 'https://www.webtoons.com/viewer?titleNo=1&episodeNo={n}';
+    expect(mergeWebtoon([], [{ ...w('New', 5), resume }]).lib[0]!.links[0]).toMatchObject({ tpl, resume, rn: 5 });
+    // A link imported before links had a pattern gets it, even when the list is behind, and keeps its own episode.
+    const old = { label: 'Webtoon', url: w('Old', 9).url, resume: 'https://www.webtoons.com/viewer?titleNo=1&episodeNo=9', rn: 9 };
+    const r = mergeWebtoon([s({ title: 'Old', last: 9, links: [old] })], [{ ...w('Old', 5), resume }]);
+    expect(r.updated).toBe(1);
+    expect(r.lib[0]).toMatchObject({ last: 9, links: [{ ...old, tpl }] });
+  });
 });
 
 describe('bookmarklet', () => {
@@ -184,7 +195,8 @@ describe('importWebtoon', () => {
 
   it('says when there is no list, and looks nothing up when nothing was added', async () => {
     expect(await run('hello')).toEqual(['No Webtoon list found. On webtoons.com, tap the bookmark, then Send to InkNexus']);
-    replaceState({ lib: [s({ title: 'Known', last: 9, links: [{ label: 'Webtoon', url: 'https://www.webtoons.com/en/x/k/list?title_no=1' }] })] });
+    const wt = { label: 'Webtoon', url: 'https://www.webtoons.com/en/x/k/list?title_no=1', tpl: 'https://www.webtoons.com/viewer?titleNo=1&episodeNo={n}' };
+    replaceState({ lib: [s({ title: 'Known', last: 9, links: [wt] })] });
     expect(await run(link('Known'))).toEqual(['Webtoon list imported. Nothing changed']);
   });
 });
