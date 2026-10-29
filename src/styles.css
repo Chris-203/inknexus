@@ -16,10 +16,13 @@
 [data-theme=sencha]{color-scheme:light;--bg:#F5F7EF;--surface:#FFFFFF;--line:#DFE4D2;--text:#20261C;--muted:#6B7263;--accent:#4D7C0F;--on-accent:#FFFFFF;--danger:#B3261E}
 *,*::before,*::after{box-sizing:border-box}
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
-html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
+html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y;overscroll-behavior-x:none}
 html.pagezoom{touch-action:auto}
 body{margin:0;background:var(--bg);color:var(--text);font:var(--font-base)/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
+body.info{padding-bottom:env(safe-area-inset-bottom,0px)}
+/* a view or shelf that a swipe moves sideways (lib/swipe.ts) never makes the page scroll sideways */
+#app{overflow-x:clip}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:18px 12px 10px 16px}
@@ -48,6 +51,10 @@ header .btn,header .ibtn{align-self:center}
 .tabs{display:flex;gap:16px;padding:0 16px;margin-bottom:8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 .tabs button{flex:none;min-height:44px;padding:0;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:700 var(--font-sm)/1 var(--body);text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
 .tabs button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--text)}
+/* My Series' shelves in a row, moved to the open one; the others take no height, and show only while a swipe pulls one in */
+.track{display:flex}
+.track>div{flex:none;width:100%}
+.track>:not(.on){height:0}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
