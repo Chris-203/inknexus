@@ -1,4 +1,4 @@
-import { details, search, toDetails } from './anilist';
+import { alMatch, details, matchTitles, search, toDetails, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -48,5 +48,25 @@ describe('AniList requests', () => {
   it('search still says what failed on a rate limit', async () => {
     answer(null, 429);
     await expect(search('x')).rejects.toThrow('HTTP 429: AniList is rate-limiting');
+  });
+});
+
+describe('alMatch', () => {
+  const m = (id: number, english: string | null, romaji = '', synonyms: string[] = []): AlMedia => ({ id, title: { english, romaji }, synonyms });
+  it('takes the series whose English or romaji title or a synonym is the title, comparing letters and digits only', () => {
+    expect(alMatch('The Hero!', [m(1, 'The Hero Returns'), m(2, null, 'the hero')])?.ref).toBe(2);
+    expect(alMatch('Hero-Again', [m(3, 'Other', 'Other', ['Hero Again'])])?.ref).toBe(3);
+  });
+  it('is null when only a longer or shorter title matches, or the title has no letters or digits', () => {
+    expect(alMatch('Hero', [m(1, 'The Hero'), m(2, 'Hero 2')])).toBeNull();
+    expect(alMatch('영웅', [m(1, null, '', ['영웅'])])).toBeNull();
+  });
+});
+
+describe('matchTitles', () => {
+  it('asks for every title in one request and matches each on its own', async () => {
+    const sent = answer({ m0: { media: [{ id: 1, title: { english: 'One' } }] }, m1: { media: [{ id: 2, title: { english: 'Not Two' } }] } });
+    expect((await matchTitles(['One', 'Two'])).map((r) => r?.ref ?? null)).toEqual([1, null]);
+    expect(sent).toEqual([{ q0: 'One', q1: 'Two' }]);
   });
 });

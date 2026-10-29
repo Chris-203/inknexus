@@ -1,9 +1,11 @@
+import { norm } from '../lib/format';
 import { isWebUrl } from '../lib/links';
 import type { Details, SearchResult } from '../lib/types';
 
-interface AlMedia {
+export interface AlMedia {
   id: number;
   title: { romaji?: string; english?: string | null };
+  synonyms?: string[];
   coverImage?: { large?: string };
   description?: string | null;
   externalLinks?: { site: string; url: string; type?: string; language?: string | null }[];
@@ -37,15 +39,11 @@ async function query<T>(q: string, variables: Record<string, unknown>): Promise<
   return j.data;
 }
 
-/** AniList search: metadata plus official English reading links (Webtoon links skipped). */
-export async function search(q: string): Promise<SearchResult[]> {
-  const data = await query<{ Page?: { media?: AlMedia[] } }>(
-    `query($q:String){Page(perPage:15){media(search:$q,type:MANGA,sort:SEARCH_MATCH){id title{romaji english} coverImage{large} description(asHtml:false) externalLinks{site url type language}}}}`,
-    { q },
-  );
-  const media = data.Page?.media;
-  if (!media) throw new Error('AniList sent an unexpected answer, try again later');
-  return media.map((m) => ({
+const FIELDS = 'id title{romaji english} synonyms coverImage{large} description(asHtml:false) externalLinks{site url type language}';
+
+/** A series as a search result: metadata plus official English reading links (Webtoon links skipped). */
+function toResult(m: AlMedia): SearchResult {
+  return {
     src: 'al',
     ref: m.id,
     title: m.title.english || m.title.romaji || 'Untitled',
@@ -54,7 +52,33 @@ export async function search(q: string): Promise<SearchResult[]> {
     links: (m.externalLinks || [])
       .filter((l) => l.type === 'STREAMING' && (!l.language || l.language === 'English') && !/webtoon/i.test(l.site) && isWebUrl(l.url))
       .map((l) => ({ label: l.site, url: l.url })),
-  }));
+  };
+}
+
+export async function search(q: string): Promise<SearchResult[]> {
+  const data = await query<{ Page?: { media?: AlMedia[] } }>(`query($q:String){Page(perPage:15){media(search:$q,type:MANGA,sort:SEARCH_MATCH){${FIELDS}}}}`, {
+    q,
+  });
+  const media = data.Page?.media;
+  if (!media) throw new Error('AniList sent an unexpected answer, try again later');
+  return media.map(toResult);
+}
+
+/** The series among `media` named exactly `title` (its English or romaji title or a synonym, comparing letters and digits only), or null. */
+export function alMatch(title: string, media: AlMedia[]): SearchResult | null {
+  const t = norm(title);
+  const m = t && media.find((m) => [m.title.english, m.title.romaji, ...(m.synonyms || [])].some((n) => norm(n) === t));
+  return m ? toResult(m) : null;
+}
+
+/** For each title, the AniList series with exactly that name, or null. All titles go in one request, so keep them to about 10. */
+export async function matchTitles(titles: string[]): Promise<(SearchResult | null)[]> {
+  const pages = titles.map((_, i) => `m${i}:Page(perPage:5){media(search:$q${i},type:MANGA,sort:SEARCH_MATCH){${FIELDS}}}`);
+  const data = await query<Record<string, { media?: AlMedia[] } | undefined>>(
+    `query(${titles.map((_, i) => `$q${i}:String`).join(',')}){${pages.join(' ')}}`,
+    Object.fromEntries(titles.map((t, i) => ['q' + i, t])),
+  );
+  return titles.map((t, i) => alMatch(t, data['m' + i]?.media || []));
 }
 
 const STATUS: Record<string, string> = {

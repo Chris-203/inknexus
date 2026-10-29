@@ -5,6 +5,7 @@ import { Sheet, useSheet } from './Sheet';
 import { fmt } from '../lib/format';
 import { linkFrom, NOT_WEB } from '../lib/links';
 import { addSeries } from '../lib/store';
+import { openWebtoonInBrowser } from '../lib/webtoon';
 
 /** Add a series from any other site by its link: from the My Series header, or from Browse when a link is pasted or nothing matches. `url` fills the link field. */
 export function AddByLinkSheet({ url, onClose }: { url?: string; onClose: () => void }) {
@@ -18,6 +19,7 @@ export function AddByLinkSheet({ url, onClose }: { url?: string; onClose: () => 
     const made = linkFrom(field('url'), field('label'));
     if (!made) return toast(NOT_WEB);
     const given = parseFloat(field('ch'));
+    openWebtoonInBrowser([made.link]);
     const n = addSeries({ title: field('title'), links: [made.link], last: given || made.r?.num || 0 });
     toast(made.r && !given ? `Added. Detected chapter ${fmt(made.r.num)} from the link` : 'Added to My Series');
     navigate({ name: 'series', id: n.id });

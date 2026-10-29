@@ -16,10 +16,13 @@
 [data-theme=sencha]{color-scheme:light;--bg:#F5F7EF;--surface:#FFFFFF;--line:#DFE4D2;--text:#20261C;--muted:#6B7263;--accent:#4D7C0F;--on-accent:#FFFFFF;--danger:#B3261E}
 *,*::before,*::after{box-sizing:border-box}
 /* the app never zooms as a whole, like a native app (see lockPageZoom in lib/zoom.ts); only the reader's pages have their own zoom */
-html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y}
+html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);touch-action:pan-x pan-y;overscroll-behavior-x:none}
 html.pagezoom{touch-action:auto}
 body{margin:0;background:var(--bg);color:var(--text);font:var(--font-base)/1.45 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
 body.nonav{padding-bottom:0}
+body.info{padding-bottom:env(safe-area-inset-bottom,0px)}
+/* a view or shelf that a swipe moves sideways (lib/swipe.ts) never makes the page scroll sideways */
+#app{overflow-x:clip}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:18px 12px 10px 16px}
@@ -48,6 +51,10 @@ header .btn,header .ibtn{align-self:center}
 .tabs{display:flex;gap:16px;padding:0 16px;margin-bottom:8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 .tabs button{flex:none;min-height:44px;padding:0;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:700 var(--font-sm)/1 var(--body);text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
 .tabs button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--text)}
+/* My Series' shelves in a row, moved to the open one; the others take no height, and show only while a swipe pulls one in */
+.track{display:flex}
+.track>div{flex:none;width:100%}
+.track>:not(.on){height:0}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
@@ -85,7 +92,7 @@ header .ibtn.plain{color:var(--text)}
 .res:has(.whole:active){background:var(--surface)}
 .ibtn.txt{font-size:var(--font-sm);font-weight:700;font-family:var(--body)}
 /* symbol buttons (‹ − + × ↗ ↑) use the system font: Comic Neue draws these glyphs very small */
-.ibtn,.chip.src .hide{font-family:system-ui,sans-serif}
+.ibtn{font-family:system-ui,sans-serif}
 .ibtn:disabled{opacity:.5;cursor:default}
 .row{display:flex;gap:8px;padding:4px 16px 12px}
 .row input{flex:1;min-width:0}
@@ -108,6 +115,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{o
 .res img,.res .thumb{width:52px;aspect-ratio:2/3;object-fit:cover;border-radius:var(--radius-sm);background:var(--surface);flex:none}
 .res div{flex:1;min-width:0}
 .res p{margin:2px 0 0;color:var(--muted);font-size:var(--font-sm);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.steps{margin:0;padding:4px 16px 8px 36px;display:flex;flex-direction:column;gap:10px}
+.steps .btn{display:flex;margin-top:8px}
 details.more{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
 details.more summary{padding:12px 14px;min-height:44px;cursor:pointer;font-weight:700;color:var(--accent)}
 details.more .pad{padding:0 12px 12px}
@@ -145,11 +154,14 @@ button.more{background:none;border:0;padding:0 2px;min-height:44px;margin:-10px 
 .step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .chips{display:flex;padding:0 12px 8px;overflow-x:auto}
 .chip{flex:none;background:var(--surface);border:4px solid transparent;background-clip:padding-box;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--radius-full);padding:0 12px;min-height:44px;cursor:pointer;color:var(--muted)}
+/* the × and + are drawn, not typed, so they match the text's capitals in size; raised 1.5px because Comic Neue's capitals sit above the middle of their line */
+.chip svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;translate:0 -1.5px}
+.chip.add{display:inline-flex;align-items:center;gap:6px}
 .chip.on{background-color:var(--accent);color:var(--on-accent);box-shadow:none;font-weight:700}
 /* a source chip: the name selects it; on the selected one, × on the left hides it. Its buttons reach over the chip's transparent border, so they tap at 44px tall */
 .chip.src{display:inline-flex;align-items:stretch;padding:0;cursor:default}
 .chip.src button{background:none;border:0;border-radius:var(--radius-full);color:inherit;font:inherit;cursor:pointer;margin:-4px 0;padding:0 12px}
-.chip.src .hide{position:relative;width:30px;padding:0 0 0 12px;text-align:left;font-size:var(--font-lg);line-height:1;opacity:.7}
+.chip.src .hide{position:relative;display:flex;align-items:center;width:30px;padding:0 0 0 12px;opacity:.7}
 /* the × is drawn 30px wide; this widens what a tap hits to 44px, into the gap before the chip and over the start of the name, which is already selected */
 .chip.src .hide::before{content:'';position:absolute;inset:0 -6px 0 -8px}
 .chip.src .hide + button{padding-left:0}

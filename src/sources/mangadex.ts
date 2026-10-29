@@ -1,4 +1,5 @@
 import { api, MD } from '../lib/api';
+import { norm } from '../lib/format';
 import { mdNames, pickTitle, type Name } from '../lib/names';
 import type { Chapter, ChapterList, Details, Latest, Page, SearchResult } from '../lib/types';
 
@@ -69,20 +70,38 @@ export const GENRES = [
 /** How browse orders a genre: most followed of all time, or newest chapter upload first. */
 export type BrowseSort = 'follows' | 'latest';
 
-/** Up to 20 series from a /manga query, with covers. */
-async function mangaList(q: string): Promise<SearchResult[]> {
-  const r = await api(`${MD}/manga?${q}&limit=20&includes[]=cover_art${RATING}`);
+/** Up to `limit` series from a /manga query, with covers. */
+async function mangas(q: string, limit: number): Promise<MdManga[]> {
+  const r = await api(`${MD}/manga?${q}&limit=${limit}&includes[]=cover_art${RATING}`);
   const j: { data?: MdManga[] } = await r.json();
-  return (j.data || []).map((m) => {
-    const c = m.relationships?.find((x) => x.type === 'cover_art')?.attributes;
-    return {
-      src: 'md',
-      ref: m.id,
-      title: pickTitle(m.attributes),
-      desc: m.attributes.description?.en || '',
-      cover: c?.fileName ? `https://uploads.mangadex.org/covers/${m.id}/${c.fileName}.256.jpg` : '',
-    };
-  });
+  return j.data || [];
+}
+
+function toResult(m: MdManga): SearchResult {
+  const c = m.relationships?.find((x) => x.type === 'cover_art')?.attributes;
+  return {
+    src: 'md',
+    ref: m.id,
+    title: pickTitle(m.attributes),
+    desc: m.attributes.description?.en || '',
+    cover: c?.fileName ? `https://uploads.mangadex.org/covers/${m.id}/${c.fileName}.256.jpg` : '',
+  };
+}
+
+async function mangaList(q: string): Promise<SearchResult[]> {
+  return (await mangas(q, 20)).map(toResult);
+}
+
+/** The series among `list` named exactly `title` (any of its names, comparing letters and digits only), or null. */
+export function mdMatch(title: string, list: MdManga[]): SearchResult | null {
+  const t = norm(title);
+  const m = t && list.find((m) => mdNames(m.attributes).some((n) => norm(n.n) === t));
+  return m ? toResult(m) : null;
+}
+
+/** The MangaDex series with exactly the name `title`, or null. */
+export async function matchTitle(title: string): Promise<SearchResult | null> {
+  return mdMatch(title, await mangas(`title=${encodeURIComponent(title)}`, 5));
 }
 
 export function search(q: string): Promise<SearchResult[]> {

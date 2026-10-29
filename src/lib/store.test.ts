@@ -1,4 +1,4 @@
-import { getState, removeSeries, replaceState, setShelf, shownSource } from './store';
+import { getState, removeSeries, replaceState, setShelf, shownSource, sourceFrom } from './store';
 import type { Series } from './types';
 
 function series(id: string): Series {
@@ -47,5 +47,18 @@ describe('shownSource', () => {
   it('is empty when every source is hidden or there are none', () => {
     expect(shownSource({ ...series('a'), md: 'm', mdh: true, links: [link(true)] })).toBe('');
     expect(shownSource(series('a'))).toBe('');
+  });
+});
+
+describe('sourceFrom', () => {
+  const o = { ref: 'm1', title: 'T', desc: '', cover: 'https://c/1.jpg' };
+  it('adds a MangaDex id, shown, with its cover only when the series has none', () => {
+    expect(sourceFrom({ ...series('a'), mdh: true }, { ...o, src: 'md' })).toEqual({ md: 'm1', mdh: false, cover: 'https://c/1.jpg' });
+    expect(sourceFrom({ ...series('a'), cover: 'https://mine' }, { ...o, src: 'md' }).cover).toBe('https://mine');
+  });
+  it('adds an AniList id and only the official links the series lacks', () => {
+    const l = { label: 'Site', url: 'https://example.com' };
+    const r = sourceFrom({ ...series('a'), links: [l] }, { ...o, src: 'al', ref: 7, links: [l, { label: 'Other', url: 'https://other.example' }] });
+    expect(r).toEqual({ al: 7, cover: 'https://c/1.jpg', links: [l, { label: 'Other', url: 'https://other.example' }] });
   });
 });

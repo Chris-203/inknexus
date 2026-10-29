@@ -16,9 +16,11 @@ import { pasteChapterLink } from '../lib/pasteLink';
 import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
-import { removeSeries, setHidden, setLast, shownSource, sourcesOf, updateSeries, useStore } from '../lib/store';
+import { useSwipe } from '../lib/swipe';
+import { removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries, useStore } from '../lib/store';
 import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
+import { openWebtoonInBrowser } from '../lib/webtoon';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
 
@@ -26,6 +28,11 @@ export function Series({ x }: { x: SeriesT }) {
   const { goBack, toast } = useApp();
   const [sheet, setSheet] = useState<'addsrc' | 'names' | null>(null);
   const [lastText, setLastText] = useState(String(x.last || 0));
+  const swipe = useSwipe(
+    (dir) => dir === 1,
+    () => goBack({ name: 'library' }),
+    true,
+  );
 
   const all = sourcesOf(x);
   const vis = all.filter((q) => !q.h);
@@ -59,7 +66,7 @@ export function Series({ x }: { x: SeriesT }) {
   else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
 
   return (
-    <>
+    <div ref={swipe}>
       <div className="backbar">
         <button className="ibtn" aria-label="Back" onClick={() => goBack({ name: 'library' })}>
           ‹
@@ -116,7 +123,9 @@ export function Series({ x }: { x: SeriesT }) {
                   toast('Hidden. Bring it back from + Source');
                 }}
               >
-                ×
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 5l14 14M19 5 5 19" />
+                </svg>
               </button>
             )}
             <button aria-pressed={cur === q.k} onClick={() => updateSeries(x.id, () => ({ src: q.k }))}>
@@ -124,8 +133,11 @@ export function Series({ x }: { x: SeriesT }) {
             </button>
           </span>
         ))}
-        <button className="chip" onClick={() => setSheet('addsrc')}>
-          + Source
+        <button className="chip add" aria-label="+ Source" onClick={() => setSheet('addsrc')}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v18M3 12h18" />
+          </svg>
+          Source
         </button>
       </div>
       {body}
@@ -141,7 +153,7 @@ export function Series({ x }: { x: SeriesT }) {
       </div>
       {sheet === 'addsrc' && <AddSourceSheet x={x} onClose={() => setSheet(null)} />}
       {sheet === 'names' && <NamesSheet x={x} onClose={() => setSheet(null)} />}
-    </>
+    </div>
   );
 }
 
@@ -362,11 +374,11 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
   const hidden = sourcesOf(x).filter((q) => q.h);
 
   const use = (o: SearchResult) => {
-    if (kind === 'md') updateSeries(x.id, (s) => ({ md: String(o.ref), mdh: false, cover: s.cover || o.cover, src: 'md' }));
+    if (kind === 'md') updateSeries(x.id, (s) => ({ ...sourceFrom(s, o), src: 'md' }));
     else {
-      const fresh = (o.links || []).filter((l) => !x.links.some((k) => k.url === l.url));
-      updateSeries(x.id, (s) => ({ al: o.ref, cover: s.cover || o.cover, links: [...s.links, ...fresh] }));
-      toast(fresh.length ? `Added ${plural(fresh.length, 'official link')}` : 'No official links listed for this one');
+      const added = sourceFrom(x, o).links!.length - x.links.length;
+      updateSeries(x.id, (s) => sourceFrom(s, o));
+      toast(added ? `Added ${plural(added, 'official link')}` : 'No official links listed for this one');
     }
     sheet.close();
   };
@@ -376,6 +388,7 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
     const made = linkFrom(String(d.get('url') || ''), String(d.get('label') || ''));
     if (!made) return toast(NOT_WEB);
     updateSeries(x.id, (s) => ({ links: [...s.links, made.link], src: 'l' + s.links.length }));
+    openWebtoonInBrowser([made.link]);
     if (made.r && made.r.num > (x.last || 0)) {
       setLast(x.id, made.r.num);
       toast(`Detected chapter ${fmt(made.r.num)} from the link`);

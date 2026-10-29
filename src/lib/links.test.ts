@@ -25,6 +25,21 @@ describe('parseChUrl', () => {
     expect(parseChUrl('not a url')).toBeNull();
     expect(parseChUrl('javascript:alert(1)//chapter-2')).toBeNull();
   });
+  it('reads Webtoon episode links by episode_no, in long and short form', () => {
+    const want = {
+      num: 567,
+      tpl: 'https://www.webtoons.com/viewer?titleNo=95&episodeNo={n}',
+      series: 'https://www.webtoons.com/episodeList?titleNo=95',
+      idPrefixed: false,
+    };
+    expect(parseChUrl('https://www.webtoons.com/en/fantasy/tower-of-god/season-3-ep-150/viewer?title_no=95&episode_no=567')).toEqual(want);
+    expect(parseChUrl('https://www.webtoons.com/viewer?titleNo=95&episodeNo=567')).toEqual(want);
+    expect(parseChUrl('https://m.webtoons.com/viewer?titleNo=95&episodeNo=3')?.tpl).toBe('https://m.webtoons.com/viewer?titleNo=95&episodeNo={n}');
+  });
+  it('returns null for a Webtoon link without an episode', () => {
+    expect(parseChUrl('https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95')).toBeNull();
+    expect(parseChUrl('https://www.webtoons.com/viewer?titleNo=95&episodeNo=abc')).toBeNull();
+  });
   it('matches the original implementation on every sample link', () => {
     expect(legacy.length).toBe(12);
     for (const [u, want] of legacy as [string, unknown][]) expect(parseChUrl(u), u).toEqual(want);
@@ -47,6 +62,11 @@ describe('link sources', () => {
       resume: 'https://toonily.com/webtoon/s/chapter-7/',
       rn: 7,
     });
+  });
+  it('linkFrom gives a Webtoon episode link a pattern, so Continue follows − and +', () => {
+    const l = linkFrom('https://www.webtoons.com/viewer?titleNo=6135&episodeNo=12', 'Webtoon')!.link;
+    expect(l).toMatchObject({ tpl: 'https://www.webtoons.com/viewer?titleNo=6135&episodeNo={n}', rn: 12 });
+    expect(chapterLink(l.tpl!, 13)).toBe('https://www.webtoons.com/viewer?titleNo=6135&episodeNo=13');
   });
   it('linkFrom keeps the series page for sites with an id before the chapter', () => {
     expect(linkFrom('https://comix.to/title/abcd-s/12345-chapter-7', '')?.link).toMatchObject({ url: 'https://comix.to/title/abcd-s', tpl: '', rn: 7 });
