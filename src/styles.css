@@ -185,13 +185,16 @@ button.more{background:none;border:0;padding:0 2px;min-height:44px;margin:-10px 
 .chtxt{flex:1;min-width:0;display:flex;flex-direction:column}
 .chtxt b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch .pill{flex:none;color:var(--text);border:1px solid var(--line);border-radius:var(--radius-full);padding:5px 16px}
-/* the Download sheet: a circle to tick each chapter, which a drag along the circles ticks too, or its saving state; the buttons stay in view at the bottom */
+/* the Download sheet fills the screen: its title and close at the top, the chapters scrolling between, Download at the bottom. Each chapter has a circle to tick, which a drag along the circles ticks too, or its saving state. */
+#modal .sheet.full{display:flex;flex-direction:column;height:100%;max-height:none;border-top:0;border-radius:0;padding-top:calc(8px + env(safe-area-inset-top,0px));box-shadow:none}
+.pickhead{display:flex;align-items:center;padding:0 8px 0 0}
+#modal .pickhead h2{flex:1;padding:0 16px}
+.picklist{flex:1;overflow:auto}
 .circ{flex:none;align-self:stretch;width:56px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer}
 .circ svg{width:26px;height:26px;padding:4px;border-radius:var(--radius-full);box-shadow:inset 0 0 0 1.5px var(--muted);fill:none;stroke:transparent;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .circ.on svg{background:var(--accent);box-shadow:none;stroke:var(--on-accent)}
-.dlstate{flex:none;padding:0 16px;color:var(--muted);font-size:var(--font-xs);font-variant-numeric:tabular-nums}
-/* over the sheet's bottom padding too, so no chapter shows under the buttons */
-.pickfoot{position:sticky;bottom:calc(-18px - env(safe-area-inset-bottom,0px));margin-bottom:calc(-18px - env(safe-area-inset-bottom,0px));padding:10px 0 calc(12px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+.dlstate{flex:none;min-width:56px;padding:0 8px;text-align:center;color:var(--muted);font-size:var(--font-xs);font-variant-numeric:tabular-nums}
+.pickfoot{padding-top:10px;border-top:1px solid var(--line)}
 .credit{color:var(--muted);font-size:var(--font-sm);padding:10px 16px;margin:0}
 .credit a{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}
 .pad{padding:8px 16px;display:flex;flex-direction:column;gap:10px}

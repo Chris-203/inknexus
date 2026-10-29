@@ -6,19 +6,21 @@ import type { Chapter } from '../lib/types';
 /**
  * A loaded MangaDex chapter list under a header that stays in view with its count and sort button, oldest or newest
  * first as the library sorts. Each row shows the chapter with its title, group and date, and Read; chapters up to
- * `shown` look read. `tools` adds buttons to the header, before the sort.
+ * `shown` look read, and those `saved` for offline say Saved. `tools` adds buttons to the header, before the sort.
  */
 export function ChapterRows({
   all,
   shown = 0,
   disabled,
   open,
+  saved,
   tools,
 }: {
   all: Chapter[];
   shown?: number;
   disabled?: boolean;
   open: (c: Chapter) => void;
+  saved?: (c: Chapter) => boolean;
   tools?: ReactNode;
 }) {
   const { sort } = useStore();
@@ -40,7 +42,7 @@ export function ChapterRows({
       {(asc ? all : [...all].reverse()).map((c) => (
         <div key={c.id} className="chrow">
           <button className={`ch${c.num <= shown ? ' read' : ''}`} disabled={disabled} onClick={() => open(c)}>
-            {chapterText(c)}
+            {chapterText(c, saved?.(c))}
             <span className="pill">Read</span>
           </button>
         </div>
@@ -49,13 +51,14 @@ export function ChapterRows({
   );
 }
 
-/** A chapter row's text: its number, then its title and group, then its date. */
-export function chapterText(c: Chapter): ReactNode {
+/** A chapter row's text: its number, then its title and group, then its date and whether it is saved for offline. */
+export function chapterText(c: Chapter, saved?: boolean): ReactNode {
+  const last = [c.date && shortDate(c.date), saved && 'Saved'].filter(Boolean).join(' · ');
   return (
     <span className="chtxt">
       <b>Ch. {fmt(c.num)}</b>
       {chapterNote(c) && <span>{chapterNote(c)}</span>}
-      {c.date && <span>{shortDate(c.date)}</span>}
+      {last && <span>{last}</span>}
     </span>
   );
 }

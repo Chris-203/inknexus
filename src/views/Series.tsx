@@ -159,7 +159,7 @@ export function Series({ x }: { x: SeriesT }) {
 
 /** The MangaDex source: its chapter list, with the ones up to `shown` marked read, and a button to choose chapters to save offline. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
-  const { can } = useDownloads();
+  const { can, saved } = useDownloads();
   const read = useReadChapter();
   const [picking, setPicking] = useState(false);
   let list: ReactNode;
@@ -192,6 +192,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
           all={all}
           shown={shown}
           open={(c) => read(x.id, c)}
+          saved={(c) => saved.some((d) => d.c.id === c.id)}
           tools={
             can &&
             all.some((c) => !c.ext) && (
@@ -222,7 +223,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
 
 /**
  * Choose chapters to save for reading offline, as on WEBTOON: tap a chapter to tick it, or drag along the circles to
- * tick or untick several. Saved, saving and waiting chapters show their state instead of a circle.
+ * tick or untick several. It fills the screen; saved, saving and waiting chapters show their state instead of a circle.
  */
 function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClose: () => void }) {
   const { toast } = useApp();
@@ -235,9 +236,9 @@ function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClos
   const list = all.filter((c) => !c.ext);
   const pick = (id: string, on: boolean) => setPicked((p) => (on === p.includes(id) ? p : on ? [...p, id] : p.filter((k) => k !== id)));
   const state = (c: Chapter) => {
-    if (saved.some((d) => d.c.id === c.id)) return 'Saved';
-    if (saving?.id === c.id) return saving.total ? `${saving.done}/${saving.total}` : 'Saving';
-    if (waiting.includes(c.id)) return 'Waiting';
+    if (saved.some((d) => d.c.id === c.id)) return <span className="dlstate">Saved</span>;
+    if (saving?.id === c.id) return <span className="dlstate">{saving.total ? `${saving.done}/${saving.total}` : 'Saving'}</span>;
+    if (waiting.includes(c.id)) return <span className="dlstate">Waiting</span>;
   };
   const download = () => {
     for (const c of list.filter((c) => picked.includes(c.id)))
@@ -249,10 +250,16 @@ function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClos
     sheet.close();
   };
   return (
-    <Sheet label="Download" sheet={sheet}>
-      <h2>Download</h2>
+    <Sheet label="Download" sheet={sheet} full>
+      <div className="pickhead">
+        <h2>Download</h2>
+        <button className="ibtn plain" aria-label="Close" onClick={sheet.close}>
+          ×
+        </button>
+      </div>
       <p className="hint">Tap chapters to choose them, or drag along the circles to choose several.</p>
       <div
+        className="picklist"
         onPointerMove={(e) => {
           const id = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-ch]')?.dataset.ch;
           if (id && drag.current !== null) pick(id, drag.current);
@@ -268,9 +275,7 @@ function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClos
               <button className="ch" role="checkbox" aria-checked={on} disabled={!!st} onClick={() => pick(c.id, !on)}>
                 {chapterText(c)}
               </button>
-              {st ? (
-                <span className="dlstate">{st}</span>
-              ) : (
+              {st || (
                 <span
                   className={`circ${on ? ' on' : ''}`}
                   aria-hidden="true"
@@ -293,9 +298,6 @@ function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClos
       <div className="pickfoot">
         <button className="btn" disabled={!picked.length} onClick={download}>
           Download{picked.length > 0 && ` (${picked.length})`}
-        </button>
-        <button className="btn ghost" onClick={sheet.close}>
-          Close
         </button>
       </div>
     </Sheet>
