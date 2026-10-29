@@ -107,6 +107,7 @@ export function Details({ o }: { o: SearchResult }) {
         ) : (
           <p className="sub">{[o.src === 'md' ? 'On MangaDex' : 'On AniList', ...(line || ['Loading…'])].filter(Boolean).join(' · ')}</p>
         )}
+        <Ranking id={o.src === 'al' ? Number(o.ref) : d?.al} />
         {ex ? (
           <button className="btn" onClick={() => navigate({ name: 'series', id: ex.id })}>
             Open in My Series
@@ -128,6 +129,27 @@ export function Details({ o }: { o: SearchResult }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** The series' AniList score, popularity and rankings. A MangaDex series shows them once its details give its AniList id; nothing shows without one. */
+function Ranking({ id }: { id?: number }) {
+  const r = useLoad(id ? String(id) : null, () => anilist.ranking(id!));
+  if (r?.state === 'error') return <p className="sub">Could not load AniList rankings ({r.error}). Go back and open this series again.</p>;
+  if (r?.state !== 'done') return null;
+  const { score, lists, ranks } = r.value;
+  if (!score && !lists && !ranks.length) return null;
+  return (
+    <>
+      <p className="sub">{['AniList', score && `Score ${score}%`, lists && `Popularity ${lists.toLocaleString('en-US')}`].filter(Boolean).join(' · ')}</p>
+      {ranks.length > 0 && (
+        <ul className="tags ranks" aria-label="AniList rankings">
+          {ranks.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

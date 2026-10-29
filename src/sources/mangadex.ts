@@ -25,6 +25,8 @@ export interface MdManga {
     tags?: { attributes: { name: Record<string, string>; group: string } }[];
     status?: string;
     year?: number | null;
+    /** Ids on other sites, such as `al` for AniList. MangaDex sends an empty array when there are none. */
+    links?: Record<string, string> | null;
   };
   relationships?: Rel[];
 }
@@ -211,10 +213,11 @@ export function toDetails(m: MdManga, agg: MdAggregate): Details {
     year: a.year || null,
     chapters: new Set(nums.filter((n) => !isNaN(parseFloat(n)))).size || null,
     authors: [...new Set(authors)],
+    al: Number(a.links?.al) || undefined,
   };
 }
 
-/** Tags, status, year, authors and English chapter count for a series. */
+/** Tags, status, year, authors, English chapter count and AniList id for a series. */
 export async function details(ref: string): Promise<Details> {
   const [m, agg] = await Promise.all([
     api(`${MD}/manga/${ref}?includes[]=author&includes[]=artist`).then((r) => r.json() as Promise<{ data: MdManga }>),

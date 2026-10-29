@@ -1,4 +1,4 @@
-import { alMatch, details, matchTitles, search, toDetails, type AlMedia } from './anilist';
+import { alMatch, details, matchTitles, ranking, search, toDetails, toRanking, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,7 +39,30 @@ describe('toDetails', () => {
   });
 });
 
+describe('toRanking', () => {
+  it('lists all-time places first, and adds the year to a year place', () => {
+    const r = toRanking({
+      averageScore: 84,
+      popularity: 120345,
+      rankings: [
+        { rank: 3, context: 'highest rated', allTime: false, year: 2019 },
+        { rank: 12, context: 'most popular all time', allTime: true, year: null },
+      ],
+    });
+    expect(r).toEqual({ score: 84, lists: 120345, ranks: ['#12 Most popular all time', '#3 Highest rated of 2019'] });
+  });
+  it('gives no score, no lists and no ranks for a series AniList has not ranked', () => {
+    expect(toRanking({ averageScore: null, popularity: null, rankings: [] })).toEqual({ score: null, lists: 0, ranks: [] });
+    expect(toRanking({ rankings: [{ rank: 5, context: 'most popular', allTime: false, year: null }] }).ranks).toEqual(['#5 Most popular']);
+  });
+});
+
 describe('AniList requests', () => {
+  it('ranking asks by id and says when the series is gone', async () => {
+    const sent = answer({ Media: null });
+    await expect(ranking(9)).rejects.toThrow('AniList no longer has this series');
+    expect(sent).toEqual([{ id: 9 }]);
+  });
   it('details asks by id and says when the series is gone', async () => {
     const sent = answer({ Media: null });
     await expect(details(7)).rejects.toThrow('AniList no longer has this series');

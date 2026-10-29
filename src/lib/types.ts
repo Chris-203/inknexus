@@ -62,6 +62,8 @@ export interface Details {
   /** On MangaDex, the numbered English chapters; on AniList, the count once the series has finished. */
   chapters: number | null;
   authors: string[];
+  /** The series' AniList id, when MangaDex links it to AniList. */
+  al?: number;
 }
 
 export interface Chapter {

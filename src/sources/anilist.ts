@@ -20,6 +20,22 @@ export interface AlDetails {
   staff?: { edges?: { role: string; node: { name: { full: string } } }[] };
 }
 
+export interface AlRanking {
+  averageScore?: number | null;
+  popularity?: number | null;
+  rankings?: { rank: number; context: string; allTime?: boolean | null; year?: number | null }[];
+}
+
+/** How a series stands on AniList. */
+export interface Ranking {
+  /** Average score out of 100, or null before enough people have scored it. */
+  score: number | null;
+  /** How many people have it on their AniList lists. */
+  lists: number;
+  /** Its places in AniList's rankings, such as '#12 Most popular all time', all-time ones first. */
+  ranks: string[];
+}
+
 /** Send a GraphQL query to AniList and return its `data`. */
 async function query<T>(q: string, variables: Record<string, unknown>): Promise<T> {
   let r: Response;
@@ -109,4 +125,21 @@ export async function details(id: number): Promise<Details> {
   );
   if (!data.Media) throw new Error('AniList no longer has this series');
   return toDetails(data.Media);
+}
+
+/** A series' AniList score, popularity and rankings. AniList's context reads 'highest rated all time' for an all-time place but only 'highest rated' for a year's, so the year is added. */
+export function toRanking(m: AlRanking): Ranking {
+  const ranks = [...(m.rankings || [])]
+    .sort((a, b) => Number(!!b.allTime) - Number(!!a.allTime))
+    .map((r) => `#${r.rank} ${r.context.charAt(0).toUpperCase()}${r.context.slice(1)}${r.allTime || !r.year ? '' : ` of ${r.year}`}`);
+  return { score: m.averageScore || null, lists: m.popularity || 0, ranks };
+}
+
+export async function ranking(id: number): Promise<Ranking> {
+  const data = await query<{ Media?: AlRanking | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){averageScore popularity rankings{rank context allTime year}}}`,
+    { id },
+  );
+  if (!data.Media) throw new Error('AniList no longer has this series');
+  return toRanking(data.Media);
 }

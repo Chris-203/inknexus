@@ -83,6 +83,11 @@ describe('toDetails', () => {
     const d = toDetails({ id: 'm', attributes: { status: 'odd' } }, { volumes: [] as unknown as Record<string, never> });
     expect(d).toMatchObject({ status: '', year: null, chapters: null });
   });
+  it('takes the AniList id from the links, and none when MangaDex sends no links or an empty array', () => {
+    expect(toDetails({ id: 'm', attributes: { links: { al: '105398', mu: 'x' } } }, {}).al).toBe(105398);
+    expect(toDetails({ id: 'm', attributes: { links: [] as unknown as Record<string, string> } }, {}).al).toBeUndefined();
+    expect(toDetails({ id: 'm', attributes: {} }, {}).al).toBeUndefined();
+  });
 });
 
 describe('MangaDex requests', () => {
