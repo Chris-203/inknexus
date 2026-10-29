@@ -1,25 +1,58 @@
 import type { ReactNode } from 'react';
-import { fmt } from '../lib/format';
+import { imageSrc } from '../lib/api';
+import { chapterNote, fmt, plural, shortDate } from '../lib/format';
 import { toggleSort, useStore } from '../lib/store';
 import type { Chapter } from '../lib/types';
 
-/** A loaded MangaDex chapter list with its sort button and range, oldest or newest first as the library sorts. `row` draws each chapter. */
-export function ChapterRows({ all, row }: { all: Chapter[]; row: (c: Chapter) => ReactNode }) {
+/**
+ * A loaded MangaDex chapter list under a header that stays in view with its count and sort button, oldest or newest
+ * first as the library sorts. Each row shows the series cover, the chapter with its title, group and date, and Read; chapters up to
+ * `shown` look read. `after` adds a control at the end of a row.
+ */
+export function ChapterRows({
+  all,
+  cover,
+  shown = 0,
+  disabled,
+  open,
+  after,
+}: {
+  all: Chapter[];
+  cover: string;
+  shown?: number;
+  disabled?: boolean;
+  open: (c: Chapter) => void;
+  after?: (c: Chapter) => ReactNode;
+}) {
   const { sort } = useStore();
   const asc = sort === 'asc';
   const first = all[0]!;
   return (
     <>
-      <div className="row mid">
-        <button className="btn ghost sm" onClick={toggleSort}>
-          Sort: {asc ? 'oldest first' : 'newest first'}
+      <div className="chhead">
+        <span>{plural(all.length, 'chapter')}</span>
+        <button className="chsort" aria-label={`Sort: ${asc ? 'oldest' : 'newest'} first`} onClick={toggleSort}>
+          {asc ? 'Oldest' : 'Newest'}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 4v16M4 16l4 4 4-4M16 20V4M12 8l4-4 4 4" />
+          </svg>
         </button>
-        <span className="sub">
-          {all.length} chapters, {fmt(first.num)} to {fmt(all[all.length - 1]!.num)}
-        </span>
       </div>
       {first.num > 1 && <p className="hint">Chapters before {fmt(first.num)} are not on MangaDex. Try another source for those.</p>}
-      {(asc ? all : [...all].reverse()).map(row)}
+      {(asc ? all : [...all].reverse()).map((c) => (
+        <div key={c.id} className="chrow">
+          <button className={`ch${c.num <= shown ? ' read' : ''}`} disabled={disabled} onClick={() => open(c)}>
+            {cover ? <img className="chthumb" src={imageSrc(cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="chthumb" />}
+            <span className="chtxt">
+              <b>Ch. {fmt(c.num)}</b>
+              {chapterNote(c) && <span>{chapterNote(c)}</span>}
+              {c.date && <span>{shortDate(c.date)}</span>}
+            </span>
+            <span className="pill">Read</span>
+          </button>
+          {after?.(c)}
+        </div>
+      ))}
     </>
   );
 }

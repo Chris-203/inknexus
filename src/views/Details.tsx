@@ -4,7 +4,7 @@ import { ChapterRows } from '../components/ChapterRows';
 import { useReadChapter } from '../components/ReadButton';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters } from '../lib/chapters';
-import { chapterNote, fmt, norm, plural } from '../lib/format';
+import { norm, plural } from '../lib/format';
 import { addSeries, updateSeries, useStore } from '../lib/store';
 import type { Chapter, SearchResult } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
@@ -66,15 +66,7 @@ export function Details({ o }: { o: SearchResult }) {
     );
   else if (chs?.status === 'ready')
     chapters = chs.list.chapters.length ? (
-      <ChapterRows
-        all={chs.list.chapters}
-        row={(c) => (
-          <button key={c.id} className="ch" disabled={adding} onClick={() => void readChapter(c)}>
-            <b>Ch. {fmt(c.num)}</b>
-            <span>{chapterNote(c)}</span>
-          </button>
-        )}
-      />
+      <ChapterRows all={chs.list.chapters} cover={o.cover} disabled={adding} open={(c) => void readChapter(c)} />
     ) : (
       <p className="hint">MangaDex has no English chapters to read for this title.</p>
     );

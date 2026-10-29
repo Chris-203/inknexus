@@ -2,13 +2,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { ChapterRows } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
-import { ReadButton } from '../components/ReadButton';
+import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc, why } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
 import { removeDownload, saveChapter, useDownloads } from '../lib/downloads';
-import { chapterNote, fmt, plural } from '../lib/format';
+import { fmt, plural } from '../lib/format';
 import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
 import { useOpenLink } from '../lib/openLink';
@@ -148,6 +148,7 @@ export function Series({ x }: { x: SeriesT }) {
 /** The MangaDex source: its chapter list, with the ones up to `shown` marked read, and each one's offline button. */
 function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | null; shown: number }) {
   const { can } = useDownloads();
+  const read = useReadChapter();
   let list: ReactNode;
   if (!chs || chs.status === 'loading') list = <p className="hint">Loading chapters…</p>;
   else if (chs.status === 'error')
@@ -174,15 +175,10 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
     list = (
       <ChapterRows
         all={chs.list.chapters}
-        row={(c) => (
-          <div key={c.id} className="chrow">
-            <ReadButton x={x} c={c} className={`ch${c.num <= shown ? ' read' : ''}`}>
-              <b>Ch. {fmt(c.num)}</b>
-              <span>{chapterNote(c)}</span>
-            </ReadButton>
-            {can && !c.ext && <SaveButton x={x} c={c} />}
-          </div>
-        )}
+        cover={x.cover}
+        shown={shown}
+        open={(c) => read(x.id, c)}
+        after={(c) => can && !c.ext && <SaveButton x={x} c={c} />}
       />
     );
   }

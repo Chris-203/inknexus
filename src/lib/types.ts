@@ -72,6 +72,8 @@ export interface Chapter {
   ext: string;
   /** Scanlation group name(s), joined with ' & '. */
   grp: string;
+  /** When it came out on MangaDex, as an ISO time. Missing on chapters loaded or saved before it was kept. */
+  date?: string;
 }
 
 export interface ChapterList {
