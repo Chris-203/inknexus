@@ -1,24 +1,21 @@
 import type { ReactNode } from 'react';
-import { imageSrc } from '../lib/api';
 import { chapterNote, fmt, plural, shortDate } from '../lib/format';
 import { toggleSort, useStore } from '../lib/store';
 import type { Chapter } from '../lib/types';
 
 /**
  * A loaded MangaDex chapter list under a header that stays in view with its count and sort button, oldest or newest
- * first as the library sorts. Each row shows the series cover, the chapter with its title, group and date, and Read; chapters up to
+ * first as the library sorts. Each row shows the chapter with its title, group and date, and Read; chapters up to
  * `shown` look read. `after` adds a control at the end of a row.
  */
 export function ChapterRows({
   all,
-  cover,
   shown = 0,
   disabled,
   open,
   after,
 }: {
   all: Chapter[];
-  cover: string;
   shown?: number;
   disabled?: boolean;
   open: (c: Chapter) => void;
@@ -42,7 +39,6 @@ export function ChapterRows({
       {(asc ? all : [...all].reverse()).map((c) => (
         <div key={c.id} className="chrow">
           <button className={`ch${c.num <= shown ? ' read' : ''}`} disabled={disabled} onClick={() => open(c)}>
-            {cover ? <img className="chthumb" src={imageSrc(cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="chthumb" />}
             <span className="chtxt">
               <b>Ch. {fmt(c.num)}</b>
               {chapterNote(c) && <span>{chapterNote(c)}</span>}

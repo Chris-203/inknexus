@@ -172,15 +172,7 @@ function MangaDexSource({ x, chs, shown }: { x: SeriesT; chs: ChaptersState | nu
       </p>
     );
   } else {
-    list = (
-      <ChapterRows
-        all={chs.list.chapters}
-        cover={x.cover}
-        shown={shown}
-        open={(c) => read(x.id, c)}
-        after={(c) => can && !c.ext && <SaveButton x={x} c={c} />}
-      />
-    );
+    list = <ChapterRows all={chs.list.chapters} shown={shown} open={(c) => read(x.id, c)} after={(c) => can && !c.ext && <SaveButton x={x} c={c} />} />;
   }
   return (
     <>

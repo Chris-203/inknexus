@@ -66,7 +66,7 @@ export function Details({ o }: { o: SearchResult }) {
     );
   else if (chs?.status === 'ready')
     chapters = chs.list.chapters.length ? (
-      <ChapterRows all={chs.list.chapters} cover={o.cover} disabled={adding} open={(c) => void readChapter(c)} />
+      <ChapterRows all={chs.list.chapters} disabled={adding} open={(c) => void readChapter(c)} />
     ) : (
       <p className="hint">MangaDex has no English chapters to read for this title.</p>
     );

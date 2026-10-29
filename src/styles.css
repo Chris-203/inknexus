@@ -162,14 +162,13 @@ button.more{background:none;border:0;padding:0 2px;min-height:44px;margin:-10px 
 .dl span{flex:1;min-width:0;display:flex;flex-direction:column}
 .dl b{color:var(--text);font-size:var(--font-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dl:last-child{border-bottom:1px solid var(--line)}
-/* a series' chapter list: a header kept in view with the count and sort, then rows of cover, chapter and Read, divided under the text */
+/* a series' chapter list: a header kept in view with the count and sort, then rows of chapter and Read */
 .chhead{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;font-weight:600}
 .chsort{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 8px;background:none;border:0;color:var(--muted);font:inherit;font-size:var(--font-sm);cursor:pointer}
 .chsort svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .chrow{display:flex;align-items:center;position:relative}
-.chrow + .chrow::before{content:'';position:absolute;top:0;left:108px;right:16px;border-top:1px solid var(--line)}
+.chrow + .chrow::before{content:'';position:absolute;top:0;left:16px;right:16px;border-top:1px solid var(--line)}
 .chrow .ch{flex:1;min-width:0;border-top:0;align-items:center;padding:8px 16px}
-.chthumb{width:80px;aspect-ratio:10/7;object-fit:cover;border-radius:var(--radius-sm);background:var(--surface);flex:none}
 .chtxt{flex:1;min-width:0;display:flex;flex-direction:column}
 .chtxt b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch .pill{flex:none;color:var(--text);border:1px solid var(--line);border-radius:var(--radius-full);padding:5px 16px}
