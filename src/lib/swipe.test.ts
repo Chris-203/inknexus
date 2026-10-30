@@ -1,4 +1,4 @@
-import { swipeEnd, swipeFollow, swipeStarts } from './swipe';
+import { pastSlop, swipeEnd, swipeFollow, swipeStarts } from './swipe';
 
 describe('swipeEnd', () => {
   it('goes the way the finger moved past a quarter of the screen', () => {
@@ -48,5 +48,19 @@ describe('swipeStarts', () => {
 
   it('moves between shelves from anywhere', () => {
     expect(swipeStarts(195, false)).toBe(true);
+  });
+});
+
+describe('pastSlop', () => {
+  it('keeps a finger that barely moves a tap or a hold', () => {
+    expect(pastSlop(0, 0)).toBe(false);
+    expect(pastSlop(6, -6)).toBe(false);
+  });
+
+  it('ends it once the finger moves 10px in any direction', () => {
+    expect(pastSlop(10, 0)).toBe(true);
+    expect(pastSlop(-10, 0)).toBe(true);
+    expect(pastSlop(0, 12)).toBe(true);
+    expect(pastSlop(8, 8)).toBe(true);
   });
 });

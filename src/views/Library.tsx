@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
@@ -17,7 +17,7 @@ import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
 import { leftChapter } from '../lib/spots';
 import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
-import { useSwipe } from '../lib/swipe';
+import { pastSlop, useSwipe } from '../lib/swipe';
 import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
@@ -60,11 +60,13 @@ export function Library() {
   }, [shelf]);
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
+  const holdAt = useRef({ x: 0, y: 0 });
   const held = useRef(false);
   const f = updates.failed;
 
-  const startHold = (id: string) => {
+  const startHold = (id: string, e: PointerEvent) => {
     held.current = false;
+    holdAt.current = { x: e.clientX, y: e.clientY };
     holdTimer.current = window.setTimeout(() => {
       held.current = true;
       setPicked([id]);
@@ -77,12 +79,15 @@ export function Library() {
   // What pressing a series does, in either view: a tap opens it, or picks it while selecting; holding starts selecting.
   const press = (x: SeriesT) => ({
     // The press comes a moment before the click, so a list still loading starts that much sooner.
-    onPointerDown: () => {
+    onPointerDown: (e: PointerEvent) => {
       if (picked) return;
       if (x.md && !x.mdh) loadChapters(x.md);
-      startHold(x.id);
+      startHold(x.id, e);
     },
-    // Scrolling cancels the pointer, so a swipe through the series never starts selecting.
+    // A swipe between shelves keeps the pointer, and the card moves along under it, so moving the finger at all ends the hold.
+    onPointerMove: (e: PointerEvent) => {
+      if (pastSlop(e.clientX - holdAt.current.x, e.clientY - holdAt.current.y)) endHold();
+    },
     onPointerUp: endHold,
     onPointerLeave: endHold,
     onPointerCancel: endHold,
