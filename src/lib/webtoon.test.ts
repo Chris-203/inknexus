@@ -1,7 +1,17 @@
 import type { Series } from './types';
 import { opensInBrowser } from './siteSettings';
 import { getState, replaceState } from './store';
-import { bookmarklet, hasWebtoonList, importWebtoon, mergeWebtoon, openWebtoonInBrowser, parseWebtoonList, webtoonListIn, withMatches } from './webtoon';
+import {
+  addMatches,
+  bookmarklet,
+  hasWebtoonList,
+  importWebtoon,
+  mergeWebtoon,
+  openWebtoonInBrowser,
+  parseWebtoonList,
+  webtoonListIn,
+  withMatches,
+} from './webtoon';
 
 const s = (o: Partial<Series>): Series => ({ id: 'x', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0, ...o });
 const viewer = (no: number, ep: number, host = 'www') => `https://${host}.webtoons.com/en/fantasy/a-story/episode-${ep}/viewer?title_no=${no}&episode_no=${ep}`;
@@ -153,6 +163,48 @@ describe('withMatches', () => {
   });
 });
 
+describe('addMatches', () => {
+  const wt = (rn: number) => ({ label: 'Webtoon', url: 'https://www.webtoons.com/en/x/a/list?title_no=1', rn });
+  const r = (src: 'md' | 'al', ref: string | number) => ({ src, ref, title: 'A', desc: '', cover: `https://c/${src}.jpg` });
+
+  it('adds the matches to the series when no other series has them', () => {
+    const lib = [s({ id: 'o', md: 'm0' }), s({ id: 'x', links: [wt(5)] })];
+    const out = addMatches(lib, 'x', null, r('md', 'm1'));
+    expect(out.merged).toBe(false);
+    expect(out.lib).toEqual([lib[0], withMatches(lib[1]!, null, r('md', 'm1'))]);
+  });
+
+  it('merges into the series that already has the MangaDex match, updating its Webtoon link instead of adding another', () => {
+    const site = { label: 'Site', url: 'https://example.com/' };
+    const mine = s({ id: 'm', title: 'Jaeanggeum', md: 'm1', last: 3, src: 'md', links: [site, wt(3)] });
+    const x = s({
+      id: 'x',
+      title: 'The Return',
+      al: 7,
+      last: 9,
+      t: 50,
+      links: [{ ...wt(9), resume: 'https://www.webtoons.com/viewer?titleNo=1&episodeNo=9' }],
+    });
+    const out = addMatches([mine, x], 'x', null, r('md', 'm1'));
+    expect(out.merged).toBe(true);
+    expect(out.lib).toHaveLength(1);
+    expect(out.lib[0]).toMatchObject({ id: 'm', title: 'Jaeanggeum', md: 'm1', al: 7, last: 9, t: 50, src: 'md' });
+    expect(out.lib[0]!.links).toEqual([site, x.links[0]]);
+  });
+
+  it('merges by the AniList match too, and gives a series with no Webtoon link one, keeping its place and progress when ahead', () => {
+    const mine = s({ id: 'm', al: 7, md: 'm0', last: 20 });
+    const x = s({ id: 'x', last: 9, links: [wt(9)] });
+    const out = addMatches([x, mine], 'x', r('al', 7), null);
+    expect(out).toMatchObject({ merged: true, lib: [{ id: 'm', al: 7, md: 'm0', last: 20, links: [wt(9)] }] });
+  });
+
+  it('leaves the library as it is when the series is gone', () => {
+    const lib = [s({ id: 'o' })];
+    expect(addMatches(lib, 'x', r('al', 7), null)).toEqual({ lib, merged: false });
+  });
+});
+
 describe('importWebtoon', () => {
   const link = (...titles: string[]) => 'https://app.example/#webtoon=' + encodeURIComponent(JSON.stringify(titles.map((t, i) => [viewer(i + 1, 5), t, ''])));
   // AniList knows only 'Known'; MangaDex answers with `md` or fails with `status`.
@@ -184,6 +236,16 @@ describe('importWebtoon', () => {
       ['Other', null, 'm1', 'l0'],
       ['Unknown', null, null, undefined],
     ]);
+  });
+
+  it('merges a series already in the library under another name into it, with one Webtoon link', async () => {
+    stub({ data: [{ id: 'm1', attributes: { title: { 'ko-ro': 'Jaeanggeum' }, altTitles: [{ en: 'The Return' }] } }] });
+    replaceState({ lib: [s({ id: 'mine', title: 'Jaeanggeum', md: 'm1', last: 2, src: 'md' })] });
+    const said = await run(link('The Return'));
+    expect(said[1]).toBe('Found 1 of 1 Webtoon series on AniList or MangaDex, 1 already in My Series');
+    expect(getState().lib).toHaveLength(1);
+    expect(getState().lib[0]).toMatchObject({ id: 'mine', title: 'Jaeanggeum', last: 5, src: 'md' });
+    expect(getState().lib[0]!.links.map((l) => l.label)).toEqual(['Webtoon']);
   });
 
   it('keeps the AniList matches and says what failed when MangaDex fails', async () => {
