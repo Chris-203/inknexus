@@ -175,68 +175,71 @@ export function Library() {
           welcome
         ) : !shown.length ? (
           <p className="hint">Nothing in {SHELVES.find((q) => q.k === k)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
-        ) : view === 'list' ? (
-          <div className="lrows">
-            {shown.map((x) => {
-              const last = x.last || 0;
-              const fresh = freshOf(x);
-              const on = picked?.includes(x.id);
-              return (
-                <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
-                  <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                    {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
-                    <span className="linfo">
-                      <b>{x.title}</b>
-                      <span>
-                        {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
-                        {fresh?.n ? (
-                          <em>
-                            {' · '}
-                            {fresh.n}
-                            {fresh.more ? '+' : ''} new
-                          </em>
-                        ) : null}
+        ) : (
+          // Both views stay mounted, the other one laid out but hidden under this one, so a switch shows covers already
+          // loaded instead of new images that each flash a gray box first.
+          <div className="views">
+            <div className={view === 'list' ? 'lrows' : 'lrows off'} inert={view !== 'list'}>
+              {shown.map((x) => {
+                const last = x.last || 0;
+                const fresh = freshOf(x);
+                const on = picked?.includes(x.id);
+                return (
+                  <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
+                    <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
+                      {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                      <span className="linfo">
+                        <b>{x.title}</b>
+                        <span>
+                          {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
+                          {fresh?.n ? (
+                            <em>
+                              {' · '}
+                              {fresh.n}
+                              {fresh.more ? '+' : ''} new
+                            </em>
+                          ) : null}
+                        </span>
+                        {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
                       </span>
-                      {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
+                      {picked && (
+                        <span className="tick" aria-hidden="true">
+                          {on && '✓'}
+                        </span>
+                      )}
+                    </button>
+                    {!picked && <RowContinue x={x} />}
+                  </div>
+                );
+              })}
+            </div>
+            <div className={view === 'cards' ? 'grid' : 'grid off'} inert={view !== 'cards'}>
+              {shown.map((x) => {
+                const last = x.last || 0;
+                const fresh = freshOf(x);
+                const on = picked?.includes(x.id);
+                return (
+                  <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
+                    {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+                    <span className="badges">
+                      {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
+                      {fresh?.n ? (
+                        <span className="badge new">
+                          {fresh.n}
+                          {fresh.more ? '+' : ''} new
+                        </span>
+                      ) : null}
                     </span>
                     {picked && (
                       <span className="tick" aria-hidden="true">
                         {on && '✓'}
                       </span>
                     )}
+                    <span className="ct">{x.title}</span>
                   </button>
-                  {!picked && <RowContinue x={x} />}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid">
-            {shown.map((x) => {
-              const last = x.last || 0;
-              const fresh = freshOf(x);
-              const on = picked?.includes(x.id);
-              return (
-                <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
-                  <span className="badges">
-                    {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
-                    {fresh?.n ? (
-                      <span className="badge new">
-                        {fresh.n}
-                        {fresh.more ? '+' : ''} new
-                      </span>
-                    ) : null}
-                  </span>
-                  {picked && (
-                    <span className="tick" aria-hidden="true">
-                      {on && '✓'}
-                    </span>
-                  )}
-                  <span className="ct">{x.title}</span>
-                </button>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </>
