@@ -1,6 +1,6 @@
 import { norm } from '../lib/format';
 import { isWebUrl } from '../lib/links';
-import type { Details, SearchResult } from '../lib/types';
+import type { Details, Ranking, SearchResult } from '../lib/types';
 
 export interface AlMedia {
   id: number;
@@ -10,6 +10,10 @@ export interface AlMedia {
   description?: string | null;
   averageScore?: number | null;
   externalLinks?: { site: string; url: string; type?: string; language?: string | null }[];
+  /** 'MANGA' or 'ANIME'; asked for only where both can come back. */
+  type?: string;
+  /** 'MANGA', 'ONE_SHOT', 'NOVEL', …; asked for only where novels can come back. */
+  format?: string | null;
 }
 
 export interface AlDetails {
@@ -20,6 +24,50 @@ export interface AlDetails {
   startDate?: { year?: number | null };
   averageScore?: number | null;
   staff?: { edges?: { role: string; node: { name: { full: string } } }[] };
+}
+
+export interface AlRanking {
+  averageScore?: number | null;
+  popularity?: number | null;
+  rankings?: { rank: number; context: string; allTime?: boolean | null; year?: number | null }[];
+}
+
+interface AlTrailer {
+  id: string;
+  site: string;
+}
+
+interface AlVideo {
+  title?: { romaji?: string; english?: string | null };
+  trailer?: AlTrailer | null;
+}
+
+export interface AlTrailers extends AlVideo {
+  relations?: { edges?: { relationType: string; node: AlVideo & { type: string } }[] };
+}
+
+/** Each video site AniList links: its name, its embeddable player and its own page, with {id} for the video. */
+const TRAILER_SITES: Record<string, { name: string; embed: string; page: string }> = {
+  youtube: { name: 'YouTube', embed: 'https://www.youtube-nocookie.com/embed/{id}?playsinline=1', page: 'https://www.youtube.com/watch?v={id}' },
+  dailymotion: { name: 'Dailymotion', embed: 'https://www.dailymotion.com/embed/video/{id}', page: 'https://www.dailymotion.com/video/{id}' },
+};
+
+export interface Trailer {
+  /** The series or anime the trailer is for, '' when AniList gives no title. */
+  title: string;
+  site: string;
+  embed: string;
+  page: string;
+}
+
+/** The series' own trailer or, as manga rarely have one, its anime adaptation's; null when there is none on a known site. */
+export function toTrailer(m: AlTrailers): Trailer | null {
+  const anime = (m.relations?.edges || []).filter((e) => e.relationType === 'ADAPTATION' && e.node.type === 'ANIME').map((e) => e.node);
+  const v = [m, ...anime].find((a) => a.trailer && TRAILER_SITES[a.trailer.site]);
+  const site = v?.trailer && TRAILER_SITES[v.trailer.site];
+  if (!v?.trailer || !site) return null;
+  const id = encodeURIComponent(v.trailer.id);
+  return { title: v.title?.english || v.title?.romaji || '', site: site.name, embed: site.embed.replace('{id}', id), page: site.page.replace('{id}', id) };
 }
 
 /** Send a GraphQL query to AniList and return its `data`. */
@@ -150,4 +198,58 @@ export async function details(id: number): Promise<Details> {
   );
   if (!data.Media) throw new Error('AniList no longer has this series');
   return toDetails(data.Media);
+}
+
+export interface AlLikeThis {
+  relations?: { edges?: { relationType: string; node: AlMedia }[] };
+  recommendations?: { nodes?: { rating: number; mediaRecommendation: AlMedia | null }[] };
+}
+
+/** Comics to read, not anime or light novels. */
+function readable(m: AlMedia | null): m is AlMedia {
+  return !!m && m.type === 'MANGA' && m.format !== 'NOVEL';
+}
+
+/** Related series (sequels, prequels, spin-offs, …), then the ones AniList users recommend, best rated first. Comics only, each once. */
+export function toLikeThis(m: AlLikeThis): SearchResult[] {
+  const related = (m.relations?.edges || []).map((e) => e.node);
+  const liked = (m.recommendations?.nodes || []).filter((r) => r.rating > 0).map((r) => r.mediaRecommendation);
+  const all = [...related, ...liked].filter(readable);
+  return all.filter((k, i) => all.findIndex((o) => o.id === k.id) === i).map(toResult);
+}
+
+export async function likeThis(id: number): Promise<SearchResult[]> {
+  const f = `type format ${FIELDS}`;
+  const data = await query<{ Media?: AlLikeThis | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){relations{edges{relationType node{${f}}}} recommendations(sort:RATING_DESC,perPage:10){nodes{rating mediaRecommendation{${f}}}}}}`,
+    { id },
+  );
+  if (!data.Media) throw new Error('AniList no longer has this series');
+  return toLikeThis(data.Media);
+}
+
+/** A series' AniList score, popularity and rankings. AniList's context reads 'highest rated all time' for an all-time place but only 'highest rated' for a year's, so the year is added. */
+export function toRanking(m: AlRanking): Ranking {
+  const ranks = [...(m.rankings || [])]
+    .sort((a, b) => Number(!!b.allTime) - Number(!!a.allTime))
+    .map((r) => `#${r.rank} ${r.context.charAt(0).toUpperCase()}${r.context.slice(1)}${r.allTime || !r.year ? '' : ` of ${r.year}`}`);
+  return { score: m.averageScore || null, lists: m.popularity || 0, ranks };
+}
+
+export async function ranking(id: number): Promise<Ranking> {
+  const data = await query<{ Media?: AlRanking | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){averageScore popularity rankings{rank context allTime year}}}`,
+    { id },
+  );
+  if (!data.Media) throw new Error('AniList no longer has this series');
+  return toRanking(data.Media);
+}
+
+/** The trailer for the AniList series `id`, or null when it has none. */
+export async function trailer(id: number): Promise<Trailer | null> {
+  const data = await query<{ Media?: AlTrailers | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){title{romaji english} trailer{id site} relations{edges{relationType node{type title{romaji english} trailer{id site}}}}}}`,
+    { id },
+  );
+  return data.Media ? toTrailer(data.Media) : null;
 }

@@ -107,6 +107,26 @@ export function Library() {
     toast(`Moved ${ids.length} series to ${SHELVES.find((q) => q.k === k)!.n}`);
   };
 
+  // With no series at all, every series shelf shows how to start one instead of its own empty line.
+  const welcome = (
+    <div className="empty">
+      <p>No series yet.</p>
+      <button className="btn" onClick={() => navigate({ name: 'search' })}>
+        Browse series
+      </button>
+      <p className="restore">
+        Used InkNexus before, in another browser or on another device? Each one keeps its own list. Import the backup file you exported there.
+      </p>
+      <button className="btn ghost" onClick={importBackup}>
+        Import backup
+      </button>
+      <p className="restore">Reading on Webtoon? Bring in every series from your Recent list.</p>
+      <button className="btn ghost" onClick={() => setWebtoonOpen(true)}>
+        Import from Webtoon
+      </button>
+    </div>
+  );
+
   // Each shelf's series, or its saved chapters for Downloaded.
   const shelfBody = (k: LibraryTab) => {
     const shown = list.filter((x) => shelfOf(x) === k);
@@ -138,6 +158,8 @@ export function Library() {
         )}
         {k === 'downloads' ? (
           <OfflineChapters />
+        ) : !list.length ? (
+          welcome
         ) : !shown.length ? (
           <p className="hint">Nothing in {SHELVES.find((q) => q.k === k)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
         ) : view === 'list' ? (
@@ -229,35 +251,6 @@ export function Library() {
       {moveOpen && shelf !== 'downloads' && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
     </>
   );
-
-  if (!list.length && !downloads.saved.length)
-    return (
-      <>
-        <header>
-          <h1>My Series</h1>
-          <span className="sub">0 series</span>
-          {addLink}
-          {settings}
-        </header>
-        <div className="empty">
-          <p>No series yet.</p>
-          <button className="btn" onClick={() => navigate({ name: 'search' })}>
-            Browse series
-          </button>
-          <p className="restore">
-            Used InkNexus before, in another browser or on another device? Each one keeps its own list. Import the backup file you exported there.
-          </p>
-          <button className="btn ghost" onClick={importBackup}>
-            Import backup
-          </button>
-          <p className="restore">Reading on Webtoon? Bring in every series from your Recent list.</p>
-          <button className="btn ghost" onClick={() => setWebtoonOpen(true)}>
-            Import from Webtoon
-          </button>
-        </div>
-        {sheets}
-      </>
-    );
 
   return (
     <>
