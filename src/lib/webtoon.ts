@@ -3,7 +3,7 @@ import { planImport } from './importBackup';
 import { host, parseChUrl } from './links';
 import { opensInBrowser, setOpensInBrowser } from './siteSettings';
 import { newSeries } from './storage';
-import { findSeries, getState, replaceState, sourceFrom, updateSeries } from './store';
+import { findSeries, getState, replaceState, sourceFrom } from './store';
 import type { Link, SearchResult, Series } from './types';
 import * as anilist from '../sources/anilist';
 import * as mangadex from '../sources/mangadex';
@@ -177,16 +177,33 @@ export function withMatches(x: Series, al: SearchResult | null, md: SearchResult
   return y;
 }
 
+/**
+ * The library with series `id` given its AniList and MangaDex matches. When another series already has one of them, the
+ * two are the same series under different names: that one takes the Webtoon episode and link, updating its own Webtoon
+ * link rather than adding a second, and `id` is dropped.
+ */
+export function addMatches(lib: Series[], id: string, al: SearchResult | null, md: SearchResult | null): { lib: Series[]; merged: boolean } {
+  const x = lib.find((y) => y.id === id);
+  if (!x) return { lib, merged: false };
+  const mine = lib.find((y) => y.id !== id && ((md && y.md === String(md.ref)) || (al && y.al === al.ref)));
+  if (!mine) return { lib: lib.map((y) => (y === x ? withMatches(x, al, md) : y)), merged: false };
+  const one = { ...mergeOne(mine, x), al: mine.al ?? x.al };
+  return { lib: lib.flatMap((y) => (y === x ? [] : y === mine ? [one] : [y])), merged: true };
+}
+
 /** How many titles go to AniList in one request. */
 const BATCH = 10;
 
 /** Look up newly imported series on AniList and MangaDex, a batch at a time, and add the exact title matches as sources. */
 async function lookUp(ids: string[], toast: (m: string) => void) {
   const found = new Set<string>();
+  let merged = 0;
   const add = (x: Series, al: SearchResult | null, md: SearchResult | null) => {
     if (!al && !md) return;
     found.add(x.id);
-    updateSeries(x.id, (cur) => withMatches(cur, al, md));
+    const r = addMatches(getState().lib, x.id, al, md);
+    if (r.merged) merged++;
+    replaceState({ ...getState(), lib: r.lib });
   };
   try {
     for (let i = 0; i < ids.length; i += BATCH) {
@@ -195,12 +212,14 @@ async function lookUp(ids: string[], toast: (m: string) => void) {
       const al = await anilist.matchTitles(batch.map((x) => x.title));
       batch.forEach((x, k) => add(x, al[k] ?? null, null));
       // One MangaDex search at a time stays well under its rate limit while the library checks for new chapters.
-      for (const x of batch) add(x, null, await mangadex.matchTitle(x.title));
+      // A series merged into one already in the library is gone, so it needs no search.
+      for (const x of batch) if (findSeries(x.id)) add(x, null, await mangadex.matchTitle(x.title));
     }
   } catch (e) {
     return toast(`Stopped looking up series on AniList and MangaDex (${why(e)}). ${found.size} matched; add the rest from a series with + Source`);
   }
-  toast(`Found ${found.size} of ${ids.length} Webtoon series on AniList or MangaDex`);
+  const same = merged ? `, ${merged} already in My Series` : '';
+  toast(`Found ${found.size} of ${ids.length} Webtoon series on AniList or MangaDex${same}`);
 }
 
 /** Import the Webtoon list in `text` into the library and say how it went, then look up the new series on AniList and MangaDex. */
