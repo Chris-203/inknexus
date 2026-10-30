@@ -73,6 +73,25 @@ describe('storage', () => {
     const s = parseBackup(JSON.stringify({ lib: shelves.map((shelf, i) => ({ id: String(i), title: 'T', shelf })) }));
     expect(s.lib.map((x) => x.shelf)).toEqual(['plan', 'done', 'drop', undefined, undefined, undefined]);
   });
+  it('keeps a saved AniList ranking, and drops one without an AniList id or ranks list', () => {
+    const info = { al: 7, at: 5, score: 84, lists: 120, ranks: ['#1 Most popular all time', 3] };
+    const s = parseBackup(
+      JSON.stringify({
+        lib: [
+          { title: 'A', info },
+          { title: 'B', info: { ...info, al: 'x' } },
+          { title: 'C', info: { al: 7 } },
+          { title: 'D', info: { ...info, score: null } },
+        ],
+      }),
+    );
+    expect(s.lib.map((x) => x.info)).toEqual([
+      { al: 7, at: 5, score: 84, lists: 120, ranks: ['#1 Most popular all time'] },
+      undefined,
+      undefined,
+      { al: 7, at: 5, score: null, lists: 120, ranks: ['#1 Most popular all time'] },
+    ]);
+  });
   it('newSeries fills defaults', () => {
     const s = newSeries({ title: 'T' });
     expect(s).toMatchObject({ title: 'T', cover: '', md: null, al: null, links: [], last: 0 });
