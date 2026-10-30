@@ -3,6 +3,7 @@ import { useApp } from '../context';
 import { chapterText, ChapterRows, savedCheck } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
 import { MoreLikeThis } from '../components/MoreLikeThis';
+import { MoreInfo } from '../components/MoreInfo';
 import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
@@ -14,6 +15,7 @@ import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
 import { useOpenLink } from '../lib/openLink';
 import { pasteChapterLink } from '../lib/pasteLink';
+import { useRanking } from '../lib/ranking';
 import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
@@ -40,6 +42,7 @@ export function Series({ x }: { x: SeriesT }) {
   const cur = shownSource(x);
   // Loaded while another source is shown too, so switching to MangaDex shows its chapters at once.
   const chs = useChapters(x.mdh ? null : x.md);
+  const rank = useRanking(x);
 
   // Keep the field in step when the number changes elsewhere (− / +, paste).
   useEffect(() => setLastText(String(x.last || 0)), [x.last]);
@@ -142,6 +145,7 @@ export function Series({ x }: { x: SeriesT }) {
         </button>
       </div>
       {body}
+      <MoreInfo r={rank} />
       <MoreLikeThis x={{ title: x.title, al: Number(x.al) || null, md: x.md }} />
       <div className="pad end">
         <button
@@ -318,7 +322,10 @@ function LinkContinue({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; show
   );
 }
 
-/** A link-only source: open it in the app or the browser, update the chapter from a copied link, and its settings under More. */
+/**
+ * A link-only source: open it in the app or the browser, and its settings under More. Until it knows its chapter link
+ * pattern (and so has Continue), it also offers the saved link and updating the chapter from a copied link.
+ */
 function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
   const { toast } = useApp();
   const site = host(l.url);
@@ -327,7 +334,7 @@ function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown:
 
   return (
     <div className="pad">
-      {l.resume && (
+      {!l.tpl && l.resume && (
         <button className="btn" onClick={() => open('resume')}>
           Resume ch. {fmt(l.rn || 0)} (saved link)
         </button>
@@ -335,16 +342,19 @@ function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown:
       <button className={`btn${l.tpl || l.resume ? ' ghost' : ''}`} onClick={() => open('page')}>
         Open the series page{ob ? ' ↗' : ' in app'}
       </button>
-      <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
-        Update chapter from a link
-      </button>
+      {!l.tpl && (
+        <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
+          Update chapter from a link
+        </button>
+      )}
       <details className="more">
         <summary>More</summary>
         <div className="pad">
           <p className="hint">
-            Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so
-            Continue works. If the in-app view is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
-            {ob ? '. After reading there, come back and tap + or Update' : ''}.
+            {!l.tpl &&
+              "Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. "}
+            If the in-app view is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
+            {ob ? `. After reading there, come back and tap +${l.tpl ? '' : ' or Update'}` : ''}.
           </p>
           <label className="opt">
             <input

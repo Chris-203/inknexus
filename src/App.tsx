@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { ImportSheet } from './components/ImportSheet';
 import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
@@ -10,14 +10,14 @@ import { catchSwipes } from './lib/swipe';
 import type { Series as SeriesT } from './lib/types';
 import { hasWebtoonList, importWebtoon, openWebtoonInBrowser } from './lib/webtoon';
 import { Library } from './views/Library';
-import { Search } from './views/Search';
+import { browseScroll, Search } from './views/Search';
 import { Details } from './views/Details';
 import { Series } from './views/Series';
 import { Reader } from './views/Reader';
 import { Frame } from './views/Frame';
 
-// Views live in browser history as { v, back }, so the phone's back gesture moves through the app.
-// `back` says there is an in-app view behind this one.
+// Views live in browser history as { v, back, from }, so the phone's back gesture moves through the app.
+// `back` says there is an in-app view behind this one, and `from` names the view it was opened from.
 const NAMES = ['library', 'search', 'details', 'series', 'reader', 'frame'];
 
 function viewOf(st: unknown): View | null {
@@ -27,6 +27,10 @@ function viewOf(st: unknown): View | null {
 
 function hasBack(): boolean {
   return !!(history.state as { back?: boolean } | null)?.back;
+}
+
+function cameFrom(): string | undefined {
+  return (history.state as { from?: string } | null)?.from;
 }
 
 /** The series a view shows, or undefined when it is gone (removed, or its MangaDex source or link is). */
@@ -53,7 +57,7 @@ export function App() {
     // The app places every view itself. Left to the browser, going back could scroll the reader, which is still showing,
     // to where the previous view was, down to the end of the chapter, and mark it read.
     history.scrollRestoration = 'manual';
-    history.replaceState({ v: view, back: hasBack() }, '');
+    history.replaceState({ v: view, back: hasBack(), from: cameFrom() }, '');
     const pop = (e: PopStateEvent) => setView(viewOf(e.state) || { name: 'library' });
     addEventListener('popstate', pop);
     return () => removeEventListener('popstate', pop);
@@ -85,8 +89,8 @@ export function App() {
   useEffect(() => (full ? undefined : catchSwipes()), [full]);
 
   const navigate = useCallback((v: View, replace = false) => {
-    if (replace) history.replaceState({ v, back: hasBack() }, '');
-    else history.pushState({ v, back: true }, '');
+    if (replace) history.replaceState({ v, back: hasBack(), from: cameFrom() }, '');
+    else history.pushState({ v, back: true, from: viewOf(history.state)?.name }, '');
     setView(v);
   }, []);
 
@@ -150,16 +154,22 @@ export function App() {
   const [kept, setKept] = useState<(typeof tab)[]>([]);
   const keep: typeof kept = full ? [] : kept.includes(tab) ? kept : [...kept, tab];
   if (keep.length !== kept.length) setKept(keep);
+  // While a swipe closes a series' page or a Browse result, the tab it was opened from shows under it, where going back lands.
+  const under = info && cameFrom() === tab ? tab : null;
   return (
     <AppContext.Provider value={api}>
       <div id="app">
         {kept.includes('library') && (
-          <div hidden={view.name !== 'library'}>
+          <div hidden={view.name !== 'library'} className={under === 'library' ? 'under' : undefined}>
             <Library />
           </div>
         )}
         {kept.includes('search') && (
-          <div hidden={view.name !== 'search'}>
+          <div
+            hidden={view.name !== 'search'}
+            className={under === 'search' ? 'under' : undefined}
+            style={under === 'search' ? ({ '--y': `${browseScroll()}px` } as CSSProperties) : undefined}
+          >
             <Search on={view.name === 'search'} />
           </div>
         )}

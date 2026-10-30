@@ -46,7 +46,7 @@ async function load(x: LikeOf): Promise<LikeThis> {
   // Matching one by one keeps to MangaDex's rate limit. After a failed match the rest stay AniList series, which still open.
   let matching = md.status === 'fulfilled';
   for (const k of al.status === 'fulfilled' ? al.value.filter((k) => !self(k)) : []) {
-    let m = mangadex.mdMatch(k.title, mdRecs);
+    let m: SearchResult | null = mangadex.mdMatches(k.title, mdRecs).map(mangadex.toResult)[0] ?? null;
     if (!m && matching)
       try {
         m = await mangadex.matchTitle(k.title);
