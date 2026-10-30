@@ -40,9 +40,21 @@ header .btn,header .ibtn{align-self:center}
 .pad .hint{padding:0}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));align-items:start;gap:14px 10px;padding:8px 16px}
 .card{background:none;border:0;padding:0;text-align:left;position:relative;cursor:pointer}
-/* holding a card starts selecting, so iOS shows no image menu or text selection there */
+/* holding a card opens its menu, so iOS shows no image menu or text selection there */
 .card{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .card img,.cover{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:var(--radius-sm);background:var(--surface);display:block}
+/* a held card's menu (HoldMenu in views/Library.tsx): the card lifts over the blurred shelf; reaching below the screen like #modal keeps iPhone Safari's bars in the theme color */
+#hold{position:fixed;inset:0 0 -50vh;z-index:10;background:color-mix(in srgb,var(--bg) 40%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);touch-action:none;animation:fade-in .2s ease-out}
+.held{position:fixed;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.held:focus{outline:none}
+.held .card{width:100%;cursor:default;transform:scale(1.08);animation:lift .25s cubic-bezier(.2,.8,.2,1)}
+.held .card img,.held .cover{box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.hmenu{min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.4);animation:fade-in .2s ease-out}
+.hmenu.end{align-self:flex-end}
+.hmenu button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:48px;padding:0 16px;background:none;border:0;border-top:1px solid var(--line);color:var(--text);font:700 var(--font-base) var(--body);text-align:left;cursor:pointer}
+.hmenu button:first-child{border-top:0}
+.hmenu button:focus-visible{outline-offset:-2px}
+.hmenu svg{width:20px;height:20px;flex:none;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .badges{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .badge{background:var(--text);color:var(--bg);font-size:var(--font-xs);font-weight:700;padding:1px 7px;border-radius:var(--radius-full)}
 .badge.new{background:var(--accent);color:var(--on-accent)}
@@ -357,9 +369,10 @@ html:has(#rcover) :is(.rtrack,#totop){visibility:hidden}
 #toast.on{opacity:1}
 @keyframes fade-in{from{opacity:0}}
 @keyframes fade-out{to{opacity:0}}
+@keyframes lift{from{transform:none}}
 @keyframes slide-up{from{transform:translateY(100%)}}
 @keyframes slide-down{to{transform:translateY(100%)}}
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,details.info summary::before{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,details.info summary::before{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out,#hold,.held .card,.hmenu{animation-duration:1ms}}

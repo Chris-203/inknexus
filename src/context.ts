@@ -6,7 +6,8 @@ export type View =
   | { name: 'library' }
   | { name: 'search' }
   | { name: 'details'; o: SearchResult }
-  | { name: 'series'; id: string }
+  /** `info` unfolds the series' More info, for the hold menu's More info. */
+  | { name: 'series'; id: string; info?: boolean }
   | { name: 'reader'; id: string; n: number }
   | { name: 'frame'; id: string; i: number; ch: number; url: string };
 

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
-import { Sheet, useSheet } from '../components/Sheet';
+import { Sheet, useDialogFocus, useSheet } from '../components/Sheet';
 import { ThemePicker } from '../components/ThemePicker';
 import { WebtoonSheet } from '../components/WebtoonSheet';
 import { imageSrc } from '../lib/api';
@@ -15,6 +15,7 @@ import { nextWhole } from '../lib/links';
 import { useOpenLink } from '../lib/openLink';
 import { continueChapter } from '../lib/preload';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
+import { shareSeries } from '../lib/share';
 import { leftChapter } from '../lib/spots';
 import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
 import { useSwipe } from '../lib/swipe';
@@ -35,6 +36,8 @@ export function Library() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [webtoonOpen, setWebtoonOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  // The card held open with its menu, and where it sat on screen.
+  const [menu, setMenu] = useState<{ x: SeriesT; at: DOMRect } | null>(null);
   const view = useLibraryView();
   const downloads = useDownloads();
   const tab = useLibraryShelf();
@@ -58,35 +61,65 @@ export function Library() {
   useEffect(() => {
     tabsRef.current?.querySelector('[aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [shelf]);
-  // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
+  // Holding a card opens its menu, and holding a row starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const held = useRef(false);
   const f = updates.failed;
 
-  const startHold = (id: string) => {
+  const hold = (x: SeriesT, el: HTMLElement) => {
+    if (view === 'cards') setMenu({ x, at: el.getBoundingClientRect() });
+    else setPicked([x.id]);
+    navigator.vibrate?.(10);
+  };
+  const startHold = (x: SeriesT, el: HTMLElement) => {
     held.current = false;
     holdTimer.current = window.setTimeout(() => {
       held.current = true;
-      setPicked([id]);
-      navigator.vibrate?.(10);
+      hold(x, el);
     }, 500);
   };
   const endHold = () => clearTimeout(holdTimer.current);
 
   const freshOf = (x: SeriesT) => (x.md && !x.mdh && x.last ? newCount(latestFor(x.md), x.last) : null);
-  // What pressing a series does, in either view: a tap opens it, or picks it while selecting; holding starts selecting.
+  // A card's cover, badges and title, on the shelf and lifted over it by its menu.
+  const face = (x: SeriesT) => {
+    const last = x.last || 0;
+    const fresh = freshOf(x);
+    return (
+      <>
+        {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+        <span className="badges">
+          {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
+          {fresh?.n ? (
+            <span className="badge new">
+              {fresh.n}
+              {fresh.more ? '+' : ''} new
+            </span>
+          ) : null}
+        </span>
+        <span className="ct">{x.title}</span>
+      </>
+    );
+  };
+  // What pressing a series does, in either view: a tap opens it, or picks it while selecting; holding opens its menu or starts selecting.
   const press = (x: SeriesT) => ({
     // The press comes a moment before the click, so a list still loading starts that much sooner.
-    onPointerDown: () => {
+    onPointerDown: (e: PointerEvent<HTMLElement>) => {
       if (picked) return;
       if (x.md && !x.mdh) loadChapters(x.md);
-      startHold(x.id);
+      startHold(x, e.currentTarget);
     },
-    // Scrolling cancels the pointer, so a swipe through the series never starts selecting.
+    // Scrolling cancels the pointer, so a swipe through the series never opens a menu or starts selecting.
     onPointerUp: endHold,
     onPointerLeave: endHold,
     onPointerCancel: endHold,
-    onContextMenu: (e: MouseEvent) => e.preventDefault(),
+    // A right-click, or the menu key, opens a card's menu at once.
+    onContextMenu: (e: MouseEvent<HTMLElement>) => {
+      e.preventDefault();
+      if (view !== 'cards' || picked) return;
+      endHold();
+      hold(x, e.currentTarget);
+    },
     onClick: () => {
       if (held.current) held.current = false;
       else if (picked) toggle(x.id);
@@ -200,27 +233,15 @@ export function Library() {
         ) : (
           <div className="grid">
             {shown.map((x) => {
-              const last = x.last || 0;
-              const fresh = freshOf(x);
               const on = picked?.includes(x.id);
               return (
                 <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-                  {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
-                  <span className="badges">
-                    {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
-                    {fresh?.n ? (
-                      <span className="badge new">
-                        {fresh.n}
-                        {fresh.more ? '+' : ''} new
-                      </span>
-                    ) : null}
-                  </span>
+                  {face(x)}
                   {picked && (
                     <span className="tick" aria-hidden="true">
                       {on && '✓'}
                     </span>
                   )}
-                  <span className="ct">{x.title}</span>
                 </button>
               );
             })}
@@ -248,6 +269,32 @@ export function Library() {
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} onWebtoon={() => setWebtoonOpen(true)} />}
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
       {webtoonOpen && <WebtoonSheet onClose={() => setWebtoonOpen(false)} />}
+      {menu && (
+        <HoldMenu at={menu.at} card={face(menu.x)} label={menu.x.title} onClose={() => setMenu(null)}>
+          <button onClick={() => navigate({ name: 'series', id: menu.x.id, info: true })}>
+            More info
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v6M12 7.5v.01" />
+            </svg>
+          </button>
+          <button onClick={() => void shareSeries(menu.x, toast)}>
+            Share
+            {/* an arrow up out of a tray */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12M7 8l5-5 5 5" />
+              <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+            </svg>
+          </button>
+          <button onClick={() => setPicked([menu.x.id])}>
+            Select
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M8 12.5l2.5 2.5L16 9.5" />
+            </svg>
+          </button>
+        </HoldMenu>
+      )}
       {moveOpen && shelf !== 'downloads' && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
     </>
   );
@@ -351,6 +398,32 @@ function LinkRowContinue({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
       Continue
       <small>Ch. {nextWhole(x.last || 0)}</small>
     </button>
+  );
+}
+
+/**
+ * A held card's menu: the card lifts in place over the blurred shelf with its actions under it, all moved up when they
+ * would run off the screen. Any action closes it, and so do a tap outside and Escape.
+ */
+function HoldMenu({ at, card, label, onClose, children }: { at: DOMRect; card: ReactNode; label: string; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(at.top);
+  // The click that ends the hold can land here; only a tap that starts here closes the menu.
+  const tapped = useRef(false);
+  useDialogFocus(ref, onClose);
+  useLayoutEffect(() => setTop(Math.max(16, Math.min(at.top, innerHeight - 16 - ref.current!.offsetHeight))), []);
+  return (
+    <div id="hold" onPointerDown={() => (tapped.current = true)} onClick={() => tapped.current && onClose()}>
+      <div ref={ref} className="held" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} style={{ top, left: at.left, width: at.width }}>
+        <div className="card" aria-hidden="true">
+          {card}
+        </div>
+        {/* A card on the right half keeps its menu on its right edge, so the menu stays on screen */}
+        <div className={`hmenu${at.left + at.width / 2 > innerWidth / 2 ? ' end' : ''}`} onClick={onClose}>
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 

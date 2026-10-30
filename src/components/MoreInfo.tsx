@@ -1,12 +1,12 @@
 import type { Ranking } from '../lib/types';
 import type { Load } from '../lib/useLoad';
 
-/** A series' AniList score, popularity and rankings, folded under More info. Nothing shows while they load or when the series is not on AniList. */
-export function MoreInfo({ r }: { r: Load<Ranking> | null }) {
+/** A series' AniList score, popularity and rankings, folded under More info, or with `open` unfolded and scrolled to. Nothing shows while they load or when the series is not on AniList. */
+export function MoreInfo({ r, open }: { r: Load<Ranking> | null; open?: boolean }) {
   if (!r || r.state === 'busy') return null;
   if (r.state === 'done' && !r.value.score && !r.value.lists && !r.value.ranks.length) return null;
   return (
-    <details className="more info">
+    <details className="more info" open={open} ref={open ? reveal : undefined}>
       <summary>More info</summary>
       <div className="pad">
         {r.state === 'error' ? (
@@ -30,4 +30,8 @@ export function MoreInfo({ r }: { r: Load<Ranking> | null }) {
       </div>
     </details>
   );
+}
+
+function reveal(el: HTMLElement | null) {
+  el?.scrollIntoView({ block: 'center' });
 }
