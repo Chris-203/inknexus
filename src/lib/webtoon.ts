@@ -157,13 +157,18 @@ function mergeOne(mine: Series, theirs: Series): Series {
   return ahead ? { ...mine, links, last: theirs.last, t: theirs.t } : { ...mine, links };
 }
 
-/** The library with a Webtoon list merged in. New series keep the list's order, most recent first. */
+/**
+ * The library with a Webtoon list merged in. New series keep the list's order, most recent first. `bare` is the series
+ * from the list already in the library with no AniList or MangaDex source, such as ones whose look-up was cut short
+ * when the app closed, so importing the list again looks them up.
+ */
 export function mergeWebtoon(lib: Series[], items: WebtoonItem[], now = Date.now()) {
   const incoming = items.map((w, i) => ({ ...newSeries({ title: w.title, links: [linkOf(w)], last: w.n }), t: now - i }));
   const { fresh, dupes } = planImport(lib, incoming);
   const merged = new Map(dupes.map((d) => [d.mine.id, mergeOne(d.mine, d.theirs)]));
   const next = [...lib.map((x) => merged.get(x.id) ?? x), ...fresh];
-  return { lib: next, fresh: fresh.map((x) => x.id), updated: lib.filter((x) => merged.has(x.id) && merged.get(x.id) !== x).length };
+  const bare = [...merged.values()].filter((x) => !x.md && x.al === null).map((x) => x.id);
+  return { lib: next, fresh: fresh.map((x) => x.id), bare, updated: lib.filter((x) => merged.has(x.id) && merged.get(x.id) !== x).length };
 }
 
 /** `x` with its exact title matches on AniList and MangaDex added as sources, where it has none yet. Its Webtoon link stays the selected source. */
@@ -203,7 +208,7 @@ async function lookUp(ids: string[], toast: (m: string) => void) {
   toast(`Found ${found.size} of ${ids.length} Webtoon series on AniList or MangaDex`);
 }
 
-/** Import the Webtoon list in `text` into the library and say how it went, then look up the new series on AniList and MangaDex. */
+/** Import the Webtoon list in `text` into the library and say how it went, then look up the new and still bare series on AniList and MangaDex. */
 export function importWebtoon(text: string, toast: (m: string) => void) {
   let items: WebtoonItem[];
   try {
@@ -216,7 +221,8 @@ export function importWebtoon(text: string, toast: (m: string) => void) {
   replaceState({ ...getState(), lib: r.lib });
   openWebtoonInBrowser(items.map(linkOf));
   const parts = [r.fresh.length && `${r.fresh.length} added`, r.updated && `${r.updated} updated`].filter(Boolean);
-  if (!parts.length) return toast('Webtoon list imported. Nothing changed');
-  toast(`Webtoon list imported: ${parts.join(', ')}${r.fresh.length ? '. Looking up covers on AniList and MangaDex…' : ''}`);
-  if (r.fresh.length) void lookUp(r.fresh, toast);
+  const look = [...r.fresh, ...r.bare];
+  if (!parts.length && !look.length) return toast('Webtoon list imported. Nothing changed');
+  toast(`Webtoon list imported${parts.length ? `: ${parts.join(', ')}` : ''}${look.length ? '. Looking up covers on AniList and MangaDex…' : ''}`);
+  if (look.length) void lookUp(look, toast);
 }
