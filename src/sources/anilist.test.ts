@@ -1,6 +1,7 @@
 import {
   addDetails,
   alMatch,
+  alNames,
   details,
   info,
   likeThis,
@@ -12,6 +13,7 @@ import {
   toRanking,
   toTrailer,
   trailer,
+  trending,
   type AlMedia,
 } from './anilist';
 
@@ -134,6 +136,12 @@ describe('AniList requests', () => {
       [2, { score: null, desc: '' }],
     ]);
   });
+  it('trending gives the list AniList sends and says when it sends none', async () => {
+    answer({ Page: { media: [{ id: 1, title: { romaji: 'A' } }] } });
+    expect(await trending()).toEqual([{ id: 1, title: { romaji: 'A' } }]);
+    answer({ Page: {} });
+    await expect(trending()).rejects.toThrow('unexpected answer');
+  });
   it('info says when AniList sends no list', async () => {
     answer({});
     await expect(info([1])).rejects.toThrow('unexpected answer');
@@ -156,6 +164,13 @@ describe('AniList requests', () => {
   it('search still says what failed on a rate limit', async () => {
     answer(null, 429);
     await expect(search('x')).rejects.toThrow('HTTP 429: AniList is rate-limiting');
+  });
+});
+
+describe('alNames', () => {
+  it('lists the English and romaji titles, then the synonyms, leaving out missing ones', () => {
+    expect(alNames({ id: 1, title: { english: null, romaji: 'Roma' }, synonyms: ['Syn'] })).toEqual(['Roma', 'Syn']);
+    expect(alNames({ id: 1, title: { english: 'Eng' } })).toEqual(['Eng']);
   });
 });
 

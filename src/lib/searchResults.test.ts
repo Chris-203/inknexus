@@ -157,3 +157,34 @@ describe('AniList info', () => {
     expect(r.ids).toEqual([]);
   });
 });
+
+describe('Trending', () => {
+  it('keeps AniList trending order, as the MangaDex series MangaDex links to each, without repeats or ones MangaDex lacks', async () => {
+    const r = await start(storage([]));
+    const asked: string[] = [];
+    vi.stubGlobal('fetch', async (u: string, init?: RequestInit) => {
+      if (u.includes('anilist')) {
+        const q = JSON.parse(String(init!.body)).query as string;
+        if (q.includes('TRENDING_DESC')) {
+          const media = ['First', 'Second', 'Missing', 'Again'].map((t, i) => ({ id: i + 1, title: { english: t } }));
+          return new Response(JSON.stringify({ data: { Page: { media } } }));
+        }
+        return new Response(JSON.stringify({ data: { Page: { media: [] } } }));
+      }
+      const title = new URL(new URL(u, 'http://x').searchParams.get('url')!).searchParams.get('title')!;
+      asked.push(title);
+      // "Again" is another AniList entry for the series MangaDex has as "First".
+      const data = {
+        First: [{ id: 'm1', attributes: { title: { en: 'First' }, links: { al: '1' } } }],
+        Again: [{ id: 'm1', attributes: { title: { en: 'First' }, altTitles: [{ en: 'Again' }] } }],
+        Second: [{ id: 'm2', attributes: { title: { en: 'Second' }, links: { al: '2' } } }],
+        Missing: [],
+      }[title];
+      return new Response(JSON.stringify({ data }));
+    });
+    const res = await r.loadBrowse(null, 'trending');
+    expect(res.map((o) => o.ref)).toEqual(['m1', 'm2']);
+    expect(asked).toEqual(['First', 'Second', 'Missing', 'Again']);
+    expect(r.savedResults(r.browseKey(null, 'trending'))).toEqual(res);
+  });
+});

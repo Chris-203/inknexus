@@ -143,6 +143,18 @@ export async function recommended(ref: string): Promise<MdManga[]> {
   return ids.flatMap((id) => list.find((m) => m.id === id) || []);
 }
 
+/** The MangaDex series with English chapters that MangaDex links to AniList series `al`, looked up by its first name; or, with no such link, the one with exactly one of `names`. Null when there is none. */
+export async function findAniList(al: number, names: string[]): Promise<SearchResult | null> {
+  const list = await mangas(`title=${encodeURIComponent(names[0] ?? '')}&availableTranslatedLanguage[]=en`, 5);
+  const m = list.find((m) => alOf(m) === al);
+  if (m) return toResult(m);
+  for (const n of names) {
+    const hit = mdMatches(n, list)[0];
+    if (hit) return toResult(hit);
+  }
+  return null;
+}
+
 export function search(q: string): Promise<SearchResult[]> {
   return mangaList(`title=${encodeURIComponent(q)}&order[relevance]=desc`);
 }

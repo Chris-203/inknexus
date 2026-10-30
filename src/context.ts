@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { SearchResult } from './lib/types';
-import type { BrowseSort } from './sources/mangadex';
+import type { Sort } from './lib/searchResults';
 
 export type View =
   | { name: 'library' }
@@ -16,7 +16,7 @@ export interface SearchState {
   res: SearchResult[] | null;
   /** The MangaDex genre browsed (null for all genres) and its order. */
   tag: string | null;
-  sort: BrowseSort;
+  sort: Sort;
 }
 
 export interface AppApi {
