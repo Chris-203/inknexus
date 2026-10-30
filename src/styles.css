@@ -23,6 +23,10 @@ body.nonav{padding-bottom:0}
 body.info{padding-bottom:env(safe-area-inset-bottom,0px)}
 /* a view or shelf that a swipe moves sideways (lib/swipe.ts) never makes the page scroll sideways */
 #app{overflow-x:clip}
+/* while a swipe closes a view (body.peek), the tab it goes back to shows under it, scrolled to where it lands (--y), with its bottom bar */
+body.peek #app>.under{display:block;position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) - var(--y,0px))}
+body.peek #app>:not([hidden]){position:relative;z-index:6;min-height:100dvh;background:var(--bg);box-shadow:0 0 24px rgba(0,0,0,.4)}
+body.peek:has(#app>.under) #nav{display:flex}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:18px 12px 10px 16px}

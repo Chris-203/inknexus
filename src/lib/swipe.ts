@@ -13,17 +13,25 @@ interface Swipe {
 
 /** How close to a side of the screen a touch starts for Safari to take it as a swipe back or forward through history. */
 const EDGE = 24;
+/** How close to the left side a swipe that closes a view starts, as on iPhone: about a thumb's width, wider than Safari's own. */
+const BACK_EDGE = 40;
 /** How far a finger moves before its touch is a swipe or a scroll rather than a tap. */
 const SLOP = 10;
 /** How long a page takes to settle after the finger lets go, in ms: about as long as WEBTOON's tabs take. */
 const SETTLE = 350;
 
 let target: Swipe | null = null;
+let unpeek = 0;
 
 /** Where a sideways swipe that ends at `dx` (px), moving at `v` (px/ms), takes the page: `dir` when it went far or fast enough, otherwise 0. */
 export function swipeEnd(dx: number, v: number, width: number): Dir | 0 {
   const dir: Dir = dx > 0 ? 1 : -1;
   return Math.abs(dx) > width / 4 || dir * v > 0.5 ? dir : 0;
+}
+
+/** Whether a touch that starts `x` px from the left side can swipe a view: one that closes only from the side, like a swipe back on iPhone. */
+export function swipeStarts(x: number, leaves: boolean): boolean {
+  return !leaves || x < BACK_EDGE;
 }
 
 /** How far the page follows a finger `dx` px along: all the way, or a third of it where there is nothing to swipe to, so it gives and bounces back. */
@@ -46,6 +54,18 @@ function slide(el: HTMLElement, x: number, ms: number) {
   el.style.transform = x ? `translateX(${x}px)` : '';
 }
 
+/** Shows the view that a closing view goes back to under it while it slides (`.peek` in styles.css). */
+function peek(on: boolean) {
+  clearTimeout(unpeek);
+  document.body.classList.toggle('peek', on);
+}
+
+/** Moves a swiped element back into place, and hides the view under it once it is there. */
+function settle(sw: Swipe, ms: number) {
+  slide(sw.el, 0, ms);
+  unpeek = window.setTimeout(() => peek(false), ms);
+}
+
 /**
  * Sideways swipes for the views with the bottom bar. Safari and Chrome would take them as back and forward through history
  * (overscroll-behavior-x in styles.css stops Chrome's); instead the element given to useSwipe follows the finger.
@@ -60,7 +80,7 @@ export function catchSwipes(): () => void {
     // Safari's swipe through history starts at the screen's sides and only a cancelled touchstart stops it.
     // A cancelled touch neither taps nor scrolls, so end() and move() do that for it.
     if (edge) e.preventDefault();
-    if (g?.axis === 'x' && g.sw) slide(g.sw.el, 0, SETTLE);
+    if (g?.axis === 'x' && g.sw) settle(g.sw, SETTLE);
     g = null;
     if (e.touches.length !== 1) return;
     const at = e.target as Element;
@@ -68,7 +88,7 @@ export function catchSwipes(): () => void {
     // Under a short shelf, the touch lands on the page itself.
     const page = at === document.documentElement || at === document.body || at.id === 'app';
     const on = target && (target.el.contains(at) || (page && t.clientY > target.el.getBoundingClientRect().top));
-    const ok = on && !at.closest('#modal') && !scroller(at, 'x');
+    const ok = on && !at.closest('#modal') && !scroller(at, 'x') && swipeStarts(t.clientX, target!.leaves);
     g = { x: t.clientX, y: t.clientY, t: e.timeStamp, at, edge, axis: null, dx: 0, v: 0, sw: ok ? target : null };
   };
 
@@ -91,6 +111,7 @@ export function catchSwipes(): () => void {
     g.v = (dx - g.dx) / Math.max(1, e.timeStamp - g.t);
     g.t = e.timeStamp;
     g.dx = dx;
+    if (g.sw!.leaves) peek(true);
     slide(g.sw!.el, swipeFollow(dx, g.sw!.can(dx > 0 ? 1 : -1)), 0);
   };
 
@@ -106,7 +127,7 @@ export function catchSwipes(): () => void {
     const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : SETTLE;
     const w = sw.el.offsetWidth;
     const dir = e.type === 'touchend' ? swipeEnd(dx, v, w) : 0;
-    if (!dir || !sw.can(dir)) return slide(sw.el, 0, ms);
+    if (!dir || !sw.can(dir)) return settle(sw, ms);
     // The element moves a whole width, which brings in what sits beside it.
     slide(sw.el, dir * w, ms);
     setTimeout(() => {
@@ -143,6 +164,8 @@ export function useSwipe(can: (dir: Dir) => boolean, go: (dir: Dir) => void, lea
       target = sw;
       return () => {
         if (target === sw) target = null;
+        // A view that a swipe closed hides the view under it as it goes, in the same frame as that view takes its place.
+        if (leaves) peek(false);
       };
     },
     [leaves],
