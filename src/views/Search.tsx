@@ -23,6 +23,10 @@ const FILTERS: [keyof Filter, string, string][] = [
 /** Where Browse was scrolled to, so coming back from a series' details lands on the same spot. */
 let scrolled = 0;
 
+export function browseScroll(): number {
+  return scrolled;
+}
+
 /** `on` is false while Search stays mounted under another view. */
 export function Search({ on }: { on: boolean }) {
   const { navigate, toast, search, setSearch } = useApp();

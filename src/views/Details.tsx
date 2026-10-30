@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { ChapterRows } from '../components/ChapterRows';
+import { MoreLikeThis } from '../components/MoreLikeThis';
+import { MoreInfo } from '../components/MoreInfo';
 import { useReadChapter } from '../components/ReadButton';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters } from '../lib/chapters';
 import { norm, plural } from '../lib/format';
+import { useRanking } from '../lib/ranking';
 import { addSeries, updateSeries, useStore } from '../lib/store';
 import { useSwipe } from '../lib/swipe';
 import type { Chapter, Details as SeriesDetails, SearchResult } from '../lib/types';
@@ -26,6 +29,10 @@ export function Details({ o }: { o: SearchResult }) {
   );
   const more = useLoad(`${o.src}:${o.ref}`, () => loadDetails(o));
   const ex = o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
+  const d = more?.state === 'done' ? more.value : null;
+  const al = o.src === 'al' ? Number(o.ref) : d?.al;
+  // A MangaDex result's AniList id comes with its details, so its ranking loads after them.
+  const rank = useRanking(ex, al);
 
   const add = async () => {
     setAdding(true);
@@ -36,6 +43,7 @@ export function Details({ o }: { o: SearchResult }) {
       al: o.src === 'al' ? o.ref : (o.al ?? null),
       links: o.links || [],
     });
+    if (al && rank?.state === 'done') updateSeries(n.id, () => ({ info: { ...rank.value, al, at: Date.now() } }));
     let msg = 'Added to My Series';
     if (o.src === 'al') {
       try {
@@ -60,7 +68,8 @@ export function Details({ o }: { o: SearchResult }) {
   // Reading a chapter adds the series first, so the reader has a series to keep progress in.
   const readChapter = async (c: Chapter) => read((ex ?? (await add())).id, c);
 
-  const d = more?.state === 'done' ? more.value : null;
+  // MangaDex links most series to AniList, which has the trailer of the series or its anime.
+  const trailer = useLoad(al ? `trailer:${al}` : null, () => anilist.trailer(al!));
   const line = d && [
     d.status,
     d.year,
@@ -118,6 +127,7 @@ export function Details({ o }: { o: SearchResult }) {
         ) : (
           <p className="sub">{[o.src === 'md' ? 'On MangaDex' : 'On AniList', ...(line || ['Loading…'])].filter(Boolean).join(' · ')}</p>
         )}
+        <MoreInfo r={rank} />
         {ex ? (
           <button className="btn" onClick={() => navigate({ name: 'series', id: ex.id })}>
             Open in My Series
@@ -127,8 +137,24 @@ export function Details({ o }: { o: SearchResult }) {
             Add to My Series
           </button>
         )}
+        {trailer?.state === 'done' && trailer.value && (
+          <section className="trailer" aria-label="Trailer">
+            <h3>Trailer</h3>
+            {trailer.value.title && <p className="sub">{trailer.value.title}</p>}
+            {/* YouTube's player refuses to play without the page's origin as referrer, which the app otherwise never sends. */}
+            <iframe
+              src={trailer.value.embed}
+              title={`Trailer on ${trailer.value.site}`}
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </section>
+        )}
+        {trailer?.state === 'error' && <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>}
       </div>
-      {d && <MoreInGenre o={o} tags={d.tags} />}
+      <MoreLikeThis x={{ title: o.title, al: o.src === 'al' ? Number(o.ref) : null, md: o.src === 'md' ? String(o.ref) : null }} />
       {chapters}
       {o.src === 'md' && (
         <p className="credit">
@@ -151,34 +177,4 @@ async function loadDetails(o: SearchResult): Promise<SeriesDetails> {
     o.al ? anilist.details(o.al).catch(() => null) : null,
   ]);
   return al ? anilist.addDetails(md, al) : md;
-}
-
-/** A row of popular MangaDex series in this series' first MangaDex genre, each opening its own details. Nothing shows when it has no MangaDex genre. */
-function MoreInGenre({ o, tags }: { o: SearchResult; tags: string[] }) {
-  const { navigate } = useApp();
-  const genre = mangadex.GENRES.find((g) => tags.includes(g.name));
-  const more = useLoad(genre ? genre.id : null, () => mangadex.browse(genre!.id, 'follows'));
-  const list = more?.state === 'done' ? more.value.filter((k) => !(k.src === o.src && k.ref === o.ref)) : [];
-  if (!genre || (more?.state === 'done' && !list.length)) return null;
-  return (
-    <section aria-label={`More in ${genre.name}`}>
-      <h3 className="shelfh">More in {genre.name}</h3>
-      {more?.state === 'error' ? (
-        <p className="hint">
-          Could not load more {genre.name} series from MangaDex ({more.error}). Go back and open this series again.
-        </p>
-      ) : more?.state === 'done' ? (
-        <div className="shelf">
-          {list.map((k) => (
-            <button key={k.ref} className="card" onClick={() => navigate({ name: 'details', o: k })}>
-              {k.cover ? <img src={imageSrc(k.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
-              <span className="ct">{k.title}</span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="hint">Loading…</p>
-      )}
-    </section>
-  );
 }

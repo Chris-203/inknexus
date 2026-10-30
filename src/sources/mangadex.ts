@@ -25,7 +25,7 @@ export interface MdManga {
     tags?: { attributes: { name: Record<string, string>; group: string } }[];
     status?: string;
     year?: number | null;
-    /** Ids on other sites, such as `al` for AniList. */
+    /** Ids on other sites, by MangaDex's short name for each ('al' is AniList). MangaDex sends an empty array when there are none. */
     links?: Record<string, string> | null;
   };
   relationships?: Rel[];
@@ -94,7 +94,7 @@ async function mangas(q: string, limit: number): Promise<MdManga[]> {
   return j.data || [];
 }
 
-function toResult(m: MdManga): SearchResult {
+export function toResult(m: MdManga): SearchResult {
   const c = m.relationships?.find((x) => x.type === 'cover_art')?.attributes;
   return {
     src: 'md',
@@ -102,7 +102,7 @@ function toResult(m: MdManga): SearchResult {
     title: pickTitle(m.attributes),
     desc: m.attributes.description?.en || '',
     cover: c?.fileName ? `https://uploads.mangadex.org/covers/${m.id}/${c.fileName}.256.jpg` : '',
-    al: Number(m.attributes.links?.al) || undefined,
+    al: alOf(m) ?? undefined,
     status: STATUS[m.attributes.status || ''] || undefined,
   };
 }
@@ -111,26 +111,61 @@ async function mangaList(q: string): Promise<SearchResult[]> {
   return (await mangas(q, 20)).map(toResult);
 }
 
-/** The series among `list` named exactly `title` (any of its names, comparing letters and digits only), or null. */
-export function mdMatch(title: string, list: MdManga[]): SearchResult | null {
+/** Every series among `list` named exactly `title` (any of its names, comparing letters and digits only). */
+export function mdMatches(title: string, list: MdManga[]): MdManga[] {
   const t = norm(title);
-  const m = t && list.find((m) => mdNames(m.attributes).some((n) => norm(n.n) === t));
-  return m ? toResult(m) : null;
+  return t ? list.filter((m) => mdNames(m.attributes).some((n) => norm(n.n) === t)) : [];
 }
 
-/** The MangaDex series with exactly the name `title`, or null. */
+/** How many people follow each of the series `ids` on MangaDex. */
+async function follows(ids: string[]): Promise<Record<string, number>> {
+  const r = await api(`${MD}/statistics/manga?${ids.map((id) => `manga[]=${id}`).join('&')}`);
+  const j: { statistics?: Record<string, { follows?: number }> } = await r.json();
+  return Object.fromEntries(ids.map((id) => [id, j.statistics?.[id]?.follows ?? 0]));
+}
+
+/**
+ * The MangaDex series with exactly the name `title`, or null. MangaDex often has several entries with the same name,
+ * such as a series and its promo or book version, so when more than one matches the most followed one wins.
+ */
 export async function matchTitle(title: string): Promise<SearchResult | null> {
-  return mdMatch(title, await mangas(`title=${encodeURIComponent(title)}`, 5));
+  const found = mdMatches(title, await mangas(`title=${encodeURIComponent(title)}&order[relevance]=desc`, 10));
+  if (found.length < 2) return found[0] ? toResult(found[0]) : null;
+  const f = await follows(found.map((m) => m.id));
+  return toResult(found.reduce((a, b) => (f[b.id]! > f[a.id]! ? b : a)));
+}
+
+/** /manga/{id}/recommendation: pairs of the series and one MangaDex finds like it, with how alike they are (0 to 1). */
+export interface MdRecommendation {
+  attributes: { score: number };
+  relationships: { id: string; type: string }[];
+}
+
+/** The ids of the series MangaDex finds most like `ref`, closest first: up to `max`. MangaDex sends them in no order. */
+export function recIds(recs: MdRecommendation[], ref: string, max: number): string[] {
+  return [...recs]
+    .sort((a, b) => b.attributes.score - a.attributes.score)
+    .flatMap((r) => r.relationships.filter((x) => x.type === 'manga' && x.id !== ref).map((x) => x.id))
+    .slice(0, max);
+}
+
+/** Up to 12 series MangaDex finds like `ref`, closest first. Two requests: the recommendations, then the series with covers. */
+export async function recommended(ref: string): Promise<MdManga[]> {
+  const j: { data?: MdRecommendation[] } = await (await api(`${MD}/manga/${ref}/recommendation`)).json();
+  const ids = recIds(j.data || [], ref, 12);
+  if (!ids.length) return [];
+  const list = await mangas(ids.map((id) => `ids[]=${id}`).join('&'), ids.length);
+  return ids.flatMap((id) => list.find((m) => m.id === id) || []);
 }
 
 /** The MangaDex series with English chapters that MangaDex links to AniList series `al`, looked up by its first name; or, with no such link, the one with exactly one of `names`. Null when there is none. */
 export async function findAniList(al: number, names: string[]): Promise<SearchResult | null> {
   const list = await mangas(`title=${encodeURIComponent(names[0] ?? '')}&availableTranslatedLanguage[]=en`, 5);
-  const m = list.find((m) => Number(m.attributes.links?.al) === al);
+  const m = list.find((m) => alOf(m) === al);
   if (m) return toResult(m);
   for (const n of names) {
-    const hit = mdMatch(n, list);
-    if (hit) return hit;
+    const hit = mdMatches(n, list)[0];
+    if (hit) return toResult(hit);
   }
   return null;
 }
@@ -231,6 +266,11 @@ async function fetchPages(id: string): Promise<Page[]> {
   }));
 }
 
+/** The AniList id MangaDex links a series to, if any. */
+function alOf(m: MdManga): number | null {
+  return Number(m.attributes.links?.al) || null;
+}
+
 /** The tag groups a details screen shows, in this order; content warnings and the rest are left out. */
 const TAG_GROUPS = ['genre', 'format', 'theme'];
 const STATUS: Record<string, string> = { ongoing: 'Ongoing', completed: 'Completed', hiatus: 'On hiatus', cancelled: 'Cancelled' };
@@ -250,16 +290,23 @@ export function toDetails(m: MdManga, agg: MdAggregate): Details {
     year: a.year || null,
     chapters: new Set(nums.filter((n) => !isNaN(parseFloat(n)))).size || null,
     authors: [...new Set(authors)],
+    al: alOf(m),
   };
 }
 
-/** Tags, status, year, authors and English chapter count for a series. */
+/** Tags, status, year, authors, English chapter count and AniList id for a series. */
 export async function details(ref: string): Promise<Details> {
   const [m, agg] = await Promise.all([
     api(`${MD}/manga/${ref}?includes[]=author&includes[]=artist`).then((r) => r.json() as Promise<{ data: MdManga }>),
     api(`${MD}/manga/${ref}/aggregate?translatedLanguage[]=en`).then((r) => r.json() as Promise<MdAggregate>),
   ]);
   return toDetails(m.data, agg);
+}
+
+/** The AniList id MangaDex links a series to, or null when it has none. */
+export async function aniListId(ref: string): Promise<number | null> {
+  const j: { data: MdManga } = await (await api(`${MD}/manga/${ref}`)).json();
+  return alOf(j.data);
 }
 
 /** Every name MangaDex has for a series. */
