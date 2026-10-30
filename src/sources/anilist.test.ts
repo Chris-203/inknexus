@@ -40,14 +40,21 @@ describe('toDetails', () => {
 });
 
 describe('toTrailer', () => {
-  const anime = (id: string, site = 'youtube', relationType = 'ADAPTATION', type = 'ANIME') => ({ relationType, node: { type, trailer: { id, site } } });
+  const anime = (id: string, site = 'youtube', relationType = 'ADAPTATION', type = 'ANIME') => ({
+    relationType,
+    node: { type, title: { romaji: 'Anime ' + id }, trailer: { id, site } },
+  });
   it("takes the series' own trailer before its anime adaptation's", () => {
-    expect(toTrailer({ trailer: { id: 'own', site: 'youtube' }, relations: { edges: [anime('adapted')] } })).toEqual({
+    expect(
+      toTrailer({ title: { english: 'The Series', romaji: 'Sakuhin' }, trailer: { id: 'own', site: 'youtube' }, relations: { edges: [anime('adapted')] } }),
+    ).toEqual({
+      title: 'The Series',
       site: 'YouTube',
       embed: 'https://www.youtube-nocookie.com/embed/own?playsinline=1',
       page: 'https://www.youtube.com/watch?v=own',
     });
     expect(toTrailer({ trailer: null, relations: { edges: [anime('x7k', 'dailymotion')] } })).toEqual({
+      title: 'Anime x7k',
       site: 'Dailymotion',
       embed: 'https://www.dailymotion.com/embed/video/x7k',
       page: 'https://www.dailymotion.com/video/x7k',
@@ -63,8 +70,8 @@ describe('toTrailer', () => {
     expect(toTrailer({ relations: { edges } })).toBeNull();
     expect(toTrailer({})).toBeNull();
   });
-  it('escapes the id', () => {
-    expect(toTrailer({ trailer: { id: 'a&b/c', site: 'youtube' } })?.page).toBe('https://www.youtube.com/watch?v=a%26b%2Fc');
+  it('escapes the id and gives an empty title when AniList has none', () => {
+    expect(toTrailer({ trailer: { id: 'a&b/c', site: 'youtube' } })).toMatchObject({ title: '', page: 'https://www.youtube.com/watch?v=a%26b%2Fc' });
   });
 });
 

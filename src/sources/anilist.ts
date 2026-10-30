@@ -25,9 +25,13 @@ interface AlTrailer {
   site: string;
 }
 
-export interface AlTrailers {
+interface AlVideo {
+  title?: { romaji?: string; english?: string | null };
   trailer?: AlTrailer | null;
-  relations?: { edges?: { relationType: string; node: { type: string; trailer?: AlTrailer | null } }[] };
+}
+
+export interface AlTrailers extends AlVideo {
+  relations?: { edges?: { relationType: string; node: AlVideo & { type: string } }[] };
 }
 
 /** Each video site AniList links: its name, its embeddable player and its own page, with {id} for the video. */
@@ -37,6 +41,8 @@ const TRAILER_SITES: Record<string, { name: string; embed: string; page: string 
 };
 
 export interface Trailer {
+  /** The series or anime the trailer is for, '' when AniList gives no title. */
+  title: string;
   site: string;
   embed: string;
   page: string;
@@ -44,12 +50,12 @@ export interface Trailer {
 
 /** The series' own trailer or, as manga rarely have one, its anime adaptation's; null when there is none on a known site. */
 export function toTrailer(m: AlTrailers): Trailer | null {
-  const anime = (m.relations?.edges || []).filter((e) => e.relationType === 'ADAPTATION' && e.node.type === 'ANIME').map((e) => e.node.trailer);
-  const t = [m.trailer, ...anime].find((a) => a && TRAILER_SITES[a.site]);
-  const site = t && TRAILER_SITES[t.site];
-  if (!site) return null;
-  const id = encodeURIComponent(t.id);
-  return { site: site.name, embed: site.embed.replace('{id}', id), page: site.page.replace('{id}', id) };
+  const anime = (m.relations?.edges || []).filter((e) => e.relationType === 'ADAPTATION' && e.node.type === 'ANIME').map((e) => e.node);
+  const v = [m, ...anime].find((a) => a.trailer && TRAILER_SITES[a.trailer.site]);
+  const site = v?.trailer && TRAILER_SITES[v.trailer.site];
+  if (!v?.trailer || !site) return null;
+  const id = encodeURIComponent(v.trailer.id);
+  return { title: v.title?.english || v.title?.romaji || '', site: site.name, embed: site.embed.replace('{id}', id), page: site.page.replace('{id}', id) };
 }
 
 /** Send a GraphQL query to AniList and return its `data`. */
@@ -146,7 +152,7 @@ export async function details(id: number): Promise<Details> {
 /** The trailer for the AniList series `id`, or null when it has none. */
 export async function trailer(id: number): Promise<Trailer | null> {
   const data = await query<{ Media?: AlTrailers | null }>(
-    `query($id:Int){Media(id:$id,type:MANGA){trailer{id site} relations{edges{relationType node{type trailer{id site}}}}}}`,
+    `query($id:Int){Media(id:$id,type:MANGA){title{romaji english} trailer{id site} relations{edges{relationType node{type title{romaji english} trailer{id site}}}}}}`,
     { id },
   );
   return data.Media ? toTrailer(data.Media) : null;
