@@ -1,4 +1,4 @@
-import { swipeEnd, swipeFollow } from './swipe';
+import { swipeEnd, swipeFollow, swipeStarts } from './swipe';
 
 describe('swipeEnd', () => {
   it('goes the way the finger moved past a quarter of the screen', () => {
@@ -29,5 +29,24 @@ describe('swipeFollow', () => {
   it('gives a third as much at the first or last shelf, to bounce back', () => {
     expect(swipeFollow(90, false)).toBe(30);
     expect(swipeFollow(-90, false)).toBe(-30);
+  });
+
+  it('stays still on a view that closes, swiped the way with nothing beside it', () => {
+    expect(swipeFollow(-90, false, true)).toBe(0);
+    expect(swipeFollow(90, true, true)).toBe(90);
+  });
+});
+
+describe('swipeStarts', () => {
+  it('closes a view only from the left side of the screen', () => {
+    expect(swipeStarts(10, true)).toBe(true);
+    expect(swipeStarts(39, true)).toBe(true);
+    expect(swipeStarts(40, true)).toBe(false);
+    expect(swipeStarts(195, true)).toBe(false);
+    expect(swipeStarts(380, true)).toBe(false);
+  });
+
+  it('moves between shelves from anywhere', () => {
+    expect(swipeStarts(195, false)).toBe(true);
   });
 });

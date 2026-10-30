@@ -1,5 +1,5 @@
 import { isWebUrl } from './links';
-import type { Link, Series, State } from './types';
+import type { Link, SavedRanking, Series, State } from './types';
 
 /** Stays 'longstrip' on purpose: libraries saved before the rename to InkNexus live under this key. */
 export const STORAGE_KEY = 'longstrip';
@@ -64,6 +64,11 @@ function toLink(v: unknown): Link | null {
   return l;
 }
 
+function toInfo(v: unknown): SavedRanking | undefined {
+  if (!isObj(v) || !num(v.al) || !Array.isArray(v.ranks)) return undefined;
+  return { al: num(v.al), at: num(v.at), score: num(v.score) || null, lists: num(v.lists), ranks: v.ranks.filter((r) => typeof r === 'string') };
+}
+
 function toSeries(v: unknown): Series | null {
   if (!isObj(v)) return null;
   const s: Series = {
@@ -79,6 +84,8 @@ function toSeries(v: unknown): Series | null {
   if (v.mdh === true) s.mdh = true;
   if (typeof v.src === 'string') s.src = v.src;
   if (v.shelf === 'plan' || v.shelf === 'done' || v.shelf === 'drop') s.shelf = v.shelf;
+  const info = toInfo(v.info);
+  if (info) s.info = info;
   return s;
 }
 
