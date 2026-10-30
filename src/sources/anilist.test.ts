@@ -1,4 +1,4 @@
-import { alMatch, details, matchTitles, search, toDetails, type AlMedia } from './anilist';
+import { addDetails, alMatch, details, info, matchTitles, search, toDetails, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -24,6 +24,7 @@ describe('toDetails', () => {
       status: 'FINISHED',
       chapters: 120,
       startDate: { year: 2018 },
+      averageScore: 84,
       staff: {
         edges: [
           { role: 'Story & Art', node: { name: { full: 'Pen Name' } } },
@@ -32,14 +33,42 @@ describe('toDetails', () => {
         ],
       },
     });
-    expect(d).toEqual({ tags: ['Action', 'Fantasy', 'Dungeon'], status: 'Completed', year: 2018, chapters: 120, authors: ['Pen Name'] });
+    expect(d).toEqual({ tags: ['Action', 'Fantasy', 'Dungeon'], status: 'Completed', year: 2018, chapters: 120, authors: ['Pen Name'], score: 84 });
   });
   it('gives null for an ongoing series with no chapter count and an empty status when it is missing', () => {
-    expect(toDetails({ status: null, chapters: null })).toEqual({ tags: [], status: '', year: null, chapters: null, authors: [] });
+    expect(toDetails({ status: null, chapters: null })).toEqual({ tags: [], status: '', year: null, chapters: null, authors: [], score: null });
+  });
+});
+
+describe('addDetails', () => {
+  it("adds AniList's score and the tags MangaDex does not have, keeping the rest from MangaDex", () => {
+    const md = { tags: ['Action', 'Time Travel'], status: 'Ongoing', year: 2020, chapters: 50, authors: ['Pen Name'] };
+    const al = { tags: ['Action', 'Drama', 'time-travel', 'Revenge'], status: 'Completed', year: 2019, chapters: 99, authors: ['Other'], score: 77 };
+    expect(addDetails(md, al)).toEqual({ ...md, tags: ['Action', 'Time Travel', 'Drama', 'Revenge'], score: 77 });
   });
 });
 
 describe('AniList requests', () => {
+  it('info asks for every id at once and gives each score and plain synopsis by id', async () => {
+    const sent = answer({
+      Page: {
+        media: [
+          { id: 1, averageScore: 84, description: 'A <i>hero</i><br>returns.' },
+          { id: 2, averageScore: null, description: null },
+        ],
+      },
+    });
+    const got = await info([1, 2, 3]);
+    expect(sent).toEqual([{ ids: [1, 2, 3] }]);
+    expect([...got]).toEqual([
+      [1, { score: 84, desc: 'A heroreturns.' }],
+      [2, { score: null, desc: '' }],
+    ]);
+  });
+  it('info says when AniList sends no list', async () => {
+    answer({});
+    await expect(info([1])).rejects.toThrow('unexpected answer');
+  });
   it('details asks by id and says when the series is gone', async () => {
     const sent = answer({ Media: null });
     await expect(details(7)).rejects.toThrow('AniList no longer has this series');

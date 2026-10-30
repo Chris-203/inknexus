@@ -7,7 +7,7 @@ import { retryChapters, useChapters } from '../lib/chapters';
 import { norm, plural } from '../lib/format';
 import { addSeries, updateSeries, useStore } from '../lib/store';
 import { useSwipe } from '../lib/swipe';
-import type { Chapter, SearchResult } from '../lib/types';
+import type { Chapter, Details as SeriesDetails, SearchResult } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
@@ -24,12 +24,18 @@ export function Details({ o }: { o: SearchResult }) {
     () => goBack({ name: 'search' }),
     true,
   );
-  const more = useLoad(`${o.src}:${o.ref}`, () => (o.src === 'md' ? mangadex.details(String(o.ref)) : anilist.details(Number(o.ref))));
+  const more = useLoad(`${o.src}:${o.ref}`, () => loadDetails(o));
   const ex = o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
 
   const add = async () => {
     setAdding(true);
-    const n = addSeries({ title: o.title, cover: o.cover, md: o.src === 'md' ? String(o.ref) : null, al: o.src === 'al' ? o.ref : null, links: o.links || [] });
+    const n = addSeries({
+      title: o.title,
+      cover: o.cover,
+      md: o.src === 'md' ? String(o.ref) : null,
+      al: o.src === 'al' ? o.ref : (o.al ?? null),
+      links: o.links || [],
+    });
     let msg = 'Added to My Series';
     if (o.src === 'al') {
       try {
@@ -55,7 +61,12 @@ export function Details({ o }: { o: SearchResult }) {
   const readChapter = async (c: Chapter) => read((ex ?? (await add())).id, c);
 
   const d = more?.state === 'done' ? more.value : null;
-  const line = d && [d.status, d.year, d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`];
+  const line = d && [
+    d.status,
+    d.year,
+    d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`,
+    d.score && `★ ${d.score}% on AniList`,
+  ];
   const long = o.desc.length > 240;
 
   let chapters: ReactNode = null;
@@ -121,7 +132,7 @@ export function Details({ o }: { o: SearchResult }) {
       {chapters}
       {o.src === 'md' && (
         <p className="credit">
-          Chapters and data from MangaDex. Scanlation groups are credited on each chapter.{' '}
+          Chapters and data from MangaDex{o.al ? ', with the score and more tags from AniList' : ''}. Scanlation groups are credited on each chapter.{' '}
           <a href={mangadex.mangaUrl(String(o.ref))} target="_blank" rel="noopener noreferrer">
             View on MangaDex ↗
           </a>
@@ -129,6 +140,17 @@ export function Details({ o }: { o: SearchResult }) {
       )}
     </div>
   );
+}
+
+/** More about a result. On MangaDex, AniList's score and tags are added when MangaDex links the series to AniList. */
+async function loadDetails(o: SearchResult): Promise<SeriesDetails> {
+  if (o.src === 'al') return anilist.details(Number(o.ref));
+  const [md, al] = await Promise.all([
+    mangadex.details(String(o.ref)),
+    // AniList only adds to MangaDex's details, so the page shows without it when AniList fails.
+    o.al ? anilist.details(o.al).catch(() => null) : null,
+  ]);
+  return al ? anilist.addDetails(md, al) : md;
 }
 
 /** A row of popular MangaDex series in this series' first MangaDex genre, each opening its own details. Nothing shows when it has no MangaDex genre. */

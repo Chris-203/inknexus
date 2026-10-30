@@ -114,3 +114,46 @@ describe('preloadBrowse', () => {
     expect(r.savedResults(r.browseKey(null, 'latest'))).toEqual([hit('A')]);
   });
 });
+
+describe('AniList info', () => {
+  /** MangaDex answers with `manga`; AniList answers with `al`, or fails when it is null. Returns the module and the AniList ids asked for. */
+  async function withSources(manga: unknown[], al: unknown[] | null) {
+    const ids: unknown[] = [];
+    const r = await start(storage([]));
+    vi.stubGlobal('fetch', async (u: string, init?: RequestInit) => {
+      if (!u.includes('anilist')) return new Response(JSON.stringify({ data: manga }));
+      ids.push(JSON.parse(String(init!.body)).variables.ids);
+      return al ? new Response(JSON.stringify({ data: { Page: { media: al } } })) : new Response('', { status: 500 });
+    });
+    return { ...r, ids };
+  }
+  const manga = [
+    { id: 'm1', attributes: { title: { en: 'Linked' }, description: { en: 'md text' }, links: { al: '7' } } },
+    { id: 'm2', attributes: { title: { en: 'Unlinked' }, description: { en: 'other' } } },
+  ];
+
+  it('adds the score and synopsis to the series MangaDex links to AniList, in one request, and saves them', async () => {
+    const r = await withSources(manga, [{ id: 7, averageScore: 81, description: 'al text' }]);
+    const res = await r.loadSearch('X');
+    expect(r.ids).toEqual([[7]]);
+    expect(res).toMatchObject([
+      { ref: 'm1', score: 81, desc: 'al text' },
+      { ref: 'm2', desc: 'other' },
+    ]);
+    expect(res[1]!.score).toBeUndefined();
+    expect(r.savedResults(r.searchKey('x'))).toEqual(res);
+  });
+
+  it('keeps the MangaDex synopsis when AniList has none, and the results as they are when AniList fails', async () => {
+    const r = await withSources(manga, [{ id: 7, averageScore: null, description: '' }]);
+    expect((await r.loadBrowse(null, 'follows'))[0]).toMatchObject({ desc: 'md text', score: undefined });
+    const failing = await withSources(manga, null);
+    expect((await failing.loadSearch('y')).map((o) => o.desc)).toEqual(['md text', 'other']);
+  });
+
+  it('asks AniList nothing when no series links to it', async () => {
+    const r = await withSources([manga[1]], []);
+    await r.loadSearch('z');
+    expect(r.ids).toEqual([]);
+  });
+});

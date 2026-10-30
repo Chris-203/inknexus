@@ -4,9 +4,9 @@ import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ResultRow } from '../components/ResultRow';
 import { why } from '../lib/api';
 import { isWebUrl } from '../lib/links';
-import { browseKey, isFresh, loadBrowse, savedResults, saveResults, searchKey } from '../lib/searchResults';
+import { browseKey, isFresh, loadBrowse, loadSearch, savedResults, searchKey } from '../lib/searchResults';
+import type { SearchResult } from '../lib/types';
 import * as mangadex from '../sources/mangadex';
-import * as anilist from '../sources/anilist';
 
 const SORTS: [mangadex.BrowseSort, string][] = [
   ['follows', 'Most followed'],
@@ -28,31 +28,30 @@ export function Search({ on }: { on: boolean }) {
   const browsing = !search.q;
   const pasted = isWebUrl(q.trim());
 
-  /** Show the results saved under `key` at once, or "Loading…" without them; true when they are fresh enough to keep. */
-  const showSaved = (key: string, next: Omit<SearchState, 'res'>) => {
+  /** Show the results saved under `key` at once, or "Loading…" without them, then load them unless they are fresh enough to keep. */
+  const show = async (key: string, next: Omit<SearchState, 'res'>, load: () => Promise<SearchResult[]>) => {
+    const id = ++seq.current;
     const saved = savedResults(key);
     setSearch({ ...next, res: saved ?? null });
     setStatus(saved ? 'idle' : 'busy');
-    return !!saved && isFresh(key);
-  };
-
-  const browse = async (tag: string | null, sort: mangadex.BrowseSort) => {
-    const id = ++seq.current;
-    const key = browseKey(tag, sort);
-    setQ('');
-    if (showSaved(key, { q: '', tag, sort })) return;
+    if (saved && isFresh(key)) return;
     try {
-      const res = await loadBrowse(tag, sort);
+      const res = await load();
       if (id !== seq.current) return;
-      setSearch({ q: '', res, tag, sort });
+      setSearch({ ...next, res });
       setStatus('idle');
     } catch (e) {
       if (id !== seq.current) return;
       // A failed reload keeps the results already shown.
-      if (savedResults(key)) return toast(`Could not reload MangaDex (${why(e)}). Showing results from earlier.`);
+      if (saved) return toast(`Could not reload MangaDex (${why(e)}). Showing results from earlier.`);
       setError(why(e));
       setStatus('failed');
     }
+  };
+
+  const browse = (tag: string | null, sort: mangadex.BrowseSort) => {
+    setQ('');
+    return show(browseKey(tag, sort), { q: '', tag, sort }, () => loadBrowse(tag, sort));
   };
 
   useEffect(() => {
@@ -69,26 +68,13 @@ export function Search({ on }: { on: boolean }) {
     return () => removeEventListener('scroll', keep);
   }, [on]);
 
-  const onSearch = async (e: FormEvent) => {
+  const onSearch = (e: FormEvent) => {
     e.preventDefault();
     const term = q.trim();
     if (!term) return;
     // A link is not a title: it opens Add by link instead of a search.
     if (pasted) return setLinkOpen(true);
-    const id = ++seq.current;
-    const key = searchKey(term);
-    if (showSaved(key, { ...search, q: term })) return;
-    const [md, al] = await Promise.allSettled([mangadex.search(term), anilist.search(term)]);
-    if (id !== seq.current) return;
-    if (md.status === 'rejected' && al.status === 'rejected')
-      return savedResults(key) ? toast('Could not reach MangaDex or AniList. Showing results from earlier.') : setStatus('failed');
-    const res = [...(md.status === 'fulfilled' ? md.value : []), ...(al.status === 'fulfilled' ? al.value : [])];
-    // Only complete results are saved, so a saved search never stands in for a source that failed.
-    if (md.status === 'fulfilled' && al.status === 'fulfilled') saveResults(key, res);
-    setStatus('idle');
-    setSearch({ ...search, q: term, res });
-    if (md.status === 'rejected') toast(`MangaDex failed (${why(md.reason)}). Showing AniList only.`);
-    if (al.status === 'rejected') toast(`AniList failed (${why(al.reason)}). Showing MangaDex only.`);
+    void show(searchKey(term), { ...search, q: term }, () => loadSearch(term));
   };
 
   let results;
@@ -98,7 +84,7 @@ export function Search({ on }: { on: boolean }) {
       <p className="hint">
         {browsing
           ? `Could not load MangaDex (${error}). Tap a genre to try again, or search by title.`
-          : 'Could not reach MangaDex or AniList. Check your connection and try again, or add the series by link.'}
+          : `Could not search MangaDex (${error}). Check your connection and try again, or add the series by link.`}
       </p>
     );
   else if (!search.res) results = null;
@@ -111,7 +97,12 @@ export function Search({ on }: { on: boolean }) {
         o={o}
         extra={
           <>
-            <span className="tag">{o.src === 'md' ? 'MangaDex' : 'AniList'}</span>
+            {o.status && <span className="tag">{o.status}</span>}
+            {o.score && (
+              <span className="tag" role="img" aria-label={`AniList score ${o.score}%`}>
+                ★ {o.score}%
+              </span>
+            )}
             <p>{o.desc}</p>
           </>
         }
