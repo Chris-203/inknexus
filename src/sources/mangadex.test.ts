@@ -1,4 +1,18 @@
-import { browse, chapters, details, GENRES, latest, matchTitle, mdMatch, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
+import {
+  browse,
+  chapters,
+  details,
+  GENRES,
+  latest,
+  matchTitle,
+  mdMatches,
+  pages,
+  PAGES_TTL,
+  search,
+  toChapterList,
+  toDetails,
+  type MdChapter,
+} from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -197,17 +211,37 @@ describe('pages cache', () => {
   });
 });
 
-describe('mdMatch', () => {
+describe('matchTitle', () => {
   const m = (id: string, en: string, alt: string[] = []) => ({ id, attributes: { title: { en }, altTitles: alt.map((n) => ({ en: n })) } });
-  it('takes the series with the title among any of its names, comparing letters and digits only', () => {
-    expect(mdMatch('A Story', [m('m1', 'A Story 2'), m('m2', 'Other', ['a story!'])])?.ref).toBe('m2');
+  it('mdMatches takes the series with the title among any of their names, comparing letters and digits only', () => {
+    expect(mdMatches('A Story', [m('m1', 'A Story 2'), m('m2', 'Other', ['a story!'])]).map((x) => x.id)).toEqual(['m2']);
   });
-  it('is null when no name is exactly the title', () => {
-    expect(mdMatch('A Story', [m('m1', 'A Story Returns')])).toBeNull();
+  it('mdMatches is empty when no name is exactly the title', () => {
+    expect(mdMatches('A Story', [m('m1', 'A Story Returns')])).toEqual([]);
+    expect(mdMatches('!!', [m('m1', '?')])).toEqual([]);
   });
-  it('matchTitle searches by title with covers', async () => {
+  it('searches by title, most relevant first, with covers', async () => {
     const seen = relay(() => ({ data: [m('m1', 'A Story')] }));
     expect((await matchTitle('A Story'))?.ref).toBe('m1');
-    expect(seen[0]).toContain('/manga?title=A%20Story&limit=5&includes[]=cover_art');
+    expect(seen).toEqual([expect.stringContaining('/manga?title=A%20Story&order[relevance]=desc&limit=10&includes[]=cover_art')]);
+  });
+  it('is null without asking for follows when nothing matches', async () => {
+    const seen = relay(() => ({ data: [m('m1', 'A Story Returns')] }));
+    expect(await matchTitle('A Story')).toBeNull();
+    expect(seen).toHaveLength(1);
+  });
+  it('takes the most followed of several entries with the name, such as a series and its promo', async () => {
+    const seen = relay((u) =>
+      u.includes('/statistics/')
+        ? { statistics: { promo: { follows: 3962 }, main: { follows: 22063 } } }
+        : { data: [m('promo', 'A Story (Promo)', ['A Story']), m('main', 'Jaeanggeum', ['A Story']), m('other', 'Another')] },
+    );
+    const r = await matchTitle('A Story');
+    expect(r).toMatchObject({ ref: 'main', title: 'Jaeanggeum' });
+    expect(seen[1]).toContain('/statistics/manga?manga[]=promo&manga[]=main');
+  });
+  it('keeps the most relevant entry when the follows tie or are missing', async () => {
+    relay((u) => (u.includes('/statistics/') ? { statistics: {} } : { data: [m('first', 'A Story'), m('second', 'A Story')] }));
+    expect((await matchTitle('A Story'))?.ref).toBe('first');
   });
 });

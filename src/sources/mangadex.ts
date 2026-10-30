@@ -92,16 +92,28 @@ async function mangaList(q: string): Promise<SearchResult[]> {
   return (await mangas(q, 20)).map(toResult);
 }
 
-/** The series among `list` named exactly `title` (any of its names, comparing letters and digits only), or null. */
-export function mdMatch(title: string, list: MdManga[]): SearchResult | null {
+/** Every series among `list` named exactly `title` (any of its names, comparing letters and digits only). */
+export function mdMatches(title: string, list: MdManga[]): MdManga[] {
   const t = norm(title);
-  const m = t && list.find((m) => mdNames(m.attributes).some((n) => norm(n.n) === t));
-  return m ? toResult(m) : null;
+  return t ? list.filter((m) => mdNames(m.attributes).some((n) => norm(n.n) === t)) : [];
 }
 
-/** The MangaDex series with exactly the name `title`, or null. */
+/** How many people follow each of the series `ids` on MangaDex. */
+async function follows(ids: string[]): Promise<Record<string, number>> {
+  const r = await api(`${MD}/statistics/manga?${ids.map((id) => `manga[]=${id}`).join('&')}`);
+  const j: { statistics?: Record<string, { follows?: number }> } = await r.json();
+  return Object.fromEntries(ids.map((id) => [id, j.statistics?.[id]?.follows ?? 0]));
+}
+
+/**
+ * The MangaDex series with exactly the name `title`, or null. MangaDex often has several entries with the same name,
+ * such as a series and its promo or book version, so when more than one matches the most followed one wins.
+ */
 export async function matchTitle(title: string): Promise<SearchResult | null> {
-  return mdMatch(title, await mangas(`title=${encodeURIComponent(title)}`, 5));
+  const found = mdMatches(title, await mangas(`title=${encodeURIComponent(title)}&order[relevance]=desc`, 10));
+  if (found.length < 2) return found[0] ? toResult(found[0]) : null;
+  const f = await follows(found.map((m) => m.id));
+  return toResult(found.reduce((a, b) => (f[b.id]! > f[a.id]! ? b : a)));
 }
 
 export function search(q: string): Promise<SearchResult[]> {
