@@ -55,6 +55,9 @@ export function Details({ o }: { o: SearchResult }) {
   const readChapter = async (c: Chapter) => read((ex ?? (await add())).id, c);
 
   const d = more?.state === 'done' ? more.value : null;
+  // MangaDex links most series to AniList, which has the trailer of the series or its anime.
+  const al = o.src === 'al' ? Number(o.ref) : d?.al;
+  const trailer = useLoad(al ? `trailer:${al}` : null, () => anilist.trailer(al!));
   const line = d && [d.status, d.year, d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`];
   const long = o.desc.length > 240;
 
@@ -116,11 +119,12 @@ export function Details({ o }: { o: SearchResult }) {
             Add to My Series
           </button>
         )}
-        {d?.trailer && (
-          <a className="btn ghost" href={d.trailer} target="_blank" rel="noopener noreferrer">
+        {trailer?.state === 'done' && trailer.value && (
+          <a className="btn ghost" href={trailer.value} target="_blank" rel="noopener noreferrer">
             Watch the trailer ↗
           </a>
         )}
+        {trailer?.state === 'error' && <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>}
       </div>
       {d && <MoreInGenre o={o} tags={d.tags} />}
       {chapters}

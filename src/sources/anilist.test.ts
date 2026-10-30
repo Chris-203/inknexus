@@ -1,4 +1,4 @@
-import { alMatch, details, matchTitles, search, toDetails, trailerUrl, type AlMedia } from './anilist';
+import { alMatch, details, matchTitles, search, toDetails, trailer, trailerUrl, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -32,10 +32,10 @@ describe('toDetails', () => {
         ],
       },
     });
-    expect(d).toEqual({ tags: ['Action', 'Fantasy', 'Dungeon'], status: 'Completed', year: 2018, chapters: 120, authors: ['Pen Name'], trailer: '' });
+    expect(d).toEqual({ tags: ['Action', 'Fantasy', 'Dungeon'], status: 'Completed', year: 2018, chapters: 120, authors: ['Pen Name'] });
   });
   it('gives null for an ongoing series with no chapter count and an empty status when it is missing', () => {
-    expect(toDetails({ status: null, chapters: null })).toEqual({ tags: [], status: '', year: null, chapters: null, authors: [], trailer: '' });
+    expect(toDetails({ status: null, chapters: null })).toEqual({ tags: [], status: '', year: null, chapters: null, authors: [] });
   });
 });
 
@@ -64,6 +64,11 @@ describe('AniList requests', () => {
   it('details asks by id and says when the series is gone', async () => {
     const sent = answer({ Media: null });
     await expect(details(7)).rejects.toThrow('AniList no longer has this series');
+    expect(sent).toEqual([{ id: 7 }]);
+  });
+  it('trailer asks by id and is empty when AniList no longer has the series', async () => {
+    const sent = answer({ Media: null });
+    expect(await trailer(7)).toBe('');
     expect(sent).toEqual([{ id: 7 }]);
   });
   it('search still says what failed on a rate limit', async () => {
