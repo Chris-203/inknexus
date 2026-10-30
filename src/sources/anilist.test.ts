@@ -136,9 +136,11 @@ describe('AniList requests', () => {
       [2, { score: null, desc: '' }],
     ]);
   });
-  it('trending gives the list AniList sends and says when it sends none', async () => {
-    answer({ Page: { media: [{ id: 1, title: { romaji: 'A' } }] } });
+  it('trending gives the list AniList sends, from one country when asked, and says when it sends none', async () => {
+    const sent = answer({ Page: { media: [{ id: 1, title: { romaji: 'A' } }] } });
     expect(await trending()).toEqual([{ id: 1, title: { romaji: 'A' } }]);
+    await trending('KR');
+    expect(sent).toEqual([{}, { c: 'KR' }]);
     answer({ Page: {} });
     await expect(trending()).rejects.toThrow('unexpected answer');
   });

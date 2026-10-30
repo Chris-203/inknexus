@@ -2,7 +2,7 @@ import { saveData } from './preload';
 import { isObj, readJson, writeJson } from './storage';
 import type { SearchResult } from './types';
 import { alNames, info, trending } from '../sources/anilist';
-import { browse, findAniList, GENRES, search, type BrowseSort } from '../sources/mangadex';
+import { browse, findAniList, GENRES, search, type BrowseSort, type Origin } from '../sources/mangadex';
 
 /**
  * Search and browse results kept on the device under their own key, never in the library or backups, so the Search tab
@@ -36,8 +36,13 @@ const pending = new Map<string, Promise<SearchResult[]>>();
 /** A Browse order: MangaDex's, or what is trending on AniList. */
 export type Sort = BrowseSort | 'trending';
 
-export function browseKey(tag: string | null, sort: Sort): string {
-  return `browse:${tag ?? ''}:${sort}`;
+/** Browse filters beyond genre and order. */
+export interface Filter {
+  origin?: Origin;
+}
+
+export function browseKey(tag: string | null, sort: Sort, f: Filter = {}): string {
+  return `browse:${tag ?? ''}:${sort}${f.origin ? `:${f.origin}` : ''}`;
 }
 
 export function searchKey(term: string): string {
@@ -103,8 +108,8 @@ function load(key: string, get: () => Promise<SearchResult[]>): Promise<SearchRe
 const AT_ONCE = 4;
 
 /** What is trending on AniList, in its order, as the MangaDex series for each that MangaDex has. */
-async function trendingOnMangaDex(): Promise<SearchResult[]> {
-  const media = await trending();
+async function trendingOnMangaDex(origin?: Origin): Promise<SearchResult[]> {
+  const media = await trending(origin);
   const found: SearchResult[] = [];
   for (let i = 0; i < media.length; i += AT_ONCE)
     for (const o of await Promise.all(media.slice(i, i + AT_ONCE).map((m) => findAniList(m.id, alNames(m)))))
@@ -112,9 +117,9 @@ async function trendingOnMangaDex(): Promise<SearchResult[]> {
   return found;
 }
 
-/** Load the browse results for a genre and order and save them. Trending is for every genre. */
-export function loadBrowse(tag: string | null, sort: Sort): Promise<SearchResult[]> {
-  return load(browseKey(tag, sort), () => (sort === 'trending' ? trendingOnMangaDex() : browse(tag, sort)));
+/** Load the browse results for a genre, order and filters and save them. Trending is for every genre. */
+export function loadBrowse(tag: string | null, sort: Sort, f: Filter = {}): Promise<SearchResult[]> {
+  return load(browseKey(tag, sort, f), () => (sort === 'trending' ? trendingOnMangaDex(f.origin) : browse(tag, sort, f.origin)));
 }
 
 /** Search MangaDex by title and save the results. */

@@ -54,9 +54,9 @@ export function Search({ on }: { on: boolean }) {
     }
   };
 
-  const browse = (tag: string | null, sort: Sort) => {
+  const browse = (tag: string | null, sort: Sort, filter = search.filter) => {
     setQ('');
-    return show(browseKey(tag, sort), { q: '', tag, sort }, () => loadBrowse(tag, sort));
+    return show(browseKey(tag, sort, filter), { q: '', tag, sort, filter }, () => loadBrowse(tag, sort, filter));
   };
 
   useEffect(() => {
@@ -159,6 +159,23 @@ export function Search({ on }: { on: boolean }) {
               {name}
             </button>
           ))}
+        </div>
+      )}
+      {browsing && (
+        <div className="chips" role="group" aria-label="Type">
+          {mangadex.ORIGINS.map((o) => {
+            const on = search.filter.origin === o.id;
+            return (
+              <button
+                key={o.id}
+                className={`chip${on ? ' on' : ''}`}
+                aria-pressed={on}
+                onClick={() => void browse(search.tag, search.sort, { ...search.filter, origin: on ? undefined : o.id })}
+              >
+                {o.name}
+              </button>
+            );
+          })}
         </div>
       )}
       {/* Trending is for every genre, so picking a genre from it shows that genre's most followed. */}

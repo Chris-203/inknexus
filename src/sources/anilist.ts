@@ -152,11 +152,11 @@ export async function info(ids: number[]): Promise<Map<number, { score: number |
   return new Map(media.map((m) => [m.id, { score: m.averageScore || null, desc: plain(m.description) }]));
 }
 
-/** The 20 series trending on AniList this week, safe for work, with their names. */
-export async function trending(): Promise<AlMedia[]> {
+/** The 20 series trending on AniList this week, safe for work, with their names; only those from `country` (such as 'KR') when given. */
+export async function trending(country?: string): Promise<AlMedia[]> {
   const data = await query<{ Page?: { media?: AlMedia[] } }>(
-    `{Page(perPage:20){media(type:MANGA,sort:TRENDING_DESC,isAdult:false){id title{romaji english} synonyms}}}`,
-    {},
+    `query($c:CountryCode){Page(perPage:20){media(type:MANGA,sort:TRENDING_DESC,isAdult:false,countryOfOrigin:$c){id title{romaji english} synonyms}}}`,
+    { c: country },
   );
   const media = data.Page?.media;
   if (!media) throw new Error('AniList sent an unexpected answer, try again later');

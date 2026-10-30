@@ -194,6 +194,13 @@ describe('MangaDex requests', () => {
     expect(seen[0]).toContain('includes[]=cover_art');
     expect(seen[0]).toContain('contentRating[]=safe');
   });
+  it('browse from one country asks for its original languages', async () => {
+    const seen = relay(() => ({ data: [] }));
+    await browse(null, 'follows', 'CN');
+    expect(seen[0]).toContain('&originalLanguage[]=zh&originalLanguage[]=zh-hk');
+    await browse(null, 'follows');
+    expect(seen[1]).not.toContain('originalLanguage');
+  });
   it('browse with no genre and latest upload first leaves out the tag filter', async () => {
     const seen = relay(() => ({ data: [] }));
     await browse(null, 'latest');
