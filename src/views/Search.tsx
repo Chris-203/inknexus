@@ -4,13 +4,14 @@ import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ResultRow } from '../components/ResultRow';
 import { why } from '../lib/api';
 import { isWebUrl } from '../lib/links';
-import { browseKey, isFresh, loadBrowse, loadSearch, savedResults, searchKey } from '../lib/searchResults';
+import { browseKey, isFresh, loadBrowse, loadSearch, savedResults, searchKey, type Sort } from '../lib/searchResults';
 import type { SearchResult } from '../lib/types';
 import * as mangadex from '../sources/mangadex';
 
-const SORTS: [mangadex.BrowseSort, string][] = [
+const SORTS: [Sort, string][] = [
   ['follows', 'Most followed'],
   ['latest', 'Latest upload'],
+  ['trending', 'Trending'],
 ];
 
 /** Where Browse was scrolled to, so coming back from a series' details lands on the same spot. */
@@ -49,7 +50,7 @@ export function Search({ on }: { on: boolean }) {
     }
   };
 
-  const browse = (tag: string | null, sort: mangadex.BrowseSort) => {
+  const browse = (tag: string | null, sort: Sort) => {
     setQ('');
     return show(browseKey(tag, sort), { q: '', tag, sort }, () => loadBrowse(tag, sort));
   };
@@ -150,17 +151,23 @@ export function Search({ on }: { on: boolean }) {
       {browsing && (
         <div className="seg" role="group" aria-label="Sort by">
           {SORTS.map(([sort, name]) => (
-            <button key={sort} aria-pressed={search.sort === sort} onClick={() => void browse(search.tag, sort)}>
+            <button key={sort} aria-pressed={search.sort === sort} onClick={() => void browse(sort === 'trending' ? null : search.tag, sort)}>
               {name}
             </button>
           ))}
         </div>
       )}
+      {/* Trending is for every genre, so picking a genre from it shows that genre's most followed. */}
       <div className="chips" role="group" aria-label="Genre">
         {[{ id: null, name: 'All' }, ...mangadex.GENRES].map((g) => {
           const on = browsing && search.tag === g.id;
           return (
-            <button key={g.name} className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => void browse(g.id, search.sort)}>
+            <button
+              key={g.name}
+              className={`chip${on ? ' on' : ''}`}
+              aria-pressed={on}
+              onClick={() => void browse(g.id, g.id && search.sort === 'trending' ? 'follows' : search.sort)}
+            >
               {g.name}
             </button>
           );

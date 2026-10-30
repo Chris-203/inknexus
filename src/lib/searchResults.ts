@@ -1,8 +1,8 @@
 import { saveData } from './preload';
 import { isObj, readJson, writeJson } from './storage';
 import type { SearchResult } from './types';
-import { info } from '../sources/anilist';
-import { browse, GENRES, search, type BrowseSort } from '../sources/mangadex';
+import { alNames, info, trending } from '../sources/anilist';
+import { browse, findAniList, GENRES, search, type BrowseSort } from '../sources/mangadex';
 
 /**
  * Search and browse results kept on the device under their own key, never in the library or backups, so the Search tab
@@ -33,7 +33,10 @@ function loadSaved(): Map<string, Entry> {
 const cache = loadSaved();
 const pending = new Map<string, Promise<SearchResult[]>>();
 
-export function browseKey(tag: string | null, sort: BrowseSort): string {
+/** A Browse order: MangaDex's, or what is trending on AniList. */
+export type Sort = BrowseSort | 'trending';
+
+export function browseKey(tag: string | null, sort: Sort): string {
   return `browse:${tag ?? ''}:${sort}`;
 }
 
@@ -96,9 +99,22 @@ function load(key: string, get: () => Promise<SearchResult[]>): Promise<SearchRe
   return p;
 }
 
-/** Load the browse results for a genre and order and save them. */
-export function loadBrowse(tag: string | null, sort: BrowseSort): Promise<SearchResult[]> {
-  return load(browseKey(tag, sort), () => browse(tag, sort));
+/** How many MangaDex lookups run at once for Trending, to stay well under MangaDex's rate limit. */
+const AT_ONCE = 4;
+
+/** What is trending on AniList, in its order, as the MangaDex series for each that MangaDex has. */
+async function trendingOnMangaDex(): Promise<SearchResult[]> {
+  const media = await trending();
+  const found: SearchResult[] = [];
+  for (let i = 0; i < media.length; i += AT_ONCE)
+    for (const o of await Promise.all(media.slice(i, i + AT_ONCE).map((m) => findAniList(m.id, alNames(m)))))
+      if (o && !found.some((k) => k.ref === o.ref)) found.push(o);
+  return found;
+}
+
+/** Load the browse results for a genre and order and save them. Trending is for every genre. */
+export function loadBrowse(tag: string | null, sort: Sort): Promise<SearchResult[]> {
+  return load(browseKey(tag, sort), () => (sort === 'trending' ? trendingOnMangaDex() : browse(tag, sort)));
 }
 
 /** Search MangaDex by title and save the results. */
@@ -108,10 +124,11 @@ export function loadSearch(term: string): Promise<SearchResult[]> {
 
 /**
  * Load the browse results the Search tab opens on unless they are fresh, then every other genre and order missing from
- * the device, one at a time, so switching between them never waits. None on slow or data-saving connections. The first
+ * the device, one at a time, so switching between them never waits. Trending, which takes a MangaDex lookup per series,
+ * loads only when opened. None on slow or data-saving connections. The first
  * failure stops the queue and is left for the Search tab, which loads and reports it again.
  */
-export function preloadBrowse(tag: string | null, sort: BrowseSort) {
+export function preloadBrowse(tag: string | null, sort: Sort) {
   if (saveData()) return;
   const all = [null, ...GENRES.map((g) => g.id)].flatMap((t) => (['follows', 'latest'] as const).map((s): [string | null, BrowseSort] => [t, s]));
   void (async () => {

@@ -71,10 +71,15 @@ export async function search(q: string): Promise<SearchResult[]> {
   return media.map(toResult);
 }
 
+/** Every name AniList has for a series: its English and romaji titles and its synonyms. */
+export function alNames(m: AlMedia): string[] {
+  return [m.title.english, m.title.romaji, ...(m.synonyms || [])].filter((n): n is string => !!n);
+}
+
 /** The series among `media` named exactly `title` (its English or romaji title or a synonym, comparing letters and digits only), or null. */
 export function alMatch(title: string, media: AlMedia[]): SearchResult | null {
   const t = norm(title);
-  const m = t && media.find((m) => [m.title.english, m.title.romaji, ...(m.synonyms || [])].some((n) => norm(n) === t));
+  const m = t && media.find((m) => alNames(m).some((n) => norm(n) === t));
   return m ? toResult(m) : null;
 }
 
@@ -97,6 +102,17 @@ export async function info(ids: number[]): Promise<Map<number, { score: number |
   const media = data.Page?.media;
   if (!media) throw new Error('AniList sent an unexpected answer, try again later');
   return new Map(media.map((m) => [m.id, { score: m.averageScore || null, desc: plain(m.description) }]));
+}
+
+/** The 20 series trending on AniList this week, safe for work, with their names. */
+export async function trending(): Promise<AlMedia[]> {
+  const data = await query<{ Page?: { media?: AlMedia[] } }>(
+    `{Page(perPage:20){media(type:MANGA,sort:TRENDING_DESC,isAdult:false){id title{romaji english} synonyms}}}`,
+    {},
+  );
+  const media = data.Page?.media;
+  if (!media) throw new Error('AniList sent an unexpected answer, try again later');
+  return media;
 }
 
 const STATUS: Record<string, string> = {

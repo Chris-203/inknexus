@@ -1,4 +1,19 @@
-import { browse, chapters, details, GENRES, latest, matchTitle, mdMatch, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
+import {
+  browse,
+  chapters,
+  details,
+  findAniList,
+  GENRES,
+  latest,
+  matchTitle,
+  mdMatch,
+  pages,
+  PAGES_TTL,
+  search,
+  toChapterList,
+  toDetails,
+  type MdChapter,
+} from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -139,6 +154,21 @@ describe('MangaDex requests', () => {
       ],
     }));
     expect((await search('x')).map(({ al, status }) => ({ al, status }))).toEqual([{ al: 105398, status: 'Ongoing' }, {}, {}]);
+  });
+  it('findAniList looks up the first name among series with English chapters and takes the one linked to the AniList id', async () => {
+    const seen = relay(() => ({
+      data: [
+        { id: 'm1', attributes: { title: { en: 'Hero' }, links: { al: '5' } } },
+        { id: 'm2', attributes: { title: { en: 'Hero Again' }, links: { al: '7' } } },
+      ],
+    }));
+    expect((await findAniList(7, ['Hero']))?.ref).toBe('m2');
+    expect(seen[0]).toContain('title=Hero&availableTranslatedLanguage[]=en');
+  });
+  it('findAniList falls back to an exact name when no series links to the id, and gives null when none fits', async () => {
+    relay(() => ({ data: [{ id: 'm1', attributes: { title: { en: 'Other' }, altTitles: [{ ja: 'Hiro' }] } }] }));
+    expect((await findAniList(7, ['Hero', 'Hiro']))?.ref).toBe('m1');
+    expect(await findAniList(7, ['Hero'])).toBeNull();
   });
   it('browse asks for a genre with English chapters, most followed first', async () => {
     const seen = relay(() => ({ data: [] }));
