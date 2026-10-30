@@ -1,4 +1,5 @@
 import {
+  aniListId,
   browse,
   chapters,
   details,
@@ -97,7 +98,8 @@ describe('toDetails', () => {
     const d = toDetails({ id: 'm', attributes: { status: 'odd' } }, { volumes: [] as unknown as Record<string, never> });
     expect(d).toMatchObject({ status: '', year: null, chapters: null });
   });
-  it('keeps the AniList id MangaDex links, and null when it links none or a bad one', () => {
+  it('keeps the AniList id MangaDex links, and null when it links none, an empty array or a bad one', () => {
+    expect(toDetails({ id: 'm', attributes: { links: [] as unknown as Record<string, string> } }, {}).al).toBeNull();
     expect(toDetails({ id: 'm', attributes: { links: { al: '30013', mu: 'x' } } }, {}).al).toBe(30013);
     expect(toDetails({ id: 'm', attributes: { links: null } }, {}).al).toBeNull();
     expect(toDetails({ id: 'm', attributes: { links: { al: 'abc' } } }, {}).al).toBeNull();
@@ -105,6 +107,11 @@ describe('toDetails', () => {
 });
 
 describe('MangaDex requests', () => {
+  it('aniListId reads the AniList link of the series', async () => {
+    const seen = relay(() => ({ data: { id: 'm1', attributes: { links: { al: '42' } } } }));
+    expect(await aniListId('m1')).toBe(42);
+    expect(seen).toContain('https://api.mangadex.org/manga/m1');
+  });
   it('details asks for the series with its authors and its English chapter numbers', async () => {
     const seen = relay((u) =>
       u.includes('/aggregate') ? { volumes: { none: { chapters: { '3': { chapter: '3' } } } } } : { data: { id: 'm1', attributes: { status: 'ongoing' } } },

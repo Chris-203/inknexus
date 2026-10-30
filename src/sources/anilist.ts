@@ -1,6 +1,6 @@
 import { norm } from '../lib/format';
 import { isWebUrl } from '../lib/links';
-import type { Details, SearchResult } from '../lib/types';
+import type { Details, Ranking, SearchResult } from '../lib/types';
 
 export interface AlMedia {
   id: number;
@@ -18,6 +18,12 @@ export interface AlDetails {
   chapters?: number | null;
   startDate?: { year?: number | null };
   staff?: { edges?: { role: string; node: { name: { full: string } } }[] };
+}
+
+export interface AlRanking {
+  averageScore?: number | null;
+  popularity?: number | null;
+  rankings?: { rank: number; context: string; allTime?: boolean | null; year?: number | null }[];
 }
 
 interface AlTrailer {
@@ -147,6 +153,23 @@ export async function details(id: number): Promise<Details> {
   );
   if (!data.Media) throw new Error('AniList no longer has this series');
   return toDetails(data.Media);
+}
+
+/** A series' AniList score, popularity and rankings. AniList's context reads 'highest rated all time' for an all-time place but only 'highest rated' for a year's, so the year is added. */
+export function toRanking(m: AlRanking): Ranking {
+  const ranks = [...(m.rankings || [])]
+    .sort((a, b) => Number(!!b.allTime) - Number(!!a.allTime))
+    .map((r) => `#${r.rank} ${r.context.charAt(0).toUpperCase()}${r.context.slice(1)}${r.allTime || !r.year ? '' : ` of ${r.year}`}`);
+  return { score: m.averageScore || null, lists: m.popularity || 0, ranks };
+}
+
+export async function ranking(id: number): Promise<Ranking> {
+  const data = await query<{ Media?: AlRanking | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){averageScore popularity rankings{rank context allTime year}}}`,
+    { id },
+  );
+  if (!data.Media) throw new Error('AniList no longer has this series');
+  return toRanking(data.Media);
 }
 
 /** The trailer for the AniList series `id`, or null when it has none. */
