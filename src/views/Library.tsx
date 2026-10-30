@@ -259,44 +259,47 @@ export function Library() {
 
   return (
     <>
-      {picked ? (
-        <div className="rbar">
-          <button className="btn ghost sm" onClick={() => setPicked(null)}>
-            Cancel
-          </button>
-          <b>{picked.length ? `${picked.length} selected` : 'Tap series to select'}</b>
-          <button className="btn ghost sm" disabled={!picked.length} aria-expanded={moveOpen} onClick={() => setMoveOpen(true)}>
-            Move
-          </button>
-          <button className="btn danger sm" disabled={!picked.length} onClick={() => remove(picked)}>
-            Remove
-          </button>
+      {/* Kept in view while the shelf under it scrolls */}
+      <div className="lhead">
+        {picked ? (
+          <div className="rbar">
+            <button className="btn ghost sm" onClick={() => setPicked(null)}>
+              Cancel
+            </button>
+            <b>{picked.length ? `${picked.length} selected` : 'Tap series to select'}</b>
+            <button className="btn ghost sm" disabled={!picked.length} aria-expanded={moveOpen} onClick={() => setMoveOpen(true)}>
+              Move
+            </button>
+            <button className="btn danger sm" disabled={!picked.length} onClick={() => remove(picked)}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <header>
+            <h1>My Series</h1>
+            {shelf !== 'downloads' && (
+              <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
+                {/* a trash can: lid with handle, then the can */}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M9.5 7V4.5h5V7" />
+                  <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+                </svg>
+              </button>
+            )}
+            {addLink}
+            {settings}
+          </header>
+        )}
+        <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
+          {tabs.map((q) => {
+            const on = q.k === shelf;
+            return (
+              <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
+                {q.n}
+              </button>
+            );
+          })}
         </div>
-      ) : (
-        <header>
-          <h1>My Series</h1>
-          {shelf !== 'downloads' && (
-            <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
-              {/* a trash can: lid with handle, then the can */}
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 7h16M9.5 7V4.5h5V7" />
-                <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
-              </svg>
-            </button>
-          )}
-          {addLink}
-          {settings}
-        </header>
-      )}
-      <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
-        {tabs.map((q) => {
-          const on = q.k === shelf;
-          return (
-            <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
-              {q.n}
-            </button>
-          );
-        })}
       </div>
       {/* Every shelf side by side, so a swipe pulls the next one in beside this one */}
       <div ref={swipe} className="track" style={{ translate: `${-at * 100}%` }}>
