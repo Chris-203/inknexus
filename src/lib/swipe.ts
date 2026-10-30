@@ -34,9 +34,13 @@ export function swipeStarts(x: number, leaves: boolean): boolean {
   return !leaves || x < BACK_EDGE;
 }
 
-/** How far the page follows a finger `dx` px along: all the way, or a third of it where there is nothing to swipe to, so it gives and bounces back. */
-export function swipeFollow(dx: number, can: boolean): number {
-  return can ? dx : dx / 3;
+/**
+ * How far the page follows a finger `dx` px along: all the way, or a third of it where there is nothing to swipe to, so it gives and bounces back.
+ * A view that closes stays still the other way, as nothing is beside it.
+ */
+export function swipeFollow(dx: number, can: boolean, leaves = false): number {
+  if (can) return dx;
+  return leaves ? 0 : dx / 3;
 }
 
 /** The nearest element from `el` up that scrolls along `axis`. */
@@ -112,7 +116,7 @@ export function catchSwipes(): () => void {
     g.t = e.timeStamp;
     g.dx = dx;
     if (g.sw!.leaves) peek(true);
-    slide(g.sw!.el, swipeFollow(dx, g.sw!.can(dx > 0 ? 1 : -1)), 0);
+    slide(g.sw!.el, swipeFollow(dx, g.sw!.can(dx > 0 ? 1 : -1), g.sw!.leaves), 0);
   };
 
   const end = (e: TouchEvent) => {

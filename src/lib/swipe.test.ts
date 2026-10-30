@@ -30,6 +30,11 @@ describe('swipeFollow', () => {
     expect(swipeFollow(90, false)).toBe(30);
     expect(swipeFollow(-90, false)).toBe(-30);
   });
+
+  it('stays still on a view that closes, swiped the way with nothing beside it', () => {
+    expect(swipeFollow(-90, false, true)).toBe(0);
+    expect(swipeFollow(90, true, true)).toBe(90);
+  });
 });
 
 describe('swipeStarts', () => {
