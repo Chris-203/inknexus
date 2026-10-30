@@ -35,6 +35,24 @@ export interface Series {
   t: number;
   /** Shelf in My Series; Reading when not set. */
   shelf?: Shelf;
+  /** AniList ranking kept with the series, with the AniList id it is for and when it was loaded. */
+  info?: SavedRanking;
+}
+
+/** How a series stands on AniList. */
+export interface Ranking {
+  /** Average score out of 100, or null before enough people have scored it. */
+  score: number | null;
+  /** How many people have it on their AniList lists. */
+  lists: number;
+  /** Its places in AniList's rankings, such as '#12 Most popular all time', all-time ones first. */
+  ranks: string[];
+}
+
+export interface SavedRanking extends Ranking {
+  al: number;
+  /** When it was loaded, in ms. */
+  at: number;
 }
 
 export interface State {
@@ -62,6 +80,8 @@ export interface Details {
   /** On MangaDex, the numbered English chapters; on AniList, the count once the series has finished. */
   chapters: number | null;
   authors: string[];
+  /** MangaDex only: the series' AniList id, when MangaDex links it. */
+  al?: number | null;
 }
 
 export interface Chapter {

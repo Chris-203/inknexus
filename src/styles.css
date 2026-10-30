@@ -23,6 +23,10 @@ body.nonav{padding-bottom:0}
 body.info{padding-bottom:env(safe-area-inset-bottom,0px)}
 /* a view or shelf that a swipe moves sideways (lib/swipe.ts) never makes the page scroll sideways */
 #app{overflow-x:clip}
+/* while a swipe closes a view (body.peek), the tab it goes back to shows under it, scrolled to where it lands (--y), with its bottom bar */
+body.peek #app>.under{display:block;position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) - var(--y,0px))}
+body.peek #app>:not([hidden]){position:relative;z-index:6;min-height:100dvh;background:var(--bg);box-shadow:0 0 24px rgba(0,0,0,.4)}
+body.peek:has(#app>.under) #nav{display:flex}
 button,input{font:inherit;color:inherit}
 h1,h2{font-family:var(--head);font-weight:400;letter-spacing:.02em;margin:0}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:18px 12px 10px 16px}
@@ -140,8 +144,20 @@ details.more .pad{padding:0 12px 12px}
 .dtl{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:0 16px 16px}
 .dtl h2{font-size:var(--font-xl);line-height:1.1}
 .dtl .btn{align-self:stretch;margin-top:8px}
+.trailer{align-self:stretch;margin-top:8px}
+.trailer h3{font-size:var(--font-base);margin:0}
+.trailer .sub{margin:2px 0 0}
+.trailer iframe{display:block;width:100%;aspect-ratio:16/9;margin-top:8px;border:0;border-radius:var(--radius-md);background:var(--line)}
 .tags{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
 .tags li{font-size:var(--font-sm);color:var(--muted);border:1px solid var(--line);border-radius:var(--radius-full);padding:2px 10px}
+.ranks li{color:var(--accent);border-color:var(--accent);font-weight:700}
+/* More info: a chevron before the label that turns down when open */
+details.info{margin:8px 16px}
+.dtl details.info{margin:0;align-self:stretch}
+details.info summary{list-style:none;display:flex;align-items:center;gap:8px}
+details.info summary::-webkit-details-marker{display:none}
+details.info summary::before{content:'›';font-size:var(--font-lg);line-height:1;transition:transform .2s}
+details.info[open] summary::before{transform:rotate(90deg)}
 .about{margin:0;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .about.open{display:block}
 /* More in a genre: one row of covers that scrolls sideways */
@@ -346,4 +362,4 @@ html:has(#rcover) :is(.rtrack,#totop){visibility:hidden}
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,details.info summary::before{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out{animation-duration:1ms}}
