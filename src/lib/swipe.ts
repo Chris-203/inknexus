@@ -8,6 +8,7 @@ interface Swipe {
   el: HTMLElement;
   can: (dir: Dir) => boolean;
   go: (dir: Dir) => void;
+  aim: (dir: Dir) => void;
   leaves: boolean;
 }
 
@@ -139,6 +140,7 @@ export function catchSwipes(): () => void {
     if (!dir || !sw.can(dir)) return settle(sw, ms);
     // The element moves a whole width, which brings in what sits beside it.
     slide(sw.el, dir * w, ms);
+    sw.aim(dir);
     setTimeout(() => {
       if (sw.leaves) return sw.go(dir);
       // The element now shows what was beside it in its own place, in the same frame as it moves back.
@@ -162,14 +164,15 @@ export function catchSwipes(): () => void {
 /**
  * A ref for the element a sideways swipe moves. `can` says whether there is something that way; `go` goes there.
  * The element holds what is beside it, which `go` moves into its place, or with `leaves` it slides out, for a view that closes.
+ * `aim` is told where a swipe goes as the finger lets go, before `go` once the element has settled there.
  */
-export function useSwipe(can: (dir: Dir) => boolean, go: (dir: Dir) => void, leaves = false) {
-  const latest = useRef({ can, go });
-  latest.current = { can, go };
+export function useSwipe(can: (dir: Dir) => boolean, go: (dir: Dir) => void, leaves = false, aim?: (dir: Dir) => void) {
+  const latest = useRef({ can, go, aim });
+  latest.current = { can, go, aim };
   return useCallback(
     (el: HTMLElement | null) => {
       if (!el) return;
-      const sw: Swipe = { el, can: (dir) => latest.current.can(dir), go: (dir) => latest.current.go(dir), leaves };
+      const sw: Swipe = { el, can: (dir) => latest.current.can(dir), go: (dir) => latest.current.go(dir), aim: (dir) => latest.current.aim?.(dir), leaves };
       target = sw;
       return () => {
         if (target === sw) target = null;
