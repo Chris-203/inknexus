@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useApp } from '../context';
 import { chapterText, ChapterRows, savedCheck } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
+import { MoreInfo } from '../components/MoreInfo';
 import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
@@ -13,6 +14,7 @@ import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
 import { useOpenLink } from '../lib/openLink';
 import { pasteChapterLink } from '../lib/pasteLink';
+import { useRanking } from '../lib/ranking';
 import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
@@ -39,6 +41,7 @@ export function Series({ x }: { x: SeriesT }) {
   const cur = shownSource(x);
   // Loaded while another source is shown too, so switching to MangaDex shows its chapters at once.
   const chs = useChapters(x.mdh ? null : x.md);
+  const rank = useRanking(x);
 
   // Keep the field in step when the number changes elsewhere (− / +, paste).
   useEffect(() => setLastText(String(x.last || 0)), [x.last]);
@@ -141,6 +144,7 @@ export function Series({ x }: { x: SeriesT }) {
         </button>
       </div>
       {body}
+      <MoreInfo r={rank} />
       <div className="pad end">
         <button
           className="btn danger sm"

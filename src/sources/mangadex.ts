@@ -194,6 +194,11 @@ async function fetchPages(id: string): Promise<Page[]> {
   }));
 }
 
+/** The AniList id MangaDex links a series to, if any. */
+function alOf(m: MdManga): number | undefined {
+  return Number(m.attributes.links?.al) || undefined;
+}
+
 /** The tag groups a details screen shows, in this order; content warnings and the rest are left out. */
 const TAG_GROUPS = ['genre', 'format', 'theme'];
 const STATUS: Record<string, string> = { ongoing: 'Ongoing', completed: 'Completed', hiatus: 'On hiatus', cancelled: 'Cancelled' };
@@ -213,7 +218,7 @@ export function toDetails(m: MdManga, agg: MdAggregate): Details {
     year: a.year || null,
     chapters: new Set(nums.filter((n) => !isNaN(parseFloat(n)))).size || null,
     authors: [...new Set(authors)],
-    al: Number(a.links?.al) || undefined,
+    al: alOf(m),
   };
 }
 
@@ -224,6 +229,12 @@ export async function details(ref: string): Promise<Details> {
     api(`${MD}/manga/${ref}/aggregate?translatedLanguage[]=en`).then((r) => r.json() as Promise<MdAggregate>),
   ]);
   return toDetails(m.data, agg);
+}
+
+/** The AniList id MangaDex links a series to, or undefined when it has none. */
+export async function aniListId(ref: string): Promise<number | undefined> {
+  const j: { data: MdManga } = await (await api(`${MD}/manga/${ref}`)).json();
+  return alOf(j.data);
 }
 
 /** Every name MangaDex has for a series. */

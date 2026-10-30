@@ -1,4 +1,19 @@
-import { browse, chapters, details, GENRES, latest, matchTitle, mdMatch, pages, PAGES_TTL, search, toChapterList, toDetails, type MdChapter } from './mangadex';
+import {
+  aniListId,
+  browse,
+  chapters,
+  details,
+  GENRES,
+  latest,
+  matchTitle,
+  mdMatch,
+  pages,
+  PAGES_TTL,
+  search,
+  toChapterList,
+  toDetails,
+  type MdChapter,
+} from './mangadex';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -91,6 +106,11 @@ describe('toDetails', () => {
 });
 
 describe('MangaDex requests', () => {
+  it('aniListId reads the AniList link of the series', async () => {
+    const seen = relay(() => ({ data: { id: 'm1', attributes: { links: { al: '42' } } } }));
+    expect(await aniListId('m1')).toBe(42);
+    expect(seen).toContain('https://api.mangadex.org/manga/m1');
+  });
   it('details asks for the series with its authors and its English chapter numbers', async () => {
     const seen = relay((u) =>
       u.includes('/aggregate') ? { volumes: { none: { chapters: { '3': { chapter: '3' } } } } } : { data: { id: 'm1', attributes: { status: 'ongoing' } } },

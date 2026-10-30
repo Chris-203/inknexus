@@ -1,6 +1,6 @@
 import { norm } from '../lib/format';
 import { isWebUrl } from '../lib/links';
-import type { Details, SearchResult } from '../lib/types';
+import type { Details, Ranking, SearchResult } from '../lib/types';
 
 export interface AlMedia {
   id: number;
@@ -24,16 +24,6 @@ export interface AlRanking {
   averageScore?: number | null;
   popularity?: number | null;
   rankings?: { rank: number; context: string; allTime?: boolean | null; year?: number | null }[];
-}
-
-/** How a series stands on AniList. */
-export interface Ranking {
-  /** Average score out of 100, or null before enough people have scored it. */
-  score: number | null;
-  /** How many people have it on their AniList lists. */
-  lists: number;
-  /** Its places in AniList's rankings, such as '#12 Most popular all time', all-time ones first. */
-  ranks: string[];
 }
 
 /** Send a GraphQL query to AniList and return its `data`. */
