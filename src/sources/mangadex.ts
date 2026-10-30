@@ -1,5 +1,6 @@
 import { api, MD } from '../lib/api';
 import { norm } from '../lib/format';
+import { bestFits, fit, SURE, type MatchHint } from '../lib/match';
 import { mdNames, pickTitle, type Name } from '../lib/names';
 import type { Chapter, ChapterList, Details, Latest, Page, SearchResult } from '../lib/types';
 
@@ -125,11 +126,20 @@ async function follows(ids: string[]): Promise<Record<string, number>> {
 }
 
 /**
- * The MangaDex series with exactly the name `title`, or null. MangaDex often has several entries with the same name,
- * such as a series and its promo or book version, so when more than one matches the most followed one wins.
+ * The MangaDex series with exactly the name `title`, or null. With a hint from the Webtoon import, one that links the
+ * same Webtoon series or the AniList match counts whatever its name, and among several the best fit wins. MangaDex
+ * often has several entries with the same name, such as a series and its promo or book version, so when more than one
+ * fits as well the most followed one wins.
  */
-export async function matchTitle(title: string): Promise<SearchResult | null> {
-  const found = mdMatches(title, await mangas(`title=${encodeURIComponent(title)}&order[relevance]=desc`, 10));
+export async function matchTitle(title: string, h?: MatchHint): Promise<SearchResult | null> {
+  const list = await mangas(`title=${encodeURIComponent(title)}&order[relevance]=desc`, 10);
+  const named = mdMatches(title, list);
+  const score = (m: MdManga) =>
+    fit(h, { urls: Object.values(m.attributes.links || {}), tags: (m.attributes.tags || []).flatMap((t) => t.attributes.name.en || []), al: alOf(m) });
+  const found = bestFits(
+    list.filter((m) => named.includes(m) || score(m) >= SURE),
+    score,
+  );
   if (found.length < 2) return found[0] ? toResult(found[0]) : null;
   const f = await follows(found.map((m) => m.id));
   return toResult(found.reduce((a, b) => (f[b.id]! > f[a.id]! ? b : a)));

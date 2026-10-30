@@ -248,6 +248,18 @@ describe('importWebtoon', () => {
     expect(getState().lib[0]!.links.map((l) => l.label)).toEqual(['Webtoon']);
   });
 
+  it('tells apart series with the same name by the Webtoon link on AniList, then the AniList id on MangaDex', async () => {
+    const rebirth = (id: number, url: string) => ({ id, title: { english: 'Rebirth' }, externalLinks: [{ site: 'WEBTOON', url }] });
+    const md = (id: string, al: string) => ({ id, attributes: { title: { en: 'Rebirth' }, links: { al } } });
+    vi.stubGlobal('fetch', async (u: string) =>
+      u.includes('anilist')
+        ? new Response(JSON.stringify({ data: { m0: { media: [rebirth(8, viewer(2, 1)), rebirth(9, viewer(1, 1))] } } }))
+        : new Response(JSON.stringify({ data: [md('wrong', '8'), md('right', '9')] })),
+    );
+    await run(link('Rebirth'));
+    expect(getState().lib[0]).toMatchObject({ al: 9, md: 'right' });
+  });
+
   it('keeps the AniList matches and says what failed when MangaDex fails', async () => {
     stub({}, 429);
     const said = await run(link('Known'));

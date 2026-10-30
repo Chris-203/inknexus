@@ -51,16 +51,24 @@ export function Library() {
   };
   // A swipe to the left opens the shelf on the right of this one, and a swipe to the right the one on its left.
   const at = tabs.findIndex((q) => q.k === shelf);
+  // The shelf a swipe is settling on: its tab lights up as the finger lets go, not once the shelf has slid into place.
+  const [aim, setAim] = useState<LibraryTab | null>(null);
+  const lit = aim ?? shelf;
   const swipe = useSwipe(
     (dir) => !!tabs[at - dir],
-    (dir) => openShelf(tabs[at - dir]!.k),
+    (dir) => {
+      setAim(null);
+      openShelf(tabs[at - dir]!.k);
+    },
+    false,
+    (dir) => setAim(tabs[at - dir]!.k),
   );
   // A swipe can open a shelf whose tab is scrolled out of the row.
   const tabsRef = useRef<HTMLDivElement>(null);
   // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React would call it as the cleanup.
   useEffect(() => {
     tabsRef.current?.querySelector('[aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [shelf]);
+  }, [lit]);
   // Holding a card opens its menu, and holding a row starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const holdAt = useRef({ x: 0, y: 0 });
@@ -201,56 +209,59 @@ export function Library() {
           welcome
         ) : !shown.length ? (
           <p className="hint">Nothing in {SHELVES.find((q) => q.k === k)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
-        ) : view === 'list' ? (
-          <div className="lrows">
-            {shown.map((x) => {
-              const last = x.last || 0;
-              const fresh = freshOf(x);
-              const on = picked?.includes(x.id);
-              return (
-                <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
-                  <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                    {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
-                    <span className="linfo">
-                      <b>{x.title}</b>
-                      <span>
-                        {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
-                        {fresh?.n ? (
-                          <em>
-                            {' · '}
-                            {fresh.n}
-                            {fresh.more ? '+' : ''} new
-                          </em>
-                        ) : null}
+        ) : (
+          // Both views stay mounted, the other one laid out but hidden under this one, so a switch shows covers already
+          // loaded instead of new images that each flash a gray box first.
+          <div className="views">
+            <div className={view === 'list' ? 'lrows' : 'lrows off'} inert={view !== 'list'}>
+              {shown.map((x) => {
+                const last = x.last || 0;
+                const fresh = freshOf(x);
+                const on = picked?.includes(x.id);
+                return (
+                  <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
+                    <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
+                      {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                      <span className="linfo">
+                        <b>{x.title}</b>
+                        <span>
+                          {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
+                          {fresh?.n ? (
+                            <em>
+                              {' · '}
+                              {fresh.n}
+                              {fresh.more ? '+' : ''} new
+                            </em>
+                          ) : null}
+                        </span>
+                        {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
                       </span>
-                      {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
-                    </span>
+                      {picked && (
+                        <span className="tick" aria-hidden="true">
+                          {on && '✓'}
+                        </span>
+                      )}
+                    </button>
+                    {!picked && <RowContinue x={x} />}
+                  </div>
+                );
+              })}
+            </div>
+            <div className={view === 'cards' ? 'grid' : 'grid off'} inert={view !== 'cards'}>
+              {shown.map((x) => {
+                const on = picked?.includes(x.id);
+                return (
+                  <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
+                    {face(x)}
                     {picked && (
                       <span className="tick" aria-hidden="true">
                         {on && '✓'}
                       </span>
                     )}
                   </button>
-                  {!picked && <RowContinue x={x} />}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid">
-            {shown.map((x) => {
-              const on = picked?.includes(x.id);
-              return (
-                <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-                  {face(x)}
-                  {picked && (
-                    <span className="tick" aria-hidden="true">
-                      {on && '✓'}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </>
@@ -307,44 +318,47 @@ export function Library() {
 
   return (
     <>
-      {picked ? (
-        <div className="rbar">
-          <button className="btn ghost sm" onClick={() => setPicked(null)}>
-            Cancel
-          </button>
-          <b>{picked.length ? `${picked.length} selected` : 'Tap series to select'}</b>
-          <button className="btn ghost sm" disabled={!picked.length} aria-expanded={moveOpen} onClick={() => setMoveOpen(true)}>
-            Move
-          </button>
-          <button className="btn danger sm" disabled={!picked.length} onClick={() => remove(picked)}>
-            Remove
-          </button>
+      {/* Kept in view while the shelf under it scrolls */}
+      <div className="lhead">
+        {picked ? (
+          <div className="rbar">
+            <button className="btn ghost sm" onClick={() => setPicked(null)}>
+              Cancel
+            </button>
+            <b>{picked.length ? `${picked.length} selected` : 'Tap series to select'}</b>
+            <button className="btn ghost sm" disabled={!picked.length} aria-expanded={moveOpen} onClick={() => setMoveOpen(true)}>
+              Move
+            </button>
+            <button className="btn danger sm" disabled={!picked.length} onClick={() => remove(picked)}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <header>
+            <h1>My Series</h1>
+            {shelf !== 'downloads' && (
+              <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
+                {/* a trash can: lid with handle, then the can */}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M9.5 7V4.5h5V7" />
+                  <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+                </svg>
+              </button>
+            )}
+            {addLink}
+            {settings}
+          </header>
+        )}
+        <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
+          {tabs.map((q) => {
+            const on = q.k === lit;
+            return (
+              <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
+                {q.n}
+              </button>
+            );
+          })}
         </div>
-      ) : (
-        <header>
-          <h1>My Series</h1>
-          {shelf !== 'downloads' && (
-            <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
-              {/* a trash can: lid with handle, then the can */}
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 7h16M9.5 7V4.5h5V7" />
-                <path d="M6 7l1 13h10l1-13M10 11v5M14 11v5" />
-              </svg>
-            </button>
-          )}
-          {addLink}
-          {settings}
-        </header>
-      )}
-      <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
-        {tabs.map((q) => {
-          const on = q.k === shelf;
-          return (
-            <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
-              {q.n}
-            </button>
-          );
-        })}
       </div>
       {/* Every shelf side by side, so a swipe pulls the next one in beside this one */}
       <div ref={swipe} className="track" style={{ translate: `${-at * 100}%` }}>

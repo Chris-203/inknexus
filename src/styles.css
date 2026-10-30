@@ -63,14 +63,20 @@ header .btn,header .ibtn{align-self:center}
 .card.on .tick,.lrow.on .tick{background:var(--accent);border-color:var(--accent)}
 .card.on img,.card.on .cover,.lrow.on img,.lrow.on .thumb{outline:3px solid var(--accent);outline-offset:-3px}
 .ct{display:block;margin-top:6px;font-size:var(--font-sm);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* My Series' header and shelf tabs, kept in view while the shelf scrolls under them; like .rbar it reaches up under the status bar */
+.lhead{position:sticky;top:0;z-index:4;background:var(--bg);padding-top:env(safe-area-inset-top,0px);margin-top:calc(-1 * env(safe-area-inset-top,0px))}
+.lhead .rbar{position:static;margin-top:0;padding-top:8px}
 /* My Series' shelf tabs: plain names in a row, the open one underlined */
-.tabs{display:flex;gap:16px;padding:0 16px;margin-bottom:8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs{display:flex;gap:16px;padding:0 16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 .tabs button{flex:none;min-height:44px;padding:0;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:700 var(--font-sm)/1 var(--body);text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
 .tabs button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--text)}
 /* My Series' shelves in a row, moved to the open one; the others take no height, and show only while a swipe pulls one in */
-.track{display:flex}
+.track{display:flex;margin-top:8px}
 .track>div{flex:none;width:100%}
 .track>:not(.on){height:0}
+/* My Series' other view, cards or the list: under the shown one, laid out so its covers load, but unseen and adding no scroll */
+.views{position:relative;overflow-y:clip}
+.views>.off{position:absolute;top:0;left:0;right:0;visibility:hidden}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
