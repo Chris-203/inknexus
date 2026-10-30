@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react';
 import { useApp } from '../context';
-import { CardShelf } from '../components/CardShelf';
 import { ChapterRows } from '../components/ChapterRows';
 import { MoreLikeThis } from '../components/MoreLikeThis';
 import { MoreInfo } from '../components/MoreInfo';
@@ -145,7 +144,6 @@ export function Details({ o }: { o: SearchResult }) {
         {trailer?.state === 'error' && <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>}
       </div>
       <MoreLikeThis x={{ title: o.title, al: o.src === 'al' ? Number(o.ref) : null, md: o.src === 'md' ? String(o.ref) : null }} />
-      {d && <MoreInGenre o={o} tags={d.tags} />}
       {chapters}
       {o.src === 'md' && (
         <p className="credit">
@@ -157,12 +155,4 @@ export function Details({ o }: { o: SearchResult }) {
       )}
     </div>
   );
-}
-
-/** A row of popular MangaDex series in this series' first MangaDex genre, each opening its own details. Nothing shows when it has no MangaDex genre. */
-function MoreInGenre({ o, tags }: { o: SearchResult; tags: string[] }) {
-  const genre = mangadex.GENRES.find((g) => tags.includes(g.name));
-  const more = useLoad(genre ? genre.id : null, () => mangadex.browse(genre!.id, 'follows'));
-  const load = more?.state === 'done' ? { ...more, value: more.value.filter((k) => !(k.src === o.src && k.ref === o.ref)) } : more;
-  return genre ? <CardShelf title={`More in ${genre.name}`} what={`more ${genre.name} series from MangaDex`} load={load} /> : null;
 }

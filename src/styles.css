@@ -160,7 +160,7 @@ details.info summary::before{content:'›';font-size:var(--font-lg);line-height:
 details.info[open] summary::before{transform:rotate(90deg)}
 .about{margin:0;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .about.open{display:block}
-/* More in a genre: one row of covers that scrolls sideways */
+/* More like this: one row of covers that scrolls sideways */
 .shelfh{font-size:var(--font-base);margin:0;padding:8px 16px}
 .shelf{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;padding:0 16px 16px}
 .shelf .card{flex:none;width:104px}
