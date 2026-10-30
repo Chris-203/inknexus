@@ -48,16 +48,24 @@ export function Library() {
   };
   // A swipe to the left opens the shelf on the right of this one, and a swipe to the right the one on its left.
   const at = tabs.findIndex((q) => q.k === shelf);
+  // The shelf a swipe is settling on: its tab lights up as the finger lets go, not once the shelf has slid into place.
+  const [aim, setAim] = useState<LibraryTab | null>(null);
+  const lit = aim ?? shelf;
   const swipe = useSwipe(
     (dir) => !!tabs[at - dir],
-    (dir) => openShelf(tabs[at - dir]!.k),
+    (dir) => {
+      setAim(null);
+      openShelf(tabs[at - dir]!.k);
+    },
+    false,
+    (dir) => setAim(tabs[at - dir]!.k),
   );
   // A swipe can open a shelf whose tab is scrolled out of the row.
   const tabsRef = useRef<HTMLDivElement>(null);
   // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React would call it as the cleanup.
   useEffect(() => {
     tabsRef.current?.querySelector('[aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [shelf]);
+  }, [lit]);
   // Holding a card starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
   const holdAt = useRef({ x: 0, y: 0 });
@@ -292,7 +300,7 @@ export function Library() {
         )}
         <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
           {tabs.map((q) => {
-            const on = q.k === shelf;
+            const on = q.k === lit;
             return (
               <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
                 {q.n}
