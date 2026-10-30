@@ -4,7 +4,7 @@ import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ResultRow } from '../components/ResultRow';
 import { why } from '../lib/api';
 import { isWebUrl } from '../lib/links';
-import { browseKey, isFresh, loadBrowse, loadSearch, savedResults, searchKey, type Sort } from '../lib/searchResults';
+import { browseKey, isFresh, loadBrowse, loadSearch, savedResults, searchKey, type Filter, type Sort } from '../lib/searchResults';
 import type { SearchResult } from '../lib/types';
 import * as mangadex from '../sources/mangadex';
 
@@ -12,6 +12,12 @@ const SORTS: [Sort, string][] = [
   ['follows', 'Most followed'],
   ['latest', 'Latest upload'],
   ['trending', 'Trending'],
+];
+
+/** Browse's filter chips: the filter each sets, its value and its name. Tapping a chip that is on turns its filter off. */
+const FILTERS: [keyof Filter, string, string][] = [
+  ...mangadex.ORIGINS.map((o): [keyof Filter, string, string] => ['origin', o.id, o.name]),
+  ...mangadex.STATUSES.map((st): [keyof Filter, string, string] => ['status', st.id, st.name]),
 ];
 
 /** Where Browse was scrolled to, so coming back from a series' details lands on the same spot. */
@@ -158,17 +164,17 @@ export function Search({ on }: { on: boolean }) {
         </div>
       )}
       {browsing && (
-        <div className="chips" role="group" aria-label="Type">
-          {mangadex.ORIGINS.map((o) => {
-            const on = search.filter.origin === o.id;
+        <div className="chips" role="group" aria-label="Filters">
+          {FILTERS.map(([k, id, name]) => {
+            const on = search.filter[k] === id;
             return (
               <button
-                key={o.id}
+                key={id}
                 className={`chip${on ? ' on' : ''}`}
                 aria-pressed={on}
-                onClick={() => void browse(search.tag, search.sort, { ...search.filter, origin: on ? undefined : o.id })}
+                onClick={() => void browse(search.tag, search.sort, { ...search.filter, [k]: on ? undefined : id })}
               >
-                {o.name}
+                {name}
               </button>
             );
           })}

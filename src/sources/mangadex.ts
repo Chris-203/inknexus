@@ -80,6 +80,13 @@ export const ORIGINS = [
 ] as const;
 export type Origin = (typeof ORIGINS)[number]['id'];
 
+/** Publication statuses Browse can filter by, with AniList's name for each. */
+export const STATUSES = [
+  { id: 'ongoing', name: 'Ongoing', al: 'RELEASING' },
+  { id: 'completed', name: 'Completed', al: 'FINISHED' },
+] as const;
+export type Status = (typeof STATUSES)[number]['id'];
+
 /** Up to `limit` series from a /manga query, with covers. */
 async function mangas(q: string, limit: number): Promise<MdManga[]> {
   const r = await api(`${MD}/manga?${q}&limit=${limit}&includes[]=cover_art${RATING}`);
@@ -132,13 +139,18 @@ export function search(q: string): Promise<SearchResult[]> {
   return mangaList(`title=${encodeURIComponent(q)}&order[relevance]=desc`);
 }
 
-/** Series with English chapters in a genre (null for every genre) and from `origin` (every country when not given), in the chosen order. */
-export function browse(tag: string | null, sort: BrowseSort, origin?: Origin): Promise<SearchResult[]> {
+/** Series with English chapters in a genre (null for every genre), from `origin` and with `status` (any when not given), in the chosen order. */
+export function browse(tag: string | null, sort: BrowseSort, origin?: Origin, status?: Status): Promise<SearchResult[]> {
   const order = sort === 'latest' ? 'latestUploadedChapter' : 'followedCount';
   const langs = ORIGINS.find((o) => o.id === origin)?.langs || [];
-  return mangaList(
-    `availableTranslatedLanguage[]=en&order[${order}]=desc${tag ? `&includedTags[]=${tag}` : ''}${langs.map((l) => `&originalLanguage[]=${l}`).join('')}`,
-  );
+  const q = [
+    'availableTranslatedLanguage[]=en',
+    `order[${order}]=desc`,
+    tag && `includedTags[]=${tag}`,
+    ...langs.map((l) => `originalLanguage[]=${l}`),
+    status && `status[]=${status}`,
+  ];
+  return mangaList(q.filter(Boolean).join('&'));
 }
 
 /**

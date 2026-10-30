@@ -69,7 +69,8 @@ describe('AniList requests', () => {
     const sent = answer({ Page: { media: [{ id: 1, title: { romaji: 'A' } }] } });
     expect(await trending()).toEqual([{ id: 1, title: { romaji: 'A' } }]);
     await trending('KR');
-    expect(sent).toEqual([{}, { c: 'KR' }]);
+    await trending(undefined, 'FINISHED');
+    expect(sent).toEqual([{}, { c: 'KR' }, { s: 'FINISHED' }]);
     answer({ Page: {} });
     await expect(trending()).rejects.toThrow('unexpected answer');
   });
