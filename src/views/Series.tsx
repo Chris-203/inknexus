@@ -10,8 +10,8 @@ import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc, why } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
 import { saveChapter, useDownloads } from '../lib/downloads';
-import { fmt, plural } from '../lib/format';
-import { host, linkFrom, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
+import { fmt, norm, plural } from '../lib/format';
+import { host, linkFrom, linkName, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
 import { langName } from '../lib/names';
 import { useOpenLink } from '../lib/openLink';
 import { pasteChapterLink } from '../lib/pasteLink';
@@ -20,7 +20,7 @@ import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
 import { useSwipe } from '../lib/swipe';
-import { removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries, useStore } from '../lib/store';
+import { mergeSeries, moveLink, removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries, useStore } from '../lib/store';
 import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { openWebtoonInBrowser } from '../lib/webtoon';
@@ -29,7 +29,7 @@ import * as anilist from '../sources/anilist';
 
 export function Series({ x }: { x: SeriesT }) {
   const { goBack, toast } = useApp();
-  const [sheet, setSheet] = useState<'addsrc' | 'names' | null>(null);
+  const [sheet, setSheet] = useState<'addsrc' | 'names' | 'merge' | null>(null);
   const [lastText, setLastText] = useState(String(x.last || 0));
   const swipe = useSwipe(
     (dir) => dir === 1,
@@ -148,6 +148,9 @@ export function Series({ x }: { x: SeriesT }) {
       <MoreInfo r={rank} />
       <MoreLikeThis x={{ title: x.title, al: Number(x.al) || null, md: x.md }} />
       <div className="pad end">
+        <button className="btn ghost" onClick={() => setSheet('merge')}>
+          Merge into another series
+        </button>
         <button
           className="btn danger sm"
           onClick={() => {
@@ -159,6 +162,7 @@ export function Series({ x }: { x: SeriesT }) {
       </div>
       {sheet === 'addsrc' && <AddSourceSheet x={x} onClose={() => setSheet(null)} />}
       {sheet === 'names' && <NamesSheet x={x} onClose={() => setSheet(null)} />}
+      {sheet === 'merge' && <MoveSheet x={x} onClose={() => setSheet(null)} />}
     </div>
   );
 }
@@ -331,51 +335,58 @@ function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown:
   const site = host(l.url);
   const ob = useOpensInBrowser(site);
   const open = useOpenLink(x, l, i, shown);
+  const [moving, setMoving] = useState(false);
 
   return (
-    <div className="pad">
-      {!l.tpl && l.resume && (
-        <button className="btn" onClick={() => open('resume')}>
-          Resume ch. {fmt(l.rn || 0)} (saved link)
-        </button>
-      )}
-      <button className={`btn${l.tpl || l.resume ? ' ghost' : ''}`} onClick={() => open('page')}>
-        Open the series page{ob ? ' ↗' : ' in app'}
-      </button>
-      {!l.tpl && (
-        <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
-          Update chapter from a link
-        </button>
-      )}
-      <details className="more">
-        <summary>More</summary>
-        <div className="pad">
-          <p className="hint">
-            {!l.tpl &&
-              "Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. "}
-            If the in-app view is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
-            {ob ? `. After reading there, come back and tap +${l.tpl ? '' : ' or Update'}` : ''}.
-          </p>
-          <label className="opt">
-            <input
-              type="checkbox"
-              checked={ob}
-              onChange={(e) => {
-                setOpensInBrowser(site, e.target.checked);
-                toast(e.target.checked ? `${site} will open in the browser` : `${site} will open in the app`);
-              }}
-            />
-            Open {site} in the browser instead of in the app
-          </label>
-          <a className="btn ghost" href={l.url} target="_blank" rel="noopener noreferrer">
-            Open in browser
-          </a>
-          <button className="btn danger sm" onClick={() => updateSeries(x.id, (s) => ({ links: s.links.filter((_, k) => k !== i), src: '' }))}>
-            Remove this source
+    <>
+      <div className="pad">
+        {!l.tpl && l.resume && (
+          <button className="btn" onClick={() => open('resume')}>
+            Resume ch. {fmt(l.rn || 0)} (saved link)
           </button>
-        </div>
-      </details>
-    </div>
+        )}
+        <button className={`btn${l.tpl || l.resume ? ' ghost' : ''}`} onClick={() => open('page')}>
+          Open the series page{ob ? ' ↗' : ' in app'}
+        </button>
+        {!l.tpl && (
+          <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
+            Update chapter from a link
+          </button>
+        )}
+        <details className="more">
+          <summary>More</summary>
+          <div className="pad">
+            <p className="hint">
+              {!l.tpl &&
+                "Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. "}
+              If the in-app view is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
+              {ob ? `. After reading there, come back and tap +${l.tpl ? '' : ' or Update'}` : ''}.
+            </p>
+            <label className="opt">
+              <input
+                type="checkbox"
+                checked={ob}
+                onChange={(e) => {
+                  setOpensInBrowser(site, e.target.checked);
+                  toast(e.target.checked ? `${site} will open in the browser` : `${site} will open in the app`);
+                }}
+              />
+              Open {site} in the browser instead of in the app
+            </label>
+            <a className="btn ghost" href={l.url} target="_blank" rel="noopener noreferrer">
+              Open in browser
+            </a>
+            <button className="btn ghost" onClick={() => setMoving(true)}>
+              Move to another series
+            </button>
+            <button className="btn danger sm" onClick={() => updateSeries(x.id, (s) => ({ links: s.links.filter((_, k) => k !== i), src: '' }))}>
+              Remove this source
+            </button>
+          </div>
+        </details>
+      </div>
+      {moving && <MoveSheet x={x} i={i} onClose={() => setMoving(false)} />}
+    </>
   );
 }
 
@@ -432,13 +443,11 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
           <p className="hint">Or add a new one</p>
         </>
       )}
-      {!x.md && (
-        <button className="btn" onClick={() => setKind('md')}>
-          Find it on MangaDex
-        </button>
-      )}
+      <button className={`btn${x.md ? ' ghost' : ''}`} onClick={() => setKind('md')}>
+        {x.md ? 'Change the MangaDex match' : 'Find it on MangaDex'}
+      </button>
       <button className="btn ghost" onClick={() => setKind('al')}>
-        Find official links (AniList)
+        {x.al === null ? 'Find official links (AniList)' : 'Change the AniList match'}
       </button>
       <div>
         {res?.state === 'busy' && <p className="hint">Searching…</p>}
@@ -460,6 +469,62 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
         <LinkFields urlPlaceholder="Series or chapter link" />
         <button className="btn">Save link</button>
       </form>
+      <button className="btn ghost" onClick={sheet.close}>
+        Close
+      </button>
+    </Sheet>
+  );
+}
+
+/**
+ * Merge series `x` into another one in My Series, or with `i`, move its link source `i` to another series or a new one.
+ * For a series that is in My Series twice, or a link the Webtoon import put on the wrong series.
+ */
+function MoveSheet({ x, i, onClose }: { x: SeriesT; i?: number; onClose: () => void }) {
+  const { navigate, toast } = useApp();
+  const { lib } = useStore();
+  const sheet = useSheet(onClose);
+  const [q, setQ] = useState('');
+  const l = i === undefined ? null : x.links[i]!;
+  const others = lib.filter((y) => y.id !== x.id && norm(y.title).includes(norm(q)));
+  const name = q.trim() || x.title;
+
+  const pick = (into: SeriesT | null) => {
+    sheet.close();
+    if (!l) {
+      mergeSeries(x.id, into!.id);
+      navigate({ name: 'series', id: into!.id }, true);
+      return toast(`Merged into ${into!.title}`);
+    }
+    const id = moveLink(x.id, i!, into?.id ?? null, name);
+    toast(`Moved ${linkName(l)} to ${into?.title ?? name}`);
+    if (!into) navigate({ name: 'series', id });
+  };
+
+  return (
+    <Sheet label={l ? 'Move to another series' : 'Merge into another series'} sheet={sheet}>
+      <h2>{l ? `Move ${linkName(l)} to another series` : 'Merge into another series'}</h2>
+      <p className="hint">
+        {l
+          ? `Moves this link and its chapter to the series you pick, or to a new one. ${x.title} keeps its other sources.`
+          : `For a series that is in My Series twice. The one you pick takes this one's sources and the further last chapter, and ${x.title} is removed.`}
+      </p>
+      <div className="stack">
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find in My Series" aria-label="Find in My Series" />
+      </div>
+      {l && (
+        <button className="btn ghost" onClick={() => pick(null)}>
+          Move to a new series named “{name}”
+        </button>
+      )}
+      {!others.length && <p className="hint">No other series in My Series{q.trim() ? ' with that name' : ''}.</p>}
+      {others.map((y) => (
+        <ResultRow key={y.id} o={y} extra={<p>{y.last ? `Ch. ${fmt(y.last)} read` : 'Not started'}</p>}>
+          <button className="btn sm" onClick={() => pick(y)}>
+            {l ? 'Move' : 'Merge'}
+          </button>
+        </ResultRow>
+      ))}
       <button className="btn ghost" onClick={sheet.close}>
         Close
       </button>
