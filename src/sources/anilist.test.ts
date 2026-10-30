@@ -1,4 +1,4 @@
-import { alMatch, details, matchTitles, search, toDetails, trailer, trailerUrl, type AlMedia } from './anilist';
+import { alMatch, details, matchTitles, search, toDetails, toTrailer, trailer, type AlMedia } from './anilist';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,11 +39,19 @@ describe('toDetails', () => {
   });
 });
 
-describe('trailerUrl', () => {
+describe('toTrailer', () => {
   const anime = (id: string, site = 'youtube', relationType = 'ADAPTATION', type = 'ANIME') => ({ relationType, node: { type, trailer: { id, site } } });
   it("takes the series' own trailer before its anime adaptation's", () => {
-    expect(trailerUrl({ trailer: { id: 'own', site: 'youtube' }, relations: { edges: [anime('adapted')] } })).toBe('https://www.youtube.com/watch?v=own');
-    expect(trailerUrl({ trailer: null, relations: { edges: [anime('x7k', 'dailymotion')] } })).toBe('https://www.dailymotion.com/video/x7k');
+    expect(toTrailer({ trailer: { id: 'own', site: 'youtube' }, relations: { edges: [anime('adapted')] } })).toEqual({
+      site: 'YouTube',
+      embed: 'https://www.youtube-nocookie.com/embed/own?playsinline=1',
+      page: 'https://www.youtube.com/watch?v=own',
+    });
+    expect(toTrailer({ trailer: null, relations: { edges: [anime('x7k', 'dailymotion')] } })).toEqual({
+      site: 'Dailymotion',
+      embed: 'https://www.dailymotion.com/embed/video/x7k',
+      page: 'https://www.dailymotion.com/video/x7k',
+    });
   });
   it('skips other relations, sites it does not know and adaptations without a trailer', () => {
     const edges = [
@@ -52,11 +60,11 @@ describe('trailerUrl', () => {
       anime('v', 'vimeo'),
       { relationType: 'ADAPTATION', node: { type: 'ANIME', trailer: null } },
     ];
-    expect(trailerUrl({ relations: { edges } })).toBe('');
-    expect(trailerUrl({})).toBe('');
+    expect(toTrailer({ relations: { edges } })).toBeNull();
+    expect(toTrailer({})).toBeNull();
   });
   it('escapes the id', () => {
-    expect(trailerUrl({ trailer: { id: 'a&b', site: 'youtube' } })).toBe('https://www.youtube.com/watch?v=a%26b');
+    expect(toTrailer({ trailer: { id: 'a&b/c', site: 'youtube' } })?.page).toBe('https://www.youtube.com/watch?v=a%26b%2Fc');
   });
 });
 
@@ -68,7 +76,7 @@ describe('AniList requests', () => {
   });
   it('trailer asks by id and is empty when AniList no longer has the series', async () => {
     const sent = answer({ Media: null });
-    expect(await trailer(7)).toBe('');
+    expect(await trailer(7)).toBeNull();
     expect(sent).toEqual([{ id: 7 }]);
   });
   it('search still says what failed on a rate limit', async () => {

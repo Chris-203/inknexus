@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { ChapterRows } from '../components/ChapterRows';
+import { Sheet, useSheet } from '../components/Sheet';
 import { useReadChapter } from '../components/ReadButton';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters } from '../lib/chapters';
@@ -19,6 +20,7 @@ export function Details({ o }: { o: SearchResult }) {
   const [adding, setAdding] = useState(false);
   // The whole synopsis, rather than its first lines.
   const [open, setOpen] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const swipe = useSwipe(
     (dir) => dir === 1,
     () => goBack({ name: 'search' }),
@@ -120,12 +122,13 @@ export function Details({ o }: { o: SearchResult }) {
           </button>
         )}
         {trailer?.state === 'done' && trailer.value && (
-          <a className="btn ghost" href={trailer.value} target="_blank" rel="noopener noreferrer">
-            Watch the trailer ↗
-          </a>
+          <button className="btn ghost" onClick={() => setPlaying(true)}>
+            Watch the trailer
+          </button>
         )}
         {trailer?.state === 'error' && <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>}
       </div>
+      {playing && trailer?.state === 'done' && trailer.value && <TrailerSheet t={trailer.value} onClose={() => setPlaying(false)} />}
       {d && <MoreInGenre o={o} tags={d.tags} />}
       {chapters}
       {o.src === 'md' && (
@@ -137,6 +140,31 @@ export function Details({ o }: { o: SearchResult }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** The trailer in its site's own player, and a link to it on the site for videos their uploader keeps from playing elsewhere. */
+function TrailerSheet({ t, onClose }: { t: anilist.Trailer; onClose: () => void }) {
+  const sheet = useSheet(onClose);
+  return (
+    <Sheet label="Trailer" sheet={sheet}>
+      <h2>Trailer</h2>
+      {/* YouTube's player refuses to play without the page's origin as referrer, which the app otherwise never sends. */}
+      <iframe
+        className="trailer"
+        src={t.embed}
+        title="Trailer"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowFullScreen
+      />
+      <a className="btn ghost" href={t.page} target="_blank" rel="noopener noreferrer">
+        Watch on {t.site} ↗
+      </a>
+      <button className="btn ghost" onClick={sheet.close}>
+        Close
+      </button>
+    </Sheet>
   );
 }
 

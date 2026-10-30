@@ -30,16 +30,26 @@ export interface AlTrailers {
   relations?: { edges?: { relationType: string; node: { type: string; trailer?: AlTrailer | null } }[] };
 }
 
-const TRAILER_SITES: Record<string, string> = {
-  youtube: 'https://www.youtube.com/watch?v=',
-  dailymotion: 'https://www.dailymotion.com/video/',
+/** Each video site AniList links: its name, its embeddable player and its own page, with {id} for the video. */
+const TRAILER_SITES: Record<string, { name: string; embed: string; page: string }> = {
+  youtube: { name: 'YouTube', embed: 'https://www.youtube-nocookie.com/embed/{id}?playsinline=1', page: 'https://www.youtube.com/watch?v={id}' },
+  dailymotion: { name: 'Dailymotion', embed: 'https://www.dailymotion.com/embed/video/{id}', page: 'https://www.dailymotion.com/video/{id}' },
 };
 
-/** The page of the series' own trailer or, as manga rarely have one, of its anime adaptation's; '' when there is none on a known site. */
-export function trailerUrl(m: AlTrailers): string {
+export interface Trailer {
+  site: string;
+  embed: string;
+  page: string;
+}
+
+/** The series' own trailer or, as manga rarely have one, its anime adaptation's; null when there is none on a known site. */
+export function toTrailer(m: AlTrailers): Trailer | null {
   const anime = (m.relations?.edges || []).filter((e) => e.relationType === 'ADAPTATION' && e.node.type === 'ANIME').map((e) => e.node.trailer);
   const t = [m.trailer, ...anime].find((a) => a && TRAILER_SITES[a.site]);
-  return t ? TRAILER_SITES[t.site] + encodeURIComponent(t.id) : '';
+  const site = t && TRAILER_SITES[t.site];
+  if (!site) return null;
+  const id = encodeURIComponent(t.id);
+  return { site: site.name, embed: site.embed.replace('{id}', id), page: site.page.replace('{id}', id) };
 }
 
 /** Send a GraphQL query to AniList and return its `data`. */
@@ -133,11 +143,11 @@ export async function details(id: number): Promise<Details> {
   return toDetails(data.Media);
 }
 
-/** The trailer's page for the AniList series `id`, or '' when it has none. */
-export async function trailer(id: number): Promise<string> {
+/** The trailer for the AniList series `id`, or null when it has none. */
+export async function trailer(id: number): Promise<Trailer | null> {
   const data = await query<{ Media?: AlTrailers | null }>(
     `query($id:Int){Media(id:$id,type:MANGA){trailer{id site} relations{edges{relationType node{type trailer{id site}}}}}}`,
     { id },
   );
-  return data.Media ? trailerUrl(data.Media) : '';
+  return data.Media ? toTrailer(data.Media) : null;
 }
