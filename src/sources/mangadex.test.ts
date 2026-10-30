@@ -301,6 +301,43 @@ describe('matchTitle', () => {
     relay((u) => (u.includes('/statistics/') ? { statistics: {} } : { data: [m('first', 'A Story'), m('second', 'A Story')] }));
     expect((await matchTitle('A Story'))?.ref).toBe('first');
   });
+  describe('with a Webtoon hint', () => {
+    const h = { no: '5', genre: 'fantasy', al: 7 };
+    const md = (id: string, links: Record<string, string>, tags: string[] = [], en = 'Rebirth') => ({
+      id,
+      attributes: { title: { en }, links, tags: tags.map((t) => ({ attributes: { name: { en: t }, group: 'genre' } })) },
+    });
+    it('takes the entry that links the Webtoon series, then the AniList match, without asking for follows', async () => {
+      const seen = relay(() => ({
+        data: [
+          md('a', { al: '9' }, ['Fantasy', 'Long Strip']),
+          md('b', { al: '7' }),
+          md('c', { engtl: 'https://www.webtoons.com/en/fantasy/rebirth/list?title_no=5' }),
+        ],
+      }));
+      expect((await matchTitle('Rebirth', h))?.ref).toBe('c');
+      relay(() => ({ data: [md('a', { al: '9' }, ['Fantasy', 'Long Strip']), md('b', { al: '7' })] }));
+      expect((await matchTitle('Rebirth', h))?.ref).toBe('b');
+      expect(seen).toHaveLength(1);
+    });
+    it('takes the entry in the genre and long strip format, then the most followed of those that fit as well', async () => {
+      relay(() => ({ data: [md('a', {}, ['Romance']), md('b', {}, ['Fantasy', 'Long Strip'])] }));
+      expect((await matchTitle('Rebirth', h))?.ref).toBe('b');
+      const seen = relay((u) =>
+        u.includes('/statistics/')
+          ? { statistics: { b: { follows: 1 }, c: { follows: 9 } } }
+          : { data: [md('a', {}, ['Romance']), md('b', {}, ['Fantasy']), md('c', {}, ['Fantasy'])] },
+      );
+      expect((await matchTitle('Rebirth', h))?.ref).toBe('c');
+      expect(seen[1]).toContain('/statistics/manga?manga[]=b&manga[]=c');
+    });
+    it('takes an entry under another name only when it links the Webtoon series or the AniList match', async () => {
+      relay(() => ({ data: [md('a', {}, ['Fantasy'], 'Hwansaeng'), md('b', { al: '7' }, [], 'Hwansaeng')] }));
+      expect((await matchTitle('Rebirth', h))?.ref).toBe('b');
+      relay(() => ({ data: [md('a', {}, ['Fantasy'], 'Hwansaeng')] }));
+      expect(await matchTitle('Rebirth', h)).toBeNull();
+    });
+  });
 });
 
 describe('recommendations', () => {
