@@ -76,12 +76,17 @@ describe('toDetails', () => {
         },
       },
     );
-    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'] });
+    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'], al: null });
   });
   it('gives null for no chapters or year, and an empty status for an unknown one', () => {
     // MangaDex sends volumes as [] when there are none.
     const d = toDetails({ id: 'm', attributes: { status: 'odd' } }, { volumes: [] as unknown as Record<string, never> });
     expect(d).toMatchObject({ status: '', year: null, chapters: null });
+  });
+  it('keeps the AniList id MangaDex links, and null when it links none or a bad one', () => {
+    expect(toDetails({ id: 'm', attributes: { links: { al: '30013', mu: 'x' } } }, {}).al).toBe(30013);
+    expect(toDetails({ id: 'm', attributes: { links: null } }, {}).al).toBeNull();
+    expect(toDetails({ id: 'm', attributes: { links: { al: 'abc' } } }, {}).al).toBeNull();
   });
 });
 
