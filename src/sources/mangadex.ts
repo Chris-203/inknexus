@@ -87,6 +87,8 @@ export function toResult(m: MdManga): SearchResult {
     title: pickTitle(m.attributes),
     desc: m.attributes.description?.en || '',
     cover: c?.fileName ? `https://uploads.mangadex.org/covers/${m.id}/${c.fileName}.256.jpg` : '',
+    al: alOf(m) ?? undefined,
+    status: STATUS[m.attributes.status || ''] || undefined,
   };
 }
 

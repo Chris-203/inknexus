@@ -68,6 +68,12 @@ export interface SearchResult {
   desc: string;
   cover: string;
   links?: { label: string; url: string }[];
+  /** On MangaDex, the series' AniList id from MangaDex's links. */
+  al?: number;
+  /** 'Ongoing', 'Completed', … from MangaDex. */
+  status?: string;
+  /** AniList's average score out of 100. */
+  score?: number;
 }
 
 /** More about a search result, for its details screen. */
@@ -80,6 +86,8 @@ export interface Details {
   /** On MangaDex, the numbered English chapters; on AniList, the count once the series has finished. */
   chapters: number | null;
   authors: string[];
+  /** AniList's average score out of 100. */
+  score?: number | null;
   /** MangaDex only: the series' AniList id, when MangaDex links it. */
   al?: number | null;
 }

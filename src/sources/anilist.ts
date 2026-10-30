@@ -8,6 +8,7 @@ export interface AlMedia {
   synonyms?: string[];
   coverImage?: { large?: string };
   description?: string | null;
+  averageScore?: number | null;
   externalLinks?: { site: string; url: string; type?: string; language?: string | null }[];
   /** 'MANGA' or 'ANIME'; asked for only where both can come back. */
   type?: string;
@@ -21,6 +22,7 @@ export interface AlDetails {
   status?: string | null;
   chapters?: number | null;
   startDate?: { year?: number | null };
+  averageScore?: number | null;
   staff?: { edges?: { role: string; node: { name: { full: string } } }[] };
 }
 
@@ -89,6 +91,11 @@ async function query<T>(q: string, variables: Record<string, unknown>): Promise<
 
 const FIELDS = 'id title{romaji english} synonyms coverImage{large} description(asHtml:false) externalLinks{site url type language}';
 
+/** An AniList synopsis as plain text. */
+function plain(desc: string | null | undefined): string {
+  return (desc || '').replace(/<[^>]+>/g, '');
+}
+
 /** A series as a search result: metadata plus official English reading links (Webtoon links skipped). */
 function toResult(m: AlMedia): SearchResult {
   return {
@@ -96,7 +103,7 @@ function toResult(m: AlMedia): SearchResult {
     ref: m.id,
     title: m.title.english || m.title.romaji || 'Untitled',
     cover: m.coverImage?.large || '',
-    desc: (m.description || '').replace(/<[^>]+>/g, ''),
+    desc: plain(m.description),
     links: (m.externalLinks || [])
       .filter((l) => l.type === 'STREAMING' && (!l.language || l.language === 'English') && !/webtoon/i.test(l.site) && isWebUrl(l.url))
       .map((l) => ({ label: l.site, url: l.url })),
@@ -129,6 +136,17 @@ export async function matchTitles(titles: string[]): Promise<(SearchResult | nul
   return titles.map((t, i) => alMatch(t, data['m' + i]?.media || []));
 }
 
+/** AniList's score and synopsis for each of `ids` it has, by id. All ids go in one request, so keep them to 50. */
+export async function info(ids: number[]): Promise<Map<number, { score: number | null; desc: string }>> {
+  const data = await query<{ Page?: { media?: AlMedia[] } }>(
+    `query($ids:[Int]){Page(perPage:50){media(id_in:$ids,type:MANGA){id averageScore description(asHtml:false)}}}`,
+    { ids },
+  );
+  const media = data.Page?.media;
+  if (!media) throw new Error('AniList sent an unexpected answer, try again later');
+  return new Map(media.map((m) => [m.id, { score: m.averageScore || null, desc: plain(m.description) }]));
+}
+
 const STATUS: Record<string, string> = {
   RELEASING: 'Ongoing',
   FINISHED: 'Completed',
@@ -147,12 +165,19 @@ export function toDetails(m: AlDetails): Details {
     year: m.startDate?.year || null,
     chapters: m.chapters || null,
     authors: [...new Set(authors)],
+    score: m.averageScore || null,
   };
+}
+
+/** A MangaDex series' details with AniList's added: its score, and its genres and tags MangaDex does not have. */
+export function addDetails(md: Details, al: Details): Details {
+  const has = new Set(md.tags.map(norm));
+  return { ...md, tags: [...md.tags, ...al.tags.filter((t) => !has.has(norm(t)))], score: al.score };
 }
 
 export async function details(id: number): Promise<Details> {
   const data = await query<{ Media?: AlDetails | null }>(
-    `query($id:Int){Media(id:$id,type:MANGA){genres tags{name rank isMediaSpoiler} status chapters startDate{year} staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
+    `query($id:Int){Media(id:$id,type:MANGA){genres tags{name rank isMediaSpoiler} status chapters startDate{year} averageScore staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
     { id },
   );
   if (!data.Media) throw new Error('AniList no longer has this series');

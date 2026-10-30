@@ -1,7 +1,8 @@
 import { saveData } from './preload';
 import { isObj, readJson, writeJson } from './storage';
 import type { SearchResult } from './types';
-import { browse, GENRES, type BrowseSort } from '../sources/mangadex';
+import { info } from '../sources/anilist';
+import { browse, GENRES, search, type BrowseSort } from '../sources/mangadex';
 
 /**
  * Search and browse results kept on the device under their own key, never in the library or backups, so the Search tab
@@ -59,12 +60,32 @@ export function saveResults(key: string, res: SearchResult[]) {
   while (keep.length && !writeJson(KEY, keep)) keep.shift();
 }
 
-/** Load the browse results for a genre and order and save them. Asked again while loading, it waits for the same load. */
-export function loadBrowse(tag: string | null, sort: BrowseSort): Promise<SearchResult[]> {
-  const key = browseKey(tag, sort);
+/**
+ * MangaDex results with AniList's score and synopsis for each series MangaDex links to AniList. AniList only adds to
+ * them, so when it fails the results are kept as MangaDex sent them.
+ */
+export async function withAniList(res: SearchResult[]): Promise<SearchResult[]> {
+  const ids = res.flatMap((o) => o.al || []);
+  if (!ids.length) return res;
+  let al: Awaited<ReturnType<typeof info>>;
+  try {
+    al = await info(ids);
+  } catch {
+    // The next reload asks AniList again.
+    return res;
+  }
+  return res.map((o) => {
+    const m = o.al ? al.get(o.al) : undefined;
+    return m ? { ...o, score: m.score ?? undefined, desc: m.desc || o.desc } : o;
+  });
+}
+
+/** Load results from MangaDex with AniList's added and save them under `key`. Asked again while loading, it waits for the same load. */
+function load(key: string, get: () => Promise<SearchResult[]>): Promise<SearchResult[]> {
   let p = pending.get(key);
   if (!p) {
-    p = browse(tag, sort)
+    p = get()
+      .then(withAniList)
       .then((res) => {
         saveResults(key, res);
         return res;
@@ -73,6 +94,16 @@ export function loadBrowse(tag: string | null, sort: BrowseSort): Promise<Search
     pending.set(key, p);
   }
   return p;
+}
+
+/** Load the browse results for a genre and order and save them. */
+export function loadBrowse(tag: string | null, sort: BrowseSort): Promise<SearchResult[]> {
+  return load(browseKey(tag, sort), () => browse(tag, sort));
+}
+
+/** Search MangaDex by title and save the results. */
+export function loadSearch(term: string): Promise<SearchResult[]> {
+  return load(searchKey(term), () => search(term));
 }
 
 /**

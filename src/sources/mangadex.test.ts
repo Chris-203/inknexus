@@ -158,6 +158,16 @@ describe('MangaDex requests', () => {
       { src: 'md', ref: 'm1', title: "Omniscient Reader's Viewpoint", desc: 'd', cover: 'https://uploads.mangadex.org/covers/m1/f.jpg.256.jpg' },
     ]);
   });
+  it('search keeps the AniList id and the status, and leaves out ones it cannot read', async () => {
+    relay(() => ({
+      data: [
+        { id: 'm1', attributes: { title: { en: 'A' }, status: 'ongoing', links: { al: '105398', mu: 'x' } } },
+        { id: 'm2', attributes: { title: { en: 'B' }, status: 'odd', links: { al: 'abc' } } },
+        { id: 'm3', attributes: { title: { en: 'C' }, links: null } },
+      ],
+    }));
+    expect((await search('x')).map(({ al, status }) => ({ al, status }))).toEqual([{ al: 105398, status: 'Ongoing' }, {}, {}]);
+  });
   it('browse asks for a genre with English chapters, most followed first', async () => {
     const seen = relay(() => ({ data: [] }));
     const action = GENRES.find((g) => g.name === 'Action')!.id;
