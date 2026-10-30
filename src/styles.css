@@ -264,7 +264,7 @@ iframe.frame{--fz:1;position:absolute;top:0;left:0;width:calc(100% / var(--fz));
 .presets .chip{padding:0 10px;font-size:var(--font-sm)}
 .ren{background:none;border:0;color:var(--muted);font-size:var(--font-base);cursor:pointer;min-width:44px;min-height:44px;padding:0;vertical-align:middle}
 .ch b.nm{font-weight:600;overflow-wrap:anywhere}
-.tag{font-size:var(--font-xs);color:var(--accent);border:1px solid var(--line);border-radius:var(--radius-full);padding:0 7px;margin-left:6px;vertical-align:middle;font-weight:400}
+.tag{font-size:var(--font-xs);white-space:nowrap;color:var(--accent);border:1px solid var(--line);border-radius:var(--radius-full);padding:0 7px;margin-left:6px;vertical-align:middle;font-weight:400}
 /* room at the top for the floating controls over the first page */
 #strip{max-width:820px;margin:0 auto;padding-top:60px}
 /* reader zoom: only the pages scale (see lib/zoom.ts); the wrapper scrolls sideways when zoomed */
