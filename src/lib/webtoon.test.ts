@@ -114,7 +114,7 @@ describe('mergeWebtoon', () => {
       s({ id: 'c', title: 'Plain', last: 1, md: 'm' }),
     ];
     const r = mergeWebtoon(lib, [w('Ahead', 20), w('Behind', 4), w('Plain', 1)], 1000);
-    expect(r).toMatchObject({ fresh: [], updated: 2 });
+    expect(r).toMatchObject({ fresh: [], updated: 2, bare: ['a', 'b'] });
     expect(r.lib[0]).toMatchObject({ last: 20, t: 1000, links: [site, { label: 'Mine', rn: 20, url: w('Ahead', 20).url }] });
     expect(r.lib[1]).toBe(lib[1]);
     // A series with no Webtoon link gains one, at the end so its other sources keep their places.
@@ -255,11 +255,23 @@ describe('importWebtoon', () => {
     expect(getState().lib[0]).toMatchObject({ al: 9, md: null });
   });
 
-  it('says when there is no list, and looks nothing up when nothing was added', async () => {
+  it('says when there is no list, and looks nothing up when nothing was added and every series has a source', async () => {
     expect(await run('hello')).toEqual(['No Webtoon list found. On webtoons.com, tap the bookmark, then Send to InkNexus']);
     const wt = { label: 'Webtoon', url: 'https://www.webtoons.com/en/x/k/list?title_no=1', tpl: 'https://www.webtoons.com/viewer?titleNo=1&episodeNo={n}' };
-    replaceState({ lib: [s({ title: 'Known', last: 9, links: [wt] })] });
+    replaceState({ lib: [s({ title: 'Known', al: 9, last: 9, links: [wt] })] });
     expect(await run(link('Known'))).toEqual(['Webtoon list imported. Nothing changed']);
+  });
+
+  it('looks up series from the list already in the library with no source, such as ones whose look-up was cut short', async () => {
+    stub({ data: [{ id: 'm1', attributes: { title: { en: 'Other' } } }] });
+    const wt = { label: 'Webtoon', url: 'https://www.webtoons.com/en/x/o/list?title_no=1', tpl: 'https://www.webtoons.com/viewer?titleNo=1&episodeNo={n}' };
+    replaceState({ lib: [s({ id: 'o', title: 'Other', last: 9, links: [wt] }), s({ id: 'k', title: 'Known', md: 'm0', last: 9, links: [wt] })] });
+    const said = await run(link('Other', 'Known'));
+    expect(said).toEqual(['Webtoon list imported. Looking up covers on AniList and MangaDex…', 'Found 1 of 1 Webtoon series on AniList or MangaDex']);
+    expect(getState().lib.map((x) => [x.id, x.md, x.al])).toEqual([
+      ['o', 'm1', null],
+      ['k', 'm0', null],
+    ]);
   });
 });
 
