@@ -27,7 +27,7 @@ import { openWebtoonInBrowser } from '../lib/webtoon';
 import * as mangadex from '../sources/mangadex';
 import * as anilist from '../sources/anilist';
 
-export function Series({ x }: { x: SeriesT }) {
+export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
   const { goBack, toast } = useApp();
   const [sheet, setSheet] = useState<'addsrc' | 'names' | 'merge' | null>(null);
   const [lastText, setLastText] = useState(String(x.last || 0));
@@ -145,7 +145,7 @@ export function Series({ x }: { x: SeriesT }) {
         </button>
       </div>
       {body}
-      <MoreInfo r={rank} />
+      <MoreInfo r={rank} open={info} />
       <MoreLikeThis x={{ title: x.title, al: Number(x.al) || null, md: x.md }} />
       <div className="pad end">
         <button className="btn ghost" onClick={() => setSheet('merge')}>

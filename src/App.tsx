@@ -174,7 +174,7 @@ export function App() {
           </div>
         )}
         {view.name === 'details' && <Details key={`${view.o.src}:${view.o.ref}`} o={view.o} />}
-        {x && view.name === 'series' && <Series key={x.id} x={x} />}
+        {x && view.name === 'series' && <Series key={x.id} x={x} info={view.info} />}
         {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
         {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
       </div>
