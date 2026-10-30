@@ -18,7 +18,7 @@ import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUp
 import { shareSeries } from '../lib/share';
 import { leftChapter } from '../lib/spots';
 import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
-import { useSwipe } from '../lib/swipe';
+import { pastSlop, useSwipe } from '../lib/swipe';
 import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
@@ -63,6 +63,7 @@ export function Library() {
   }, [shelf]);
   // Holding a card opens its menu, and holding a row starts selecting with it picked; the click that ends the hold is not a tap.
   const holdTimer = useRef(0);
+  const holdAt = useRef({ x: 0, y: 0 });
   const held = useRef(false);
   const f = updates.failed;
 
@@ -71,8 +72,10 @@ export function Library() {
     else setPicked([x.id]);
     navigator.vibrate?.(10);
   };
-  const startHold = (x: SeriesT, el: HTMLElement) => {
+  const startHold = (x: SeriesT, e: PointerEvent<HTMLElement>) => {
+    const el = e.currentTarget;
     held.current = false;
+    holdAt.current = { x: e.clientX, y: e.clientY };
     holdTimer.current = window.setTimeout(() => {
       held.current = true;
       hold(x, el);
@@ -107,9 +110,12 @@ export function Library() {
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       if (picked) return;
       if (x.md && !x.mdh) loadChapters(x.md);
-      startHold(x, e.currentTarget);
+      startHold(x, e);
     },
-    // Scrolling cancels the pointer, so a swipe through the series never opens a menu or starts selecting.
+    // A swipe between shelves keeps the pointer, and the card moves along under it, so moving the finger at all ends the hold.
+    onPointerMove: (e: PointerEvent) => {
+      if (pastSlop(e.clientX - holdAt.current.x, e.clientY - holdAt.current.y)) endHold();
+    },
     onPointerUp: endHold,
     onPointerLeave: endHold,
     onPointerCancel: endHold,

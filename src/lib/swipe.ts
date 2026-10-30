@@ -29,6 +29,11 @@ export function swipeEnd(dx: number, v: number, width: number): Dir | 0 {
   return Math.abs(dx) > width / 4 || dir * v > 0.5 ? dir : 0;
 }
 
+/** Whether a finger that has moved `dx` and `dy` px since it touched down is swiping or scrolling, no longer tapping or holding. */
+export function pastSlop(dx: number, dy: number): boolean {
+  return Math.hypot(dx, dy) >= SLOP;
+}
+
 /** Whether a touch that starts `x` px from the left side can swipe a view: one that closes only from the side, like a swipe back on iPhone. */
 export function swipeStarts(x: number, leaves: boolean): boolean {
   return !leaves || x < BACK_EDGE;
@@ -102,7 +107,7 @@ export function catchSwipes(): () => void {
     const dx = t.clientX - g.x;
     const dy = t.clientY - g.y;
     if (!g.axis) {
-      if (Math.hypot(dx, dy) < SLOP) return;
+      if (!pastSlop(dx, dy)) return;
       g.axis = g.sw && Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     }
     if (g.axis === 'y') {
