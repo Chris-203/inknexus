@@ -26,6 +26,44 @@ export interface AlRanking {
   rankings?: { rank: number; context: string; allTime?: boolean | null; year?: number | null }[];
 }
 
+interface AlTrailer {
+  id: string;
+  site: string;
+}
+
+interface AlVideo {
+  title?: { romaji?: string; english?: string | null };
+  trailer?: AlTrailer | null;
+}
+
+export interface AlTrailers extends AlVideo {
+  relations?: { edges?: { relationType: string; node: AlVideo & { type: string } }[] };
+}
+
+/** Each video site AniList links: its name, its embeddable player and its own page, with {id} for the video. */
+const TRAILER_SITES: Record<string, { name: string; embed: string; page: string }> = {
+  youtube: { name: 'YouTube', embed: 'https://www.youtube-nocookie.com/embed/{id}?playsinline=1', page: 'https://www.youtube.com/watch?v={id}' },
+  dailymotion: { name: 'Dailymotion', embed: 'https://www.dailymotion.com/embed/video/{id}', page: 'https://www.dailymotion.com/video/{id}' },
+};
+
+export interface Trailer {
+  /** The series or anime the trailer is for, '' when AniList gives no title. */
+  title: string;
+  site: string;
+  embed: string;
+  page: string;
+}
+
+/** The series' own trailer or, as manga rarely have one, its anime adaptation's; null when there is none on a known site. */
+export function toTrailer(m: AlTrailers): Trailer | null {
+  const anime = (m.relations?.edges || []).filter((e) => e.relationType === 'ADAPTATION' && e.node.type === 'ANIME').map((e) => e.node);
+  const v = [m, ...anime].find((a) => a.trailer && TRAILER_SITES[a.trailer.site]);
+  const site = v?.trailer && TRAILER_SITES[v.trailer.site];
+  if (!v?.trailer || !site) return null;
+  const id = encodeURIComponent(v.trailer.id);
+  return { title: v.title?.english || v.title?.romaji || '', site: site.name, embed: site.embed.replace('{id}', id), page: site.page.replace('{id}', id) };
+}
+
 /** Send a GraphQL query to AniList and return its `data`. */
 async function query<T>(q: string, variables: Record<string, unknown>): Promise<T> {
   let r: Response;
@@ -132,4 +170,13 @@ export async function ranking(id: number): Promise<Ranking> {
   );
   if (!data.Media) throw new Error('AniList no longer has this series');
   return toRanking(data.Media);
+}
+
+/** The trailer for the AniList series `id`, or null when it has none. */
+export async function trailer(id: number): Promise<Trailer | null> {
+  const data = await query<{ Media?: AlTrailers | null }>(
+    `query($id:Int){Media(id:$id,type:MANGA){title{romaji english} trailer{id site} relations{edges{relationType node{type title{romaji english} trailer{id site}}}}}}`,
+    { id },
+  );
+  return data.Media ? toTrailer(data.Media) : null;
 }

@@ -18,7 +18,7 @@ export function freshRanking(x: Series | undefined, al: number | undefined, now 
  * Without an id, it asks MangaDex which AniList entry the series links to. A ranking saved with `x` shows at once;
  * once it is a week old it is loaded again and saved with `x`, and shown meanwhile, or if loading fails.
  */
-export function useRanking(x: Series | undefined, al?: number): Load<Ranking> | null {
+export function useRanking(x: Series | undefined, al?: number | null): Load<Ranking> | null {
   const known = al || x?.info?.al || Number(x?.al) || undefined;
   const look = useLoad(!known && x?.md ? x.md : null, () => mangadex.aniListId(x!.md!));
   const id = known || (look?.state === 'done' ? look.value : undefined);

@@ -61,6 +61,8 @@ export function Details({ o }: { o: SearchResult }) {
   // Reading a chapter adds the series first, so the reader has a series to keep progress in.
   const readChapter = async (c: Chapter) => read((ex ?? (await add())).id, c);
 
+  // MangaDex links most series to AniList, which has the trailer of the series or its anime.
+  const trailer = useLoad(al ? `trailer:${al}` : null, () => anilist.trailer(al!));
   const line = d && [d.status, d.year, d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`];
   const long = o.desc.length > 240;
 
@@ -123,6 +125,22 @@ export function Details({ o }: { o: SearchResult }) {
             Add to My Series
           </button>
         )}
+        {trailer?.state === 'done' && trailer.value && (
+          <section className="trailer" aria-label="Trailer">
+            <h3>Trailer</h3>
+            {trailer.value.title && <p className="sub">{trailer.value.title}</p>}
+            {/* YouTube's player refuses to play without the page's origin as referrer, which the app otherwise never sends. */}
+            <iframe
+              src={trailer.value.embed}
+              title={`Trailer on ${trailer.value.site}`}
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </section>
+        )}
+        {trailer?.state === 'error' && <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>}
       </div>
       {d && <MoreInGenre o={o} tags={d.tags} />}
       {chapters}
