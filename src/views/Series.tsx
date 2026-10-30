@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { useApp } from '../context';
 import { chapterText, ChapterRows, savedCheck } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
+import { MoreLikeThis } from '../components/MoreLikeThis';
 import { MoreInfo } from '../components/MoreInfo';
 import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
@@ -145,6 +146,7 @@ export function Series({ x }: { x: SeriesT }) {
       </div>
       {body}
       <MoreInfo r={rank} />
+      <MoreLikeThis x={{ title: x.title, al: Number(x.al) || null, md: x.md }} />
       <div className="pad end">
         <button
           className="btn danger sm"
