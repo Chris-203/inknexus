@@ -72,6 +72,14 @@ export const GENRES = [
 /** How browse orders a genre: most followed of all time, or newest chapter upload first. */
 export type BrowseSort = 'follows' | 'latest';
 
+/** Where a series comes from, by AniList's country code, with the original languages MangaDex files it under. */
+export const ORIGINS = [
+  { id: 'KR', name: 'Manhwa', langs: ['ko'] },
+  { id: 'CN', name: 'Manhua', langs: ['zh', 'zh-hk'] },
+  { id: 'JP', name: 'Manga', langs: ['ja'] },
+] as const;
+export type Origin = (typeof ORIGINS)[number]['id'];
+
 /** Up to `limit` series from a /manga query, with covers. */
 async function mangas(q: string, limit: number): Promise<MdManga[]> {
   const r = await api(`${MD}/manga?${q}&limit=${limit}&includes[]=cover_art${RATING}`);
@@ -124,10 +132,13 @@ export function search(q: string): Promise<SearchResult[]> {
   return mangaList(`title=${encodeURIComponent(q)}&order[relevance]=desc`);
 }
 
-/** Series with English chapters in a genre (null for every genre), in the chosen order. */
-export function browse(tag: string | null, sort: BrowseSort): Promise<SearchResult[]> {
+/** Series with English chapters in a genre (null for every genre) and from `origin` (every country when not given), in the chosen order. */
+export function browse(tag: string | null, sort: BrowseSort, origin?: Origin): Promise<SearchResult[]> {
   const order = sort === 'latest' ? 'latestUploadedChapter' : 'followedCount';
-  return mangaList(`availableTranslatedLanguage[]=en&order[${order}]=desc${tag ? `&includedTags[]=${tag}` : ''}`);
+  const langs = ORIGINS.find((o) => o.id === origin)?.langs || [];
+  return mangaList(
+    `availableTranslatedLanguage[]=en&order[${order}]=desc${tag ? `&includedTags[]=${tag}` : ''}${langs.map((l) => `&originalLanguage[]=${l}`).join('')}`,
+  );
 }
 
 /**
