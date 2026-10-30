@@ -187,6 +187,27 @@ describe('alMatch', () => {
     expect(alMatch('Hero', [m(1, 'The Hero'), m(2, 'Hero 2')])).toBeNull();
     expect(alMatch('영웅', [m(1, null, '', ['영웅'])])).toBeNull();
   });
+  it('with a Webtoon hint, takes among several with the name the one listing that Webtoon series, then the one in its genre', () => {
+    const wt = (no: number) => ({ site: 'WEBTOON', url: `https://www.webtoons.com/en/fantasy/rebirth/list?title_no=${no}` });
+    const h = { no: '5', genre: 'fantasy' };
+    expect(alMatch('Rebirth', [m(1, 'Rebirth'), { ...m(2, 'Rebirth'), externalLinks: [wt(5)] }], h)?.ref).toBe(2);
+    expect(
+      alMatch(
+        'Rebirth',
+        [
+          { ...m(1, 'Rebirth'), genres: ['Romance'] },
+          { ...m(2, 'Rebirth'), genres: ['Action', 'Fantasy'] },
+        ],
+        h,
+      )?.ref,
+    ).toBe(2);
+    expect(alMatch('Rebirth', [m(1, 'Rebirth'), m(2, 'Rebirth')], h)?.ref).toBe(1);
+  });
+  it('with a Webtoon hint, takes the series listing that Webtoon series under another name, but not one only in the genre', () => {
+    const wt = { site: 'WEBTOON', url: 'https://www.webtoons.com/en/fantasy/rebirth/list?title_no=5' };
+    expect(alMatch('Rebirth', [{ ...m(3, 'Hwansaeng'), externalLinks: [wt] }], { no: '5', genre: 'fantasy' })?.ref).toBe(3);
+    expect(alMatch('Rebirth', [{ ...m(3, 'Hwansaeng'), genres: ['Fantasy'] }], { no: '5', genre: 'fantasy' })).toBeNull();
+  });
 });
 
 describe('matchTitles', () => {
@@ -194,6 +215,12 @@ describe('matchTitles', () => {
     const sent = answer({ m0: { media: [{ id: 1, title: { english: 'One' } }] }, m1: { media: [{ id: 2, title: { english: 'Not Two' } }] } });
     expect((await matchTitles(['One', 'Two'])).map((r) => r?.ref ?? null)).toEqual([1, null]);
     expect(sent).toEqual([{ q0: 'One', q1: 'Two' }]);
+  });
+  it('matches each title with its own hint', async () => {
+    const two = (id: number, genres: string[]) => ({ id, title: { english: 'Same' }, genres });
+    answer({ m0: { media: [two(1, ['Romance']), two(2, ['Fantasy'])] }, m1: { media: [two(1, ['Romance']), two(2, ['Fantasy'])] } });
+    const got = await matchTitles(['Same', 'Same'], [{ no: '1', genre: 'fantasy' }, undefined]);
+    expect(got.map((r) => r?.ref)).toEqual([2, 1]);
   });
 });
 

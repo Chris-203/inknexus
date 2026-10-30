@@ -1,5 +1,6 @@
 import { norm } from '../lib/format';
 import { isWebUrl } from '../lib/links';
+import { bestFits, fit, SURE, type MatchHint } from '../lib/match';
 import type { Details, Ranking, SearchResult } from '../lib/types';
 
 export interface AlMedia {
@@ -14,6 +15,8 @@ export interface AlMedia {
   type?: string;
   /** 'MANGA', 'ONE_SHOT', 'NOVEL', …; asked for only where novels can come back. */
   format?: string | null;
+  /** Asked for only when matching titles. */
+  genres?: string[];
 }
 
 export interface AlDetails {
@@ -124,21 +127,27 @@ export function alNames(m: AlMedia): string[] {
   return [m.title.english, m.title.romaji, ...(m.synonyms || [])].filter((n): n is string => !!n);
 }
 
-/** The series among `media` named exactly `title` (its English or romaji title or a synonym, comparing letters and digits only), or null. */
-export function alMatch(title: string, media: AlMedia[]): SearchResult | null {
+/**
+ * The series among `media` named exactly `title` (its English or romaji title or a synonym, comparing letters and digits
+ * only), or null. With a hint from the Webtoon import, one that lists the same Webtoon series counts whatever its name,
+ * and among several the best fit wins; on a tie, the first, as AniList ranks them.
+ */
+export function alMatch(title: string, media: AlMedia[], h?: MatchHint): SearchResult | null {
   const t = norm(title);
-  const m = t && media.find((m) => alNames(m).some((n) => norm(n) === t));
+  const score = (m: AlMedia) => fit(h, { urls: (m.externalLinks || []).map((l) => l.url), tags: m.genres || [] });
+  const found = media.filter((m) => (t && alNames(m).some((n) => norm(n) === t)) || score(m) >= SURE);
+  const m = bestFits(found, score)[0];
   return m ? toResult(m) : null;
 }
 
-/** For each title, the AniList series with exactly that name, or null. All titles go in one request, so keep them to about 10. */
-export async function matchTitles(titles: string[]): Promise<(SearchResult | null)[]> {
-  const pages = titles.map((_, i) => `m${i}:Page(perPage:5){media(search:$q${i},type:MANGA,sort:SEARCH_MATCH){${FIELDS}}}`);
+/** For each title, the AniList series with exactly that name, or null; `hints` go with the titles in order. All titles go in one request, so keep them to about 10. */
+export async function matchTitles(titles: string[], hints: (MatchHint | undefined)[] = []): Promise<(SearchResult | null)[]> {
+  const pages = titles.map((_, i) => `m${i}:Page(perPage:5){media(search:$q${i},type:MANGA,sort:SEARCH_MATCH){${FIELDS} genres}}`);
   const data = await query<Record<string, { media?: AlMedia[] } | undefined>>(
     `query(${titles.map((_, i) => `$q${i}:String`).join(',')}){${pages.join(' ')}}`,
     Object.fromEntries(titles.map((t, i) => ['q' + i, t])),
   );
-  return titles.map((t, i) => alMatch(t, data['m' + i]?.media || []));
+  return titles.map((t, i) => alMatch(t, data['m' + i]?.media || [], hints[i]));
 }
 
 /** AniList's score and synopsis for each of `ids` it has, by id. All ids go in one request, so keep them to 50. */

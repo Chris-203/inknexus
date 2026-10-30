@@ -1,6 +1,7 @@
 import { why } from './api';
 import { planImport } from './importBackup';
 import { host, parseChUrl } from './links';
+import { hintOf, isWebtoon, webtoonNo } from './match';
 import { opensInBrowser, setOpensInBrowser } from './siteSettings';
 import { newSeries } from './storage';
 import { findSeries, getState, replaceState, sourceFrom } from './store';
@@ -16,17 +17,7 @@ export interface WebtoonItem {
   n: number;
 }
 
-const SITE = 'webtoons.com';
 const HASH = '#webtoon=';
-
-function isWebtoon(u: string): boolean {
-  try {
-    const h = new URL(u).hostname;
-    return h === SITE || h.endsWith('.' + SITE);
-  } catch {
-    return false;
-  }
-}
 
 /**
  * The bookmarklet, run on webtoons.com. It scrolls the page until no more titles load, collects every link to a series
@@ -92,18 +83,18 @@ export function bookmarklet(app: string): string {
 export function parseWebtoonList(raw: unknown): WebtoonItem[] {
   const byTitle = new Map<string, WebtoonItem>();
   for (const v of Array.isArray(raw) ? raw : []) {
-    if (!Array.isArray(v) || typeof v[0] !== 'string' || !isWebtoon(v[0])) continue;
+    const no = Array.isArray(v) && typeof v[0] === 'string' ? webtoonNo(v[0]) : '';
+    if (!no) continue;
     const u = new URL(v[0]);
     const q = u.searchParams;
-    const no = q.get('title_no') || q.get('titleNo') || '';
     const parts = u.pathname.split('/');
     const page = parts.pop();
-    if (!/^\d+$/.test(no) || !['viewer', 'list', 'episodeList'].includes(page!)) continue;
+    if (!['viewer', 'list', 'episodeList'].includes(page!)) continue;
     const ep = q.get('episode_no') || q.get('episodeNo') || String(v[2] ?? '').match(/(?:ep(?:isode)?\.?|#)\s*(\d+)/i)?.[1];
     const n = Number(ep) || 0;
     // Links are either /en/genre/series/(episode/viewer|list)?title_no= or, on the Recent list, /viewer?titleNo=&episodeNo=.
     const series = page === 'viewer' ? parts.slice(0, -1) : parts;
-    const base = 'https://www.' + SITE;
+    const base = 'https://www.webtoons.com';
     const item = {
       title: typeof v[1] === 'string' ? v[1].trim() : '',
       url: series.length > 1 ? `${base}${series.join('/')}/list?title_no=${no}` : `${base}/episodeList?titleNo=${no}`,
@@ -214,11 +205,18 @@ async function lookUp(ids: string[], toast: (m: string) => void) {
     for (let i = 0; i < ids.length; i += BATCH) {
       const batch = ids.slice(i, i + BATCH).flatMap((id) => findSeries(id) ?? []);
       if (!batch.length) continue;
-      const al = await anilist.matchTitles(batch.map((x) => x.title));
+      const al = await anilist.matchTitles(
+        batch.map((x) => x.title),
+        batch.map(hintOf),
+      );
       batch.forEach((x, k) => add(x, al[k] ?? null, null));
       // One MangaDex search at a time stays well under its rate limit while the library checks for new chapters.
-      // A series merged into one already in the library is gone, so it needs no search.
-      for (const x of batch) if (findSeries(x.id)) add(x, null, await mangadex.matchTitle(x.title));
+      // A series merged into one already in the library is gone, so it needs no search. The hint carries the AniList
+      // match just added, so a MangaDex entry that links it wins.
+      for (const x of batch) {
+        const y = findSeries(x.id);
+        if (y) add(x, null, await mangadex.matchTitle(x.title, hintOf(y)));
+      }
     }
   } catch (e) {
     return toast(`Stopped looking up series on AniList and MangaDex (${why(e)}). ${found.size} matched; add the rest from a series with + Source`);
