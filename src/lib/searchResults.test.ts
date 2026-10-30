@@ -71,11 +71,13 @@ describe('saved search results', () => {
 });
 
 describe('browseKey', () => {
-  it('keeps the key results were saved under before filters, and gives each country its own', async () => {
+  it('keeps the key results were saved under before filters, and gives each country and status its own', async () => {
     const r = await start(storage([]));
     expect(r.browseKey(null, 'follows')).toBe('browse::follows');
     expect(r.browseKey(null, 'follows', {})).toBe('browse::follows');
     expect(r.browseKey('t', 'latest', { origin: 'KR' })).toBe('browse:t:latest:KR');
+    expect(r.browseKey('t', 'latest', { status: 'ongoing' })).toBe('browse:t:latest:ongoing');
+    expect(r.browseKey(null, 'trending', { origin: 'JP', status: 'completed' })).toBe('browse::trending:JP:completed');
   });
 });
 

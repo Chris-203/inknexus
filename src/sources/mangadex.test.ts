@@ -201,6 +201,16 @@ describe('MangaDex requests', () => {
     await browse(null, 'follows');
     expect(seen[1]).not.toContain('originalLanguage');
   });
+  it('browse with a status asks for it, alone or with a country', async () => {
+    const seen = relay(() => ({ data: [] }));
+    await browse(null, 'latest', undefined, 'completed');
+    expect(seen[0]).toContain('&status[]=completed');
+    expect(seen[0]).not.toContain('originalLanguage');
+    await browse(null, 'latest', 'KR', 'ongoing');
+    expect(seen[1]).toContain('&originalLanguage[]=ko&status[]=ongoing');
+    await browse(null, 'latest');
+    expect(seen[2]).not.toContain('status[]');
+  });
   it('browse with no genre and latest upload first leaves out the tag filter', async () => {
     const seen = relay(() => ({ data: [] }));
     await browse(null, 'latest');
