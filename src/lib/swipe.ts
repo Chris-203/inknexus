@@ -70,10 +70,13 @@ function peek(on: boolean) {
   document.body.classList.toggle('peek', on);
 }
 
-/** Moves a swiped element back into place, and hides the view under it once it is there. */
+/** Moves a swiped element back into place, and hides the view under it and what was beside it once it is there. */
 function settle(sw: Swipe, ms: number) {
   slide(sw.el, 0, ms);
-  unpeek = window.setTimeout(() => peek(false), ms);
+  unpeek = window.setTimeout(() => {
+    peek(false);
+    sw.el.classList.remove('swiping');
+  }, ms);
 }
 
 /**
@@ -122,6 +125,8 @@ export function catchSwipes(): () => void {
     g.t = e.timeStamp;
     g.dx = dx;
     if (g.sw!.leaves) peek(true);
+    // What sits beside the element shows only while a swipe moves it (`.swiping` in styles.css).
+    g.sw!.el.classList.add('swiping');
     slide(g.sw!.el, swipeFollow(dx, g.sw!.can(dx > 0 ? 1 : -1), g.sw!.leaves), 0);
   };
 
@@ -146,6 +151,7 @@ export function catchSwipes(): () => void {
       // The element now shows what was beside it in its own place, in the same frame as it moves back.
       flushSync(() => sw.go(dir));
       slide(sw.el, 0, 0);
+      sw.el.classList.remove('swiping');
     }, ms);
   };
 

@@ -22,6 +22,18 @@ import { pastSlop, useSwipe } from '../lib/swipe';
 import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
 
+/** The covers that have loaded, by address. */
+const loaded = new Set<string>();
+
+/**
+ * A series' cover. One that has loaded before loads at once wherever it shows again, as on the shelf a series was moved
+ * to, rather than waiting until it scrolls into view and showing a gray box until then.
+ */
+function cover(url: string) {
+  const src = imageSrc(url);
+  return <img src={src} referrerPolicy="same-origin" loading={loaded.has(src) ? 'eager' : 'lazy'} onLoad={() => loaded.add(src)} alt="" />;
+}
+
 export function Library() {
   const { navigate, importBackup, toast } = useApp();
   const { lib } = useStore();
@@ -98,7 +110,7 @@ export function Library() {
     const fresh = freshOf(x);
     return (
       <>
-        {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+        {x.cover ? cover(x.cover) : <span className="cover" />}
         <span className="badges">
           {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
           {fresh?.n ? (
@@ -227,7 +239,7 @@ export function Library() {
                 return (
                   <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
                     <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                      {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                      {x.cover ? cover(x.cover) : <span className="thumb" />}
                       <span className="linfo">
                         <b>{x.title}</b>
                         <span>
