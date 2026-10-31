@@ -159,12 +159,12 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
           Source
         </button>
       </div>
-      {body}
       <MoreInfo r={rank} open={info}>
         <About d={more} english={!!x.md} />
         <Trailer al={al} />
       </MoreInfo>
       <MoreLikeThis x={like} />
+      {body}
       <div className="pad end">
         <button className="btn ghost" onClick={() => setSheet('merge')}>
           Merge into another series
