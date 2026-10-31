@@ -75,6 +75,7 @@ header .btn,header .ibtn{align-self:center}
 .track>div{flex:none;width:100%}
 .track>:not(.on){height:0;overflow:clip}
 .track.swiping>div{overflow:visible}
+.track.swiping>:not(.on){translate:0 var(--scrolled,0px)}
 /* My Series' other view, cards or the list: under the shown one, laid out so its covers load, but unseen and adding no scroll */
 .views{position:relative;overflow-y:clip}
 .views>.off{position:absolute;top:0;left:0;right:0;visibility:hidden}

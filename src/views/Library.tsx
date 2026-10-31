@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
@@ -58,6 +58,8 @@ export function Library() {
   const tabs = downloads.can ? [...SHELVES, { k: 'downloads' as const, n: 'Downloaded' }] : SHELVES;
   const openShelf = (k: LibraryTab) => {
     setLibraryShelf(k);
+    // A shelf always opens at its top.
+    scrollTo(0, 0);
     // Picks stay on the shelf they were made on, so Move and Remove only act on series in view. Downloaded has no series to pick.
     setPicked((p) => (k === 'downloads' ? null : p && []));
   };
@@ -75,6 +77,20 @@ export function Library() {
     false,
     (dir) => setAim(tabs[at - dir]!.k),
   );
+  // A shelf pulled in by a swipe shows from its top, where it opens, however far down this one is scrolled (`.swiping` in styles.css).
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const setTrack = useCallback(
+    (el: HTMLDivElement | null) => {
+      trackRef.current = el;
+      return swipe(el);
+    },
+    [swipe],
+  );
+  useEffect(() => {
+    const down = () => trackRef.current?.style.setProperty('--scrolled', `${scrollY}px`);
+    addEventListener('pointerdown', down, true);
+    return () => removeEventListener('pointerdown', down, true);
+  }, []);
   // A swipe can open a shelf whose tab is scrolled out of the row.
   const tabsRef = useRef<HTMLDivElement>(null);
   // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React would call it as the cleanup.
@@ -381,7 +397,7 @@ export function Library() {
         </div>
       </div>
       {/* Every shelf side by side, so a swipe pulls the next one in beside this one */}
-      <div ref={swipe} className="track" style={{ translate: `${-at * 100}%` }}>
+      <div ref={setTrack} className="track" style={{ translate: `${-at * 100}%` }}>
         {tabs.map((q) => (
           <div key={q.k} className={q.k === shelf ? 'on' : undefined} inert={q.k !== shelf}>
             {shelfBody(q.k)}
