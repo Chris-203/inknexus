@@ -18,6 +18,11 @@ export const SHELVES: { k: Shelf; n: string }[] = [
   { k: 'drop', n: 'Dropped' },
 ];
 
+/** A shelf's name, as its tab shows it. */
+export function shelfName(k: Shelf): string {
+  return SHELVES.find((q) => q.k === k)!.n;
+}
+
 /** A tab in My Series: a shelf, or the chapters saved for reading offline. */
 export type LibraryTab = Shelf | 'downloads';
 

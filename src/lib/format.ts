@@ -41,3 +41,9 @@ export function norm(s: unknown): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '');
 }
+
+/** Whether `title` holds `q`, ignoring case, and ignoring spaces and punctuation too so "solo-leveling" finds "Solo Leveling". */
+export function titleHas(title: string, q: string): boolean {
+  const n = norm(q);
+  return title.toLowerCase().includes(q.trim().toLowerCase()) || (!!n && norm(title).includes(n));
+}
