@@ -27,6 +27,7 @@ export interface AlDetails {
   startDate?: { year?: number | null };
   averageScore?: number | null;
   staff?: { edges?: { role: string; node: { name: { full: string } } }[] };
+  description?: string | null;
 }
 
 export interface AlRanking {
@@ -191,18 +192,19 @@ export function toDetails(m: AlDetails): Details {
     chapters: m.chapters || null,
     authors: [...new Set(authors)],
     score: m.averageScore || null,
+    desc: plain(m.description),
   };
 }
 
-/** A MangaDex series' details with AniList's added: its score, and its genres and tags MangaDex does not have. */
+/** A MangaDex series' details with AniList's added: its score and synopsis, and its genres and tags MangaDex does not have. */
 export function addDetails(md: Details, al: Details): Details {
   const has = new Set(md.tags.map(norm));
-  return { ...md, tags: [...md.tags, ...al.tags.filter((t) => !has.has(norm(t)))], score: al.score };
+  return { ...md, tags: [...md.tags, ...al.tags.filter((t) => !has.has(norm(t)))], score: al.score, desc: al.desc || md.desc };
 }
 
 export async function details(id: number): Promise<Details> {
   const data = await query<{ Media?: AlDetails | null }>(
-    `query($id:Int){Media(id:$id,type:MANGA){genres tags{name rank isMediaSpoiler} status chapters startDate{year} averageScore staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
+    `query($id:Int){Media(id:$id,type:MANGA){description genres tags{name rank isMediaSpoiler} status chapters startDate{year} averageScore staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
     { id },
   );
   if (!data.Media) throw new Error('AniList no longer has this series');

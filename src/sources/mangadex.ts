@@ -301,10 +301,11 @@ export function toDetails(m: MdManga, agg: MdAggregate): Details {
     chapters: new Set(nums.filter((n) => !isNaN(parseFloat(n)))).size || null,
     authors: [...new Set(authors)],
     al: alOf(m),
+    desc: a.description?.en || '',
   };
 }
 
-/** Tags, status, year, authors, English chapter count and AniList id for a series. */
+/** Tags, status, year, authors, English chapter count, AniList id and synopsis for a series. */
 export async function details(ref: string): Promise<Details> {
   const [m, agg] = await Promise.all([
     api(`${MD}/manga/${ref}?includes[]=author&includes[]=artist`).then((r) => r.json() as Promise<{ data: MdManga }>),

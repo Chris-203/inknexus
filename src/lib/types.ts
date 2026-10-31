@@ -90,6 +90,8 @@ export interface Details {
   score?: number | null;
   /** MangaDex only: the series' AniList id, when MangaDex links it. */
   al?: number | null;
+  /** The whole synopsis; a search result keeps only its start. Missing from details saved before it was kept. */
+  desc?: string;
 }
 
 export interface Chapter {

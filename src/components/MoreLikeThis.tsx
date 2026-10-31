@@ -1,10 +1,14 @@
-import { moreLikeThis, type LikeOf } from '../lib/moreLikeThis';
+import { moreLikeThis, savedLikeThis, type LikeOf } from '../lib/moreLikeThis';
 import { useLoad } from '../lib/useLoad';
 import { CardShelf } from './CardShelf';
 
 /** "More like this": AniList's related and recommended series, opened from MangaDex where it has them, filled up with MangaDex's recommendations. */
 export function MoreLikeThis({ x }: { x: LikeOf }) {
-  const more = useLoad(`${x.al}|${x.md}|${x.title}`, () => moreLikeThis(x));
+  const more = useLoad(
+    `${x.al}|${x.md}|${x.title}`,
+    () => moreLikeThis(x),
+    () => savedLikeThis(x),
+  );
   const missed = more?.state === 'done' && more.value.missed;
   return (
     <CardShelf

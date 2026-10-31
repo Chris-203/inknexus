@@ -1,5 +1,7 @@
 import { why } from './api';
+import { createDeviceCache } from './deviceCache';
 import { norm } from './format';
+import { light } from './searchResults';
 import type { SearchResult } from './types';
 import * as anilist from '../sources/anilist';
 import * as mangadex from '../sources/mangadex';
@@ -20,21 +22,42 @@ export interface LikeOf {
   md: string | null;
 }
 
-/** Answers by series for this session, so going back to a series page does not ask again. A failed load is not kept. */
-const cache = new Map<string, Promise<LikeThis>>();
+/**
+ * Full answers kept on the device for a week, with each series only as a card needs it (see light()), so a series page
+ * opens on its row, offline too. An answer that missed AniList or MangaDex is not kept, so the next visit asks again.
+ */
+const saved = createDeviceCache<LikeThis>('inknexus-like', 100);
+/** Answers still loading, so a page opened twice asks once. */
+const pending = new Map<string, Promise<LikeThis>>();
+
+function keyOf(x: LikeOf): string {
+  return `${x.al}|${x.md}|${norm(x.title)}`;
+}
+
+/** The answer saved for `x` in the last week. */
+export function savedLikeThis(x: LikeOf): LikeThis | undefined {
+  return saved.get(keyOf(x));
+}
 
 /**
  * Series like `x`: AniList's related and recommended series first, each opened from MangaDex when MangaDex has it under
  * the same name, then MangaDex's own recommendations to fill the row. Throws when neither source answers, or one fails and the other has none.
  */
 export function moreLikeThis(x: LikeOf): Promise<LikeThis> {
-  const key = `${x.al}|${x.md}|${norm(x.title)}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
-  const res = load(x);
-  cache.set(key, res);
-  res.catch(() => cache.delete(key));
-  return res;
+  const key = keyOf(x);
+  const hit = savedLikeThis(x);
+  if (hit) return Promise.resolve(hit);
+  let p = pending.get(key);
+  if (!p) {
+    p = load(x)
+      .then((r) => {
+        if (!r.missed) saved.set(key, { ...r, list: r.list.map(light) });
+        return r;
+      })
+      .finally(() => pending.delete(key));
+    pending.set(key, p);
+  }
+  return p;
 }
 
 async function load(x: LikeOf): Promise<LikeThis> {

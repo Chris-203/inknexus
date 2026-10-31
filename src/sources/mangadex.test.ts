@@ -80,7 +80,7 @@ describe('toDetails', () => {
     const d = toDetails(
       {
         id: 'm',
-        attributes: { status: 'hiatus', year: 2019 },
+        attributes: { status: 'hiatus', year: 2019, description: { en: 'A story.' } },
         relationships: [
           { id: 'a', type: 'author', attributes: { name: 'Pen Name' } },
           { id: 'b', type: 'artist', attributes: { name: 'Pen Name' } },
@@ -94,7 +94,7 @@ describe('toDetails', () => {
         },
       },
     );
-    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'], al: null });
+    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'], al: null, desc: 'A story.' });
   });
   it('gives null for no chapters or year, and an empty status for an unknown one', () => {
     // MangaDex sends volumes as [] when there are none.
