@@ -20,7 +20,7 @@ import { continueChapter } from '../lib/preload';
 import { setOpensInBrowser, useOpensInBrowser } from '../lib/siteSettings';
 import { leftChapter } from '../lib/spots';
 import { useSwipe } from '../lib/swipe';
-import { mergeSeries, moveLink, removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries, useStore } from '../lib/store';
+import { lookFrom, mergeSeries, moveLink, removeSeries, setHidden, setLast, shownSource, sourceFrom, sourcesOf, updateSeries, useStore } from '../lib/store';
 import type { Chapter, Link, SearchResult, Series as SeriesT } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { openWebtoonInBrowser } from '../lib/webtoon';
@@ -397,16 +397,44 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
   const res = useLoad(kind, () => (kind === 'md' ? mangadex.search(x.title) : anilist.search(x.title)));
   const site = kind === 'md' ? 'MangaDex' : 'AniList';
   const hidden = sourcesOf(x).filter((q) => q.h);
+  // A match whose cover or name differs from the series' waits here for the choice to use them or keep the series' own.
+  const [picked, setPicked] = useState<SearchResult | null>(null);
 
-  const use = (o: SearchResult) => {
-    if (kind === 'md') updateSeries(x.id, (s) => ({ ...sourceFrom(s, o), src: 'md' }));
+  const use = (o: SearchResult, take: boolean) => {
+    const look = lookFrom(x, o, take);
+    if (kind === 'md') updateSeries(x.id, (s) => ({ ...sourceFrom(s, o), ...look, src: 'md' }));
     else {
       const added = sourceFrom(x, o).links!.length - x.links.length;
-      updateSeries(x.id, (s) => sourceFrom(s, o));
+      updateSeries(x.id, (s) => ({ ...sourceFrom(s, o), ...look }));
       toast(added ? `Added ${plural(added, 'official link')}` : 'No official links listed for this one');
     }
     sheet.close();
   };
+  const pick = (o: SearchResult) => {
+    const differs = o.title !== x.title || (x.cover && o.cover && o.cover !== x.cover);
+    if (differs) setPicked(o);
+    else use(o, false);
+  };
+
+  if (picked)
+    return (
+      <Sheet label={`Use this ${site} match`} sheet={sheet}>
+        <h2>Use its cover and name?</h2>
+        <ResultRow o={picked} />
+        <p className="hint">
+          {site} lists it as {picked.title}. Use its cover and name for this series, or keep {x.title} as it looks now.
+        </p>
+        <button className="btn" onClick={() => use(picked, true)}>
+          Use its cover and name
+        </button>
+        <button className="btn ghost" onClick={() => use(picked, false)}>
+          Keep the current cover and name
+        </button>
+        <button className="btn ghost" onClick={() => setPicked(null)}>
+          Back to the results
+        </button>
+      </Sheet>
+    );
   const onSave = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const d = new FormData(e.currentTarget);
@@ -459,7 +487,7 @@ function AddSourceSheet({ x, onClose }: { x: SeriesT; onClose: () => void }) {
         {res?.state === 'done' && !results.length && <p className="hint">No match on {site}.</p>}
         {results.map((o) => (
           <ResultRow key={String(o.ref)} o={o} extra={kind === 'al' && <p>{plural(o.links?.length || 0, 'official link')}</p>}>
-            <button className="btn sm" onClick={() => use(o)}>
+            <button className="btn sm" onClick={() => pick(o)}>
               Use
             </button>
           </ResultRow>

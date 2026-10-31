@@ -1,4 +1,4 @@
-import { getState, joined, mergeSeries, moveLink, removeSeries, replaceState, setShelf, shownSource, sourceFrom } from './store';
+import { getState, joined, lookFrom, mergeSeries, moveLink, removeSeries, replaceState, setShelf, shownSource, sourceFrom } from './store';
 import type { Series } from './types';
 
 function series(id: string): Series {
@@ -69,6 +69,18 @@ describe('sourceFrom', () => {
     expect(sourceFrom(al, { ...o, src: 'al', ref: 7 }).cover).toBe('https://c/1.jpg');
     expect(sourceFrom(al, { ...o, src: 'md' }).cover).toBe(al.cover);
     expect(sourceFrom(md, { ...o, src: 'md', cover: '' }).cover).toBe(md.cover);
+  });
+});
+
+describe('lookFrom', () => {
+  const o = { src: 'md' as const, ref: 'm1', title: 'Theirs', desc: '', cover: 'https://c/1.jpg' };
+  it("takes the match's cover and name, keeping the series' cover when the match has none", () => {
+    expect(lookFrom({ ...series('a'), cover: 'https://mine' }, o, true)).toEqual({ cover: 'https://c/1.jpg', title: 'Theirs' });
+    expect(lookFrom({ ...series('a'), cover: 'https://mine' }, { ...o, cover: '' }, true)).toEqual({ cover: 'https://mine', title: 'Theirs' });
+  });
+  it("keeps the series' cover and name, taking the match's cover only when the series has none", () => {
+    expect(lookFrom({ ...series('a'), cover: 'https://mine' }, o, false)).toEqual({ cover: 'https://mine', title: 'a' });
+    expect(lookFrom(series('a'), o, false)).toEqual({ cover: 'https://c/1.jpg', title: 'a' });
   });
 });
 
