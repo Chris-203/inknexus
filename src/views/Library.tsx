@@ -163,6 +163,8 @@ export function Library() {
   const move = (ids: string[], k: Shelf) => {
     setShelf(ids, k);
     setPicked(null);
+    // The series left on the shelf start again from its top.
+    scrollTo(0, 0);
     toast(`Moved ${ids.length} series to ${SHELVES.find((q) => q.k === k)!.n}`);
   };
 
