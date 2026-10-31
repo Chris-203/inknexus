@@ -77,6 +77,11 @@ export function sourceFrom(x: Series, o: SearchResult): Partial<Series> {
   return { al: o.ref, cover, links: [...x.links, ...fresh] };
 }
 
+/** `x`'s cover and name after picking match `o`: its own, or with `take`, the match's. A series with no cover takes the match's either way. */
+export function lookFrom(x: Series, o: SearchResult, take: boolean): Pick<Series, 'cover' | 'title'> {
+  return take ? { cover: o.cover || x.cover, title: o.title } : { cover: x.cover || o.cover, title: x.title };
+}
+
 /**
  * `into` with what `x` has that it lacks: links to other pages, the MangaDex and AniList matches, a cover, and the
  * further last chapter. `into` keeps its name, shelf and chosen source.
