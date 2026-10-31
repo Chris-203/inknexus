@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
@@ -21,6 +21,18 @@ import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
 import { pastSlop, useSwipe } from '../lib/swipe';
 import type { Link, Series as SeriesT, Shelf } from '../lib/types';
 import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
+
+/** The covers that have loaded, by address. */
+const loaded = new Set<string>();
+
+/**
+ * A series' cover. One that has loaded before loads at once wherever it shows again, as on the shelf a series was moved
+ * to, rather than waiting until it scrolls into view and showing a gray box until then.
+ */
+function cover(url: string) {
+  const src = imageSrc(url);
+  return <img src={src} referrerPolicy="same-origin" loading={loaded.has(src) ? 'eager' : 'lazy'} onLoad={() => loaded.add(src)} alt="" />;
+}
 
 export function Library() {
   const { navigate, importBackup, toast } = useApp();
@@ -49,6 +61,8 @@ export function Library() {
   const tabs = downloads.can ? [...SHELVES, { k: 'downloads' as const, n: 'Downloaded' }] : SHELVES;
   const openShelf = (k: LibraryTab) => {
     setLibraryShelf(k);
+    // A shelf always opens at its top.
+    scrollTo(0, 0);
     // Picks stay on the shelf they were made on, so Move and Remove only act on series in view. Downloaded has no series to pick.
     setPicked((p) => (k === 'downloads' ? null : p && []));
   };
@@ -66,6 +80,20 @@ export function Library() {
     false,
     (dir) => setAim(tabs[at - dir]!.k),
   );
+  // A shelf pulled in by a swipe shows from its top, where it opens, however far down this one is scrolled (`.swiping` in styles.css).
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const setTrack = useCallback(
+    (el: HTMLDivElement | null) => {
+      trackRef.current = el;
+      return swipe(el);
+    },
+    [swipe],
+  );
+  useEffect(() => {
+    const down = () => trackRef.current?.style.setProperty('--scrolled', `${scrollY}px`);
+    addEventListener('pointerdown', down, true);
+    return () => removeEventListener('pointerdown', down, true);
+  }, []);
   // A swipe can open a shelf whose tab is scrolled out of the row.
   const tabsRef = useRef<HTMLDivElement>(null);
   // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React would call it as the cleanup.
@@ -101,7 +129,7 @@ export function Library() {
     const fresh = freshOf(x);
     return (
       <>
-        {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="cover" />}
+        {x.cover ? cover(x.cover) : <span className="cover" />}
         <span className="badges">
           {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
           {fresh?.n ? (
@@ -154,6 +182,8 @@ export function Library() {
   const move = (ids: string[], k: Shelf) => {
     setShelf(ids, k);
     setPicked(null);
+    // The series left on the shelf start again from its top.
+    scrollTo(0, 0);
     toast(`Moved ${ids.length} series to ${shelfName(k)}`);
   };
 
@@ -223,7 +253,7 @@ export function Library() {
           return (
             <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
               <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                {x.cover ? <img src={imageSrc(x.cover)} referrerPolicy="same-origin" loading="lazy" alt="" /> : <span className="thumb" />}
+                {x.cover ? cover(x.cover) : <span className="thumb" />}
                 <span className="linfo">
                   <b>{x.title}</b>
                   <span>
@@ -435,7 +465,7 @@ export function Library() {
         </div>
       ) : (
         // Every shelf side by side, so a swipe pulls the next one in beside this one
-        <div ref={swipe} className="track" style={{ translate: `${-at * 100}%` }}>
+        <div ref={setTrack} className="track" style={{ translate: `${-at * 100}%` }}>
           {tabs.map((q) => (
             <div key={q.k} className={q.k === shelf ? 'on' : undefined} inert={q.k !== shelf}>
               {shelfBody(q.k)}

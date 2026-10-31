@@ -21,7 +21,8 @@ const SLOP = 10;
 /** How long a page takes to settle after the finger lets go, in ms: about as long as WEBTOON's tabs take. */
 const SETTLE = 350;
 
-let target: Swipe | null = null;
+/** Every element a swipe can move, the latest last: a series page opens over My Series, which stays mounted under it. */
+const targets: Swipe[] = [];
 let unpeek = 0;
 
 /** Where a sideways swipe that ends at `dx` (px), moving at `v` (px/ms), takes the page: `dir` when it went far or fast enough, otherwise 0. */
@@ -70,10 +71,13 @@ function peek(on: boolean) {
   document.body.classList.toggle('peek', on);
 }
 
-/** Moves a swiped element back into place, and hides the view under it once it is there. */
+/** Moves a swiped element back into place, and hides the view under it and what was beside it once it is there. */
 function settle(sw: Swipe, ms: number) {
   slide(sw.el, 0, ms);
-  unpeek = window.setTimeout(() => peek(false), ms);
+  unpeek = window.setTimeout(() => {
+    peek(false);
+    sw.el.classList.remove('swiping');
+  }, ms);
 }
 
 /**
@@ -94,11 +98,12 @@ export function catchSwipes(): () => void {
     g = null;
     if (e.touches.length !== 1) return;
     const at = e.target as Element;
+    const target = targets.at(-1);
     // Sheets and rows that scroll sideways keep their own touches.
     // Under a short shelf, the touch lands on the page itself.
     const page = at === document.documentElement || at === document.body || at.id === 'app';
     const on = target && (target.el.contains(at) || (page && t.clientY > target.el.getBoundingClientRect().top));
-    const ok = on && !at.closest('#modal') && !scroller(at, 'x') && swipeStarts(t.clientX, target!.leaves);
+    const ok = on && !at.closest('#modal') && !scroller(at, 'x') && swipeStarts(t.clientX, target.leaves);
     g = { x: t.clientX, y: t.clientY, t: e.timeStamp, at, edge, axis: null, dx: 0, v: 0, sw: ok ? target : null };
   };
 
@@ -122,6 +127,8 @@ export function catchSwipes(): () => void {
     g.t = e.timeStamp;
     g.dx = dx;
     if (g.sw!.leaves) peek(true);
+    // What sits beside the element shows only while a swipe moves it (`.swiping` in styles.css).
+    g.sw!.el.classList.add('swiping');
     slide(g.sw!.el, swipeFollow(dx, g.sw!.can(dx > 0 ? 1 : -1), g.sw!.leaves), 0);
   };
 
@@ -146,6 +153,7 @@ export function catchSwipes(): () => void {
       // The element now shows what was beside it in its own place, in the same frame as it moves back.
       flushSync(() => sw.go(dir));
       slide(sw.el, 0, 0);
+      sw.el.classList.remove('swiping');
     }, ms);
   };
 
@@ -173,9 +181,10 @@ export function useSwipe(can: (dir: Dir) => boolean, go: (dir: Dir) => void, lea
     (el: HTMLElement | null) => {
       if (!el) return;
       const sw: Swipe = { el, can: (dir) => latest.current.can(dir), go: (dir) => latest.current.go(dir), aim: (dir) => latest.current.aim?.(dir), leaves };
-      target = sw;
+      targets.push(sw);
       return () => {
-        if (target === sw) target = null;
+        // What was under it, such as My Series under a series page that closes, takes swipes again.
+        targets.splice(targets.indexOf(sw), 1);
         // A view that a swipe closed hides the view under it as it goes, in the same frame as that view takes its place.
         if (leaves) peek(false);
       };
