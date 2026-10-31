@@ -1,33 +1,35 @@
 import { useState, type ReactNode } from 'react';
 import { useApp } from '../context';
+import { About } from '../components/About';
 import { ChapterRows } from '../components/ChapterRows';
 import { MoreLikeThis } from '../components/MoreLikeThis';
 import { MoreInfo } from '../components/MoreInfo';
 import { useReadChapter } from '../components/ReadButton';
+import { Trailer } from '../components/Trailer';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters } from '../lib/chapters';
-import { norm, plural } from '../lib/format';
+import { seriesDetails } from '../lib/details';
+import { norm } from '../lib/format';
 import { useRanking } from '../lib/ranking';
 import { addSeries, updateSeries, useStore } from '../lib/store';
 import { useSwipe } from '../lib/swipe';
-import type { Chapter, Details as SeriesDetails, SearchResult } from '../lib/types';
+import type { Chapter, SearchResult } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import * as mangadex from '../sources/mangadex';
-import * as anilist from '../sources/anilist';
 
 /** A Browse result before it is added, laid out like a series page on Webtoon: a big cover, the synopsis, tags and facts, Add to My Series and, on MangaDex, its chapters. */
 export function Details({ o }: { o: SearchResult }) {
   const { navigate, goBack, toast } = useApp();
   const { lib } = useStore();
   const [adding, setAdding] = useState(false);
-  // The whole synopsis, rather than its first lines.
-  const [open, setOpen] = useState(false);
   const swipe = useSwipe(
     (dir) => dir === 1,
     () => goBack({ name: 'search' }),
     true,
   );
-  const more = useLoad(`${o.src}:${o.ref}`, () => loadDetails(o));
+  const more = useLoad(`${o.src}:${o.ref}`, () =>
+    seriesDetails({ title: o.title, al: o.src === 'al' ? Number(o.ref) : (o.al ?? null), md: o.src === 'md' ? String(o.ref) : null }),
+  );
   const ex = o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
   const d = more?.state === 'done' ? more.value : null;
   const al = o.src === 'al' ? Number(o.ref) : d?.al;
@@ -68,16 +70,6 @@ export function Details({ o }: { o: SearchResult }) {
   // Reading a chapter adds the series first, so the reader has a series to keep progress in.
   const readChapter = async (c: Chapter) => read((ex ?? (await add())).id, c);
 
-  // MangaDex links most series to AniList, which has the trailer of the series or its anime.
-  const trailer = useLoad(al ? `trailer:${al}` : null, () => anilist.trailer(al!));
-  const line = d && [
-    d.status,
-    d.year,
-    d.chapters && `${plural(d.chapters, 'chapter')}${o.src === 'md' ? ' in English' : ''}`,
-    d.score && `★ ${d.score}% on AniList`,
-  ];
-  const long = o.desc.length > 240;
-
   let chapters: ReactNode = null;
   if (chs?.status === 'loading') chapters = <p className="hint">Loading chapters…</p>;
   else if (chs?.status === 'error')
@@ -108,25 +100,7 @@ export function Details({ o }: { o: SearchResult }) {
       <div className="hero">{o.cover ? <img className="cover" src={imageSrc(o.cover)} referrerPolicy="same-origin" alt="" /> : <span className="cover" />}</div>
       <div className="dtl">
         <h2>{o.title}</h2>
-        {d && d.authors.length > 0 && <div className="sub">{d.authors.join(', ')}</div>}
-        <p className={`about${open ? ' open' : ''}`}>{o.desc || 'No synopsis yet.'}</p>
-        {long && (
-          <button className="more" aria-expanded={open} onClick={() => setOpen(!open)}>
-            {open ? 'Less' : 'More'}
-          </button>
-        )}
-        {d && d.tags.length > 0 && (
-          <ul className="tags" aria-label="Tags">
-            {d.tags.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-        )}
-        {more?.state === 'error' ? (
-          <p className="sub">Could not load more about this series ({more.error}). Go back and open it again.</p>
-        ) : (
-          <p className="sub">{[o.src === 'md' ? 'On MangaDex' : 'On AniList', ...(line || ['Loading…'])].filter(Boolean).join(' · ')}</p>
-        )}
+        <About desc={o.desc} d={more} on={o.src === 'md' ? 'On MangaDex' : 'On AniList'} english={o.src === 'md'} />
         <MoreInfo r={rank} />
         {ex ? (
           <button className="btn" onClick={() => navigate({ name: 'series', id: ex.id })}>
@@ -137,28 +111,13 @@ export function Details({ o }: { o: SearchResult }) {
             Add to My Series
           </button>
         )}
-        {trailer?.state === 'done' && trailer.value && (
-          <section className="trailer" aria-label="Trailer">
-            <h3>Trailer</h3>
-            {trailer.value.title && <p className="sub">{trailer.value.title}</p>}
-            {/* YouTube's player refuses to play without the page's origin as referrer, which the app otherwise never sends. */}
-            <iframe
-              src={trailer.value.embed}
-              title={`Trailer on ${trailer.value.site}`}
-              referrerPolicy="strict-origin-when-cross-origin"
-              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-              allowFullScreen
-              loading="lazy"
-            />
-          </section>
-        )}
-        {trailer?.state === 'error' && <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>}
+        <Trailer al={al} />
       </div>
       <MoreLikeThis x={{ title: o.title, al: o.src === 'al' ? Number(o.ref) : null, md: o.src === 'md' ? String(o.ref) : null }} />
       {chapters}
       {o.src === 'md' && (
         <p className="credit">
-          Chapters and data from MangaDex{o.al ? ', with the score and more tags from AniList' : ''}. Scanlation groups are credited on each chapter.{' '}
+          Chapters and data from MangaDex{al ? ', with the score and more tags from AniList' : ''}. Scanlation groups are credited on each chapter.{' '}
           <a href={mangadex.mangaUrl(String(o.ref))} target="_blank" rel="noopener noreferrer">
             View on MangaDex ↗
           </a>
@@ -166,15 +125,4 @@ export function Details({ o }: { o: SearchResult }) {
       )}
     </div>
   );
-}
-
-/** More about a result. On MangaDex, AniList's score and tags are added when MangaDex links the series to AniList. */
-async function loadDetails(o: SearchResult): Promise<SeriesDetails> {
-  if (o.src === 'al') return anilist.details(Number(o.ref));
-  const [md, al] = await Promise.all([
-    mangadex.details(String(o.ref)),
-    // AniList only adds to MangaDex's details, so the page shows without it when AniList fails.
-    o.al ? anilist.details(o.al).catch(() => null) : null,
-  ]);
-  return al ? anilist.addDetails(md, al) : md;
 }

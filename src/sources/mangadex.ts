@@ -300,23 +300,18 @@ export function toDetails(m: MdManga, agg: MdAggregate): Details {
     year: a.year || null,
     chapters: new Set(nums.filter((n) => !isNaN(parseFloat(n)))).size || null,
     authors: [...new Set(authors)],
+    desc: a.description?.en || '',
     al: alOf(m),
   };
 }
 
-/** Tags, status, year, authors, English chapter count and AniList id for a series. */
+/** Tags, status, year, authors, English chapter count, synopsis and AniList id for a series. */
 export async function details(ref: string): Promise<Details> {
   const [m, agg] = await Promise.all([
     api(`${MD}/manga/${ref}?includes[]=author&includes[]=artist`).then((r) => r.json() as Promise<{ data: MdManga }>),
     api(`${MD}/manga/${ref}/aggregate?translatedLanguage[]=en`).then((r) => r.json() as Promise<MdAggregate>),
   ]);
   return toDetails(m.data, agg);
-}
-
-/** The AniList id MangaDex links a series to, or null when it has none. */
-export async function aniListId(ref: string): Promise<number | null> {
-  const j: { data: MdManga } = await (await api(`${MD}/manga/${ref}`)).json();
-  return alOf(j.data);
 }
 
 /** Every name MangaDex has for a series. */
