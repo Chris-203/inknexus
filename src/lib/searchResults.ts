@@ -61,10 +61,15 @@ export function isFresh(key: string): boolean {
   return !!e && Date.now() - e.at < FRESH;
 }
 
+/** A result as it is kept on the device until it is opened: everything but the end of its synopsis. */
+export function light(o: SearchResult): SearchResult {
+  return { ...o, desc: o.desc.slice(0, DESC) };
+}
+
 /** Save results under `key`. When storage is full, drop the oldest until they fit. */
 export function saveResults(key: string, res: SearchResult[]) {
   cache.delete(key);
-  cache.set(key, { at: Date.now(), res: res.map((o) => ({ ...o, desc: o.desc.slice(0, DESC) })) });
+  cache.set(key, { at: Date.now(), res: res.map(light) });
   const keep = [...cache].slice(-KEEP);
   while (keep.length && !writeJson(KEY, keep)) keep.shift();
 }

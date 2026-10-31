@@ -1,4 +1,4 @@
-import { moreLikeThis } from './moreLikeThis';
+import { moreLikeThis, savedLikeThis } from './moreLikeThis';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -71,6 +71,18 @@ describe('moreLikeThis', () => {
     await expect(moreLikeThis({ title: 'Down', al: 1, md: null })).rejects.toThrow('HTTP 500');
     stub(null, () => ({}), 500, 503);
     await expect(moreLikeThis({ title: 'Both', al: 1, md: 'me' })).rejects.toThrow(/^AniList: HTTP 500.*; MangaDex: HTTP 503/);
+  });
+  it('saves an answer with each series as a card needs it, but asks again after one that missed a source', async () => {
+    stub({ Media: { recommendations: { nodes: [{ rating: 5, mediaRecommendation: { ...al(2, 'Long'), description: 'x'.repeat(500) } }] } } }, () => {
+      throw new Error('down');
+    });
+    const x = { title: 'Kept', al: 1, md: null };
+    await moreLikeThis(x);
+    expect(savedLikeThis(x)!.list[0]!.desc).toHaveLength(300);
+    const missed = { title: 'Missed', al: 1, md: 'me' };
+    stub({ Media: { recommendations: { nodes: [{ rating: 5, mediaRecommendation: al(3, 'Other') }] } } }, () => ({}), 200, 500);
+    expect((await moreLikeThis(missed)).missed).toMatch(/^MangaDex failed/);
+    expect(savedLikeThis(missed)).toBeUndefined();
   });
   it('asks once per series this session, but again after a failure', async () => {
     const seen = stub({ Media: {} }, () => ({ data: [] }));

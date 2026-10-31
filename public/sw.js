@@ -1,11 +1,12 @@
 // Service worker: lets InkNexus open without a connection and read chapters saved for offline reading.
 // The app itself comes from the network whenever it can, so a new version shows on the next launch as before; the copy
 // from the last launch is used only when the network fails. MangaDex images come from the chapters saved by
-// src/lib/downloads.ts when they are there, otherwise through the image relay as usual. Nothing else under /api/ is touched.
+// src/lib/downloads.ts or the My Series covers kept by src/lib/covers.ts when they are there, otherwise through the
+// image relay as usual. Nothing else under /api/ is touched.
 
 const APP = 'inknexus-app';
-// Shared with src/lib/downloads.ts.
-const SAVED = 'inknexus-downloads';
+// Shared with src/lib/downloads.ts and src/lib/covers.ts.
+const SAVED = ['inknexus-downloads', 'inknexus-covers'];
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -19,8 +20,11 @@ self.addEventListener('fetch', (e) => {
 });
 
 async function saved(r) {
-  const hit = await caches.open(SAVED).then((c) => c.match(r, { ignoreVary: true }));
-  return hit || fetch(r);
+  for (const name of SAVED) {
+    const hit = await caches.open(name).then((c) => c.match(r, { ignoreVary: true }));
+    if (hit) return hit;
+  }
+  return fetch(r);
 }
 
 // Every view is the same page, so any page load is kept as '/'. After a fresh one, files of older builds are dropped.

@@ -1,9 +1,13 @@
+import { loadTrailer, savedTrailer } from '../lib/details';
 import { useLoad } from '../lib/useLoad';
-import * as anilist from '../sources/anilist';
 
 /** The trailer AniList has for series `al` or its anime, played on the page. Nothing shows without an id or when AniList has no trailer. */
 export function Trailer({ al }: { al: number | null | undefined }) {
-  const trailer = useLoad(al ? `trailer:${al}` : null, () => anilist.trailer(al!));
+  const trailer = useLoad(
+    al ? `trailer:${al}` : null,
+    () => loadTrailer(al!),
+    () => savedTrailer(al!),
+  );
   if (trailer?.state === 'error') return <p className="sub">Could not check AniList for a trailer ({trailer.error}). Go back and open this series again.</p>;
   if (trailer?.state !== 'done' || !trailer.value) return null;
   return (

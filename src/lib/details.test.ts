@@ -1,4 +1,4 @@
-import { seriesDetails } from './details';
+import { loadDetails, loadTrailer, savedDetails, savedTrailer, seriesDetails } from './details';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -52,5 +52,29 @@ describe('seriesDetails', () => {
     await expect(seriesDetails({ title: 'Hero', al: 3, md: null })).rejects.toThrow();
     stub({ Page: { media: [{ id: 5, title: { english: 'Someone else' } }] } }, () => ({}));
     expect(await seriesDetails({ title: 'Hero', al: null, md: null })).toBeNull();
+  });
+});
+
+describe('details of an opened series', () => {
+  it('are saved once loaded, for that series only', async () => {
+    stub({ Media: media }, (u) => (u.includes('/aggregate') ? {} : mdManga(null, 'All of it.')));
+    const x = { title: 'Hero', al: 3, md: 'm1' };
+    expect(savedDetails(x)).toBeUndefined();
+    const d = await loadDetails(x);
+    expect(d).toMatchObject({ desc: 'All of it.', al: 3 });
+    expect(savedDetails(x)).toEqual(d);
+    expect(savedDetails({ ...x, md: null })).toBeUndefined();
+  });
+  it('save a series neither source has as null, apart from not loaded', async () => {
+    stub({ Page: { media: [] } }, () => ({}));
+    const x = { title: 'Nobody', al: null, md: null };
+    expect(await loadDetails(x)).toBeNull();
+    expect(savedDetails(x)).toBeNull();
+  });
+  it('save a series having no trailer as null, apart from not loaded', async () => {
+    stub({ Media: { trailer: null } }, () => ({}));
+    expect(savedTrailer(7)).toBeUndefined();
+    expect(await loadTrailer(7)).toBeNull();
+    expect(savedTrailer(7)).toBeNull();
   });
 });

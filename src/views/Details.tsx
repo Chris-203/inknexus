@@ -8,7 +8,7 @@ import { useReadChapter } from '../components/ReadButton';
 import { Trailer } from '../components/Trailer';
 import { imageSrc } from '../lib/api';
 import { retryChapters, useChapters } from '../lib/chapters';
-import { seriesDetails } from '../lib/details';
+import { loadDetails, savedDetails } from '../lib/details';
 import { norm } from '../lib/format';
 import { useRanking } from '../lib/ranking';
 import { addSeries, updateSeries, useStore } from '../lib/store';
@@ -27,8 +27,11 @@ export function Details({ o }: { o: SearchResult }) {
     () => goBack({ name: 'search' }),
     true,
   );
-  const more = useLoad(`${o.src}:${o.ref}`, () =>
-    seriesDetails({ title: o.title, al: o.src === 'al' ? Number(o.ref) : (o.al ?? null), md: o.src === 'md' ? String(o.ref) : null }),
+  const like = { title: o.title, al: o.src === 'al' ? Number(o.ref) : (o.al ?? null), md: o.src === 'md' ? String(o.ref) : null };
+  const more = useLoad(
+    `${o.src}:${o.ref}`,
+    () => loadDetails(like),
+    () => savedDetails(like),
   );
   const ex = o.src === 'md' ? lib.find((x) => x.md === o.ref) : lib.find((x) => x.al === o.ref || norm(x.title) === norm(o.title));
   const d = more?.state === 'done' ? more.value : null;
@@ -100,7 +103,8 @@ export function Details({ o }: { o: SearchResult }) {
       <div className="hero">{o.cover ? <img className="cover" src={imageSrc(o.cover)} referrerPolicy="same-origin" alt="" /> : <span className="cover" />}</div>
       <div className="dtl">
         <h2>{o.title}</h2>
-        <About desc={o.desc} d={more} on={o.src === 'md' ? 'On MangaDex' : 'On AniList'} english={o.src === 'md'} />
+        {/* A row keeps only the start of the synopsis; the details have all of it. */}
+        <About desc={d?.desc || o.desc} d={more} on={o.src === 'md' ? 'On MangaDex' : 'On AniList'} english={o.src === 'md'} />
         <MoreInfo r={rank} />
         {ex ? (
           <button className="btn" onClick={() => navigate({ name: 'series', id: ex.id })}>

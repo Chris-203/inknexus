@@ -8,6 +8,7 @@ import { WebtoonSheet } from '../components/WebtoonSheet';
 import { imageSrc } from '../lib/api';
 import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
+import { keepCovers } from '../lib/covers';
 import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
 import { daysAgo, fileSize, fmt, plural, titleHas } from '../lib/format';
 import { SHELVES, setLibraryShelf, type LibraryTab, setLibraryView, shelfName, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
@@ -41,6 +42,7 @@ export function Library() {
   const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
   // Before useUpdates, so its checks see the lists loading ahead and wait for them.
   useEffect(() => prefetchChapters(mds), [lib]);
+  useEffect(() => keepCovers(lib), [lib]);
   const updates = useUpdates(lib);
   // The ids picked for removal while selecting, or null when not selecting.
   const [picked, setPicked] = useState<string[] | null>(null);
