@@ -3,12 +3,15 @@ import { useApp } from '../context';
 import { chapterText, ChapterRows, savedCheck } from '../components/ChapterRows';
 import { LinkFields } from '../components/LinkFields';
 import { MoreLikeThis } from '../components/MoreLikeThis';
+import { About } from '../components/About';
 import { MoreInfo } from '../components/MoreInfo';
+import { Trailer } from '../components/Trailer';
 import { ReadButton, useReadChapter } from '../components/ReadButton';
 import { ResultRow } from '../components/ResultRow';
 import { Sheet, useSheet } from '../components/Sheet';
 import { imageSrc, why } from '../lib/api';
 import { retryChapters, useChapters, type ChaptersState } from '../lib/chapters';
+import { seriesDetails } from '../lib/details';
 import { saveChapter, useDownloads } from '../lib/downloads';
 import { fmt, norm, plural } from '../lib/format';
 import { host, linkFrom, linkName, nextWhole, NOT_WEB, stepChapter } from '../lib/links';
@@ -42,7 +45,11 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
   const cur = shownSource(x);
   // Loaded while another source is shown too, so switching to MangaDex shows its chapters at once.
   const chs = useChapters(x.mdh ? null : x.md);
-  const rank = useRanking(x);
+  // The series page's own, whichever source is shown: found by the series' AniList and MangaDex ids, or else by its name.
+  const like = { title: x.title, al: Number(x.al) || null, md: x.md };
+  const more = useLoad(`${like.al}|${like.md}|${like.title}`, () => seriesDetails(like));
+  const al = more?.state === 'done' ? more.value?.al : undefined;
+  const rank = useRanking(x, al);
 
   // Keep the field in step when the number changes elsewhere (− / +, paste).
   useEffect(() => setLastText(String(x.last || 0)), [x.last]);
@@ -145,8 +152,11 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
         </button>
       </div>
       {body}
-      <MoreInfo r={rank} open={info} />
-      <MoreLikeThis x={{ title: x.title, al: Number(x.al) || null, md: x.md }} />
+      <MoreInfo r={rank} open={info}>
+        <About d={more} english={!!x.md} />
+        <Trailer al={al} />
+      </MoreInfo>
+      <MoreLikeThis x={like} />
       <div className="pad end">
         <button className="btn ghost" onClick={() => setSheet('merge')}>
           Merge into another series

@@ -88,7 +88,9 @@ export interface Details {
   authors: string[];
   /** AniList's average score out of 100. */
   score?: number | null;
-  /** MangaDex only: the series' AniList id, when MangaDex links it. */
+  /** The synopsis, or '' when there is none. */
+  desc: string;
+  /** The AniList id these details are for, or on MangaDex the one it links the series to; null when there is none. */
   al?: number | null;
 }
 
