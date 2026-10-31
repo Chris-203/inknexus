@@ -177,6 +177,7 @@ export function Library() {
   // Each shelf's series, or its saved chapters for Downloaded.
   const shelfBody = (k: LibraryTab) => {
     const shown = list.filter((x) => shelfOf(x) === k);
+    const all = !!picked && shown.every((x) => picked.includes(x.id));
     return (
       <>
         {k !== 'downloads' && (
@@ -184,6 +185,11 @@ export function Library() {
             <span className="sub">
               {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
             </span>
+            {picked && shown.length > 0 && (
+              <button className="btn ghost sm all" onClick={() => setPicked(all ? [] : shown.map((x) => x.id))}>
+                {all ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
             <div className="seg" role="group" aria-label="Show series as">
               <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
                 {/* four cards */}
