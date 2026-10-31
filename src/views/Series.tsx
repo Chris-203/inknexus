@@ -32,7 +32,7 @@ import * as anilist from '../sources/anilist';
 
 export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
   const { goBack, toast } = useApp();
-  const [sheet, setSheet] = useState<'addsrc' | 'names' | 'merge' | null>(null);
+  const [sheet, setSheet] = useState<'addsrc' | 'names' | 'merge' | 'menu' | 'move' | null>(null);
   const [lastText, setLastText] = useState(String(x.last || 0));
   const swipe = useSwipe(
     (dir) => dir === 1,
@@ -73,8 +73,7 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
   const l = x.links[i];
   let body: ReactNode;
   if (cur === 'md') body = <MangaDexSource x={x} chs={chs} shown={shown} />;
-  else if (l) body = <LinkSource x={x} l={l} i={i} />;
-  else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
+  else if (!l) body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
 
   return (
     <div ref={swipe}>
@@ -82,6 +81,15 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
         <button className="ibtn" aria-label="Back" onClick={() => goBack({ name: 'library' })}>
           ‹
         </button>
+        {l && (
+          <button className="ibtn" aria-label={`More for ${linkName(l)}`} onClick={() => setSheet('menu')}>
+            <svg className="dots" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="5" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="12" cy="19" r="2" />
+            </svg>
+          </button>
+        )}
       </div>
       <div className="top">
         {x.cover ? <img className="cover" src={imageSrc(x.cover)} referrerPolicy="same-origin" alt="" /> : <span className="cover" />}
@@ -173,6 +181,8 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
       {sheet === 'addsrc' && <AddSourceSheet x={x} onClose={() => setSheet(null)} />}
       {sheet === 'names' && <NamesSheet x={x} onClose={() => setSheet(null)} />}
       {sheet === 'merge' && <MoveSheet x={x} onClose={() => setSheet(null)} />}
+      {sheet === 'menu' && l && <LinkMenuSheet x={x} l={l} i={i} onMove={() => setSheet('move')} onClose={() => setSheet(null)} />}
+      {sheet === 'move' && l && <MoveSheet x={x} i={i} onClose={() => setSheet(null)} />}
     </div>
   );
 }
@@ -348,57 +358,71 @@ function LinkOpen({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: n
 }
 
 /**
- * A link-only source, below the chips: its settings under More. Until it knows its chapter link pattern (and so has
- * Continue), it also offers updating the chapter from a copied link.
+ * A link-only source's ⋮ menu: updating the chapter from a copied link (until it knows its chapter link pattern and so
+ * has Continue), opening it in the browser, and moving or removing it.
  */
-function LinkSource({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
+function LinkMenuSheet({ x, l, i, onMove, onClose }: { x: SeriesT; l: Link; i: number; onMove: () => void; onClose: () => void }) {
   const { toast } = useApp();
   const site = host(l.url);
   const ob = useOpensInBrowser(site);
-  const [moving, setMoving] = useState(false);
+  // What runs once the sheet has slid out: closing, or the next step of a button that closes it.
+  const then = useRef(onClose);
+  const sheet = useSheet(() => then.current());
+  const closeThen = (f: () => void) => {
+    then.current = f;
+    sheet.close();
+  };
 
   return (
-    <>
-      <div className="pad">
-        {!l.tpl && (
-          <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
-            Update chapter from a link
-          </button>
-        )}
-        <details className="more">
-          <summary>More</summary>
-          <div className="pad">
-            <p className="hint">
-              {!l.tpl &&
-                "Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. "}
-              If the in-app view is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
-              {ob ? `. After reading there, come back and tap +${l.tpl ? '' : ' or Update'}` : ''}.
-            </p>
-            <label className="opt">
-              <input
-                type="checkbox"
-                checked={ob}
-                onChange={(e) => {
-                  setOpensInBrowser(site, e.target.checked);
-                  toast(e.target.checked ? `${site} will open in the browser` : `${site} will open in the app`);
-                }}
-              />
-              Open {site} in the browser instead of in the app
-            </label>
-            <a className="btn ghost" href={l.url} target="_blank" rel="noopener noreferrer">
-              Open in browser
-            </a>
-            <button className="btn ghost" onClick={() => setMoving(true)}>
-              Move to another series
-            </button>
-            <button className="btn danger sm" onClick={() => updateSeries(x.id, (s) => ({ links: s.links.filter((_, k) => k !== i), src: '' }))}>
-              Remove this source
-            </button>
-          </div>
-        </details>
-      </div>
-      {moving && <MoveSheet x={x} i={i} onClose={() => setMoving(false)} />}
-    </>
+    <Sheet label={`More for ${linkName(l)}`} sheet={sheet}>
+      <h2>{linkName(l)}</h2>
+      {!l.tpl && (
+        <button
+          className="btn"
+          onClick={() => {
+            // The clipboard is read while the tap still counts as one, which iPhone Safari requires.
+            void pasteChapterLink(x.id, i, toast);
+            sheet.close();
+          }}
+        >
+          Update chapter from a link
+        </button>
+      )}
+      <p className="hint">
+        {!l.tpl &&
+          "Copy a chapter link from the site, then tap Update. InkNexus reads the chapter number and, where the site's links allow it, learns the pattern so Continue works. "}
+        If the in-app view is blank, shows a warning, or zooms the whole app when you pinch it (iPhone), turn on Open in the browser
+        {ob ? `. After reading there, come back and tap +${l.tpl ? '' : ' or Update'}` : ''}.
+      </p>
+      <label className="opt">
+        <input
+          type="checkbox"
+          checked={ob}
+          onChange={(e) => {
+            setOpensInBrowser(site, e.target.checked);
+            toast(e.target.checked ? `${site} will open in the browser` : `${site} will open in the app`);
+          }}
+        />
+        Open {site} in the browser instead of in the app
+      </label>
+      <a className="btn ghost" href={l.url} target="_blank" rel="noopener noreferrer">
+        Open in browser
+      </a>
+      <button className="btn ghost" onClick={() => closeThen(onMove)}>
+        Move to another series
+      </button>
+      <button
+        className="btn danger sm"
+        onClick={() =>
+          closeThen(() => {
+            onClose();
+            updateSeries(x.id, (s) => ({ links: s.links.filter((_, k) => k !== i), src: '' }));
+          })
+        }
+      >
+        Remove this source
+      </button>
+    </Sheet>
   );
 }
 

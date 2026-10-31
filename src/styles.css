@@ -161,8 +161,9 @@ details.info .pad p{margin:0}
 #nav button{flex:1;background:none;border:0;padding:6px 4px 4px;color:var(--muted);font-size:var(--font-sm);font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
 /* icons drawn in the app (the tabs, the settings gear), stroked in the button's color */
 #nav svg,.ibtn svg,.lbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ibtn svg.dots{fill:currentColor;stroke:none}
 #nav button[aria-current]{color:var(--accent)}
-.backbar{padding:6px 12px 0}
+.backbar{padding:6px 12px 0;display:flex;justify-content:space-between}
 .top{display:flex;gap:14px;padding:16px}
 .top .cover{width:96px;flex:none}
 .top .info{flex:1;min-width:0}
