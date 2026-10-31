@@ -1,4 +1,4 @@
-import { libraryShelf, libraryView, setLibraryShelf, setLibraryView, shelfOf } from './libraryView';
+import { libraryShelf, libraryView, setLibraryShelf, setLibraryView, shelfName, shelfOf } from './libraryView';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -44,5 +44,13 @@ describe('library shelf', () => {
     const x = { id: 'a', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0 };
     expect(shelfOf(x)).toBe('reading');
     expect(shelfOf({ ...x, shelf: 'plan' })).toBe('plan');
+  });
+});
+
+describe('shelf name', () => {
+  it('is the name its tab shows', () => {
+    expect(shelfName('reading')).toBe('Reading');
+    expect(shelfName('plan')).toBe('Plan to read');
+    expect(shelfName('drop')).toBe('Dropped');
   });
 });

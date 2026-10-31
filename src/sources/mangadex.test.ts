@@ -1,5 +1,4 @@
 import {
-  aniListId,
   browse,
   chapters,
   details,
@@ -80,7 +79,7 @@ describe('toDetails', () => {
     const d = toDetails(
       {
         id: 'm',
-        attributes: { status: 'hiatus', year: 2019 },
+        attributes: { status: 'hiatus', year: 2019, description: { en: 'A hero climbs.' } },
         relationships: [
           { id: 'a', type: 'author', attributes: { name: 'Pen Name' } },
           { id: 'b', type: 'artist', attributes: { name: 'Pen Name' } },
@@ -94,12 +93,12 @@ describe('toDetails', () => {
         },
       },
     );
-    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'], al: null });
+    expect(d).toEqual({ tags: [], status: 'On hiatus', year: 2019, chapters: 2, authors: ['Pen Name'], desc: 'A hero climbs.', al: null });
   });
   it('gives null for no chapters or year, and an empty status for an unknown one', () => {
     // MangaDex sends volumes as [] when there are none.
     const d = toDetails({ id: 'm', attributes: { status: 'odd' } }, { volumes: [] as unknown as Record<string, never> });
-    expect(d).toMatchObject({ status: '', year: null, chapters: null });
+    expect(d).toMatchObject({ status: '', year: null, chapters: null, desc: '' });
   });
   it('keeps the AniList id MangaDex links, and null when it links none, an empty array or a bad one', () => {
     expect(toDetails({ id: 'm', attributes: { links: [] as unknown as Record<string, string> } }, {}).al).toBeNull();
@@ -110,11 +109,6 @@ describe('toDetails', () => {
 });
 
 describe('MangaDex requests', () => {
-  it('aniListId reads the AniList link of the series', async () => {
-    const seen = relay(() => ({ data: { id: 'm1', attributes: { links: { al: '42' } } } }));
-    expect(await aniListId('m1')).toBe(42);
-    expect(seen).toContain('https://api.mangadex.org/manga/m1');
-  });
   it('details asks for the series with its authors and its English chapter numbers', async () => {
     const seen = relay((u) =>
       u.includes('/aggregate') ? { volumes: { none: { chapters: { '3': { chapter: '3' } } } } } : { data: { id: 'm1', attributes: { status: 'ongoing' } } },

@@ -9,8 +9,8 @@ import { imageSrc } from '../lib/api';
 import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
 import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
 import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
-import { daysAgo, fileSize, fmt, plural } from '../lib/format';
-import { SHELVES, setLibraryShelf, type LibraryTab, setLibraryView, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
+import { daysAgo, fileSize, fmt, plural, titleHas } from '../lib/format';
+import { SHELVES, setLibraryShelf, type LibraryTab, setLibraryView, shelfName, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
 import { nextWhole } from '../lib/links';
 import { useOpenLink } from '../lib/openLink';
 import { continueChapter } from '../lib/preload';
@@ -50,6 +50,9 @@ export function Library() {
   const [moveOpen, setMoveOpen] = useState(false);
   // The card held open with its menu, and where it sat on screen.
   const [menu, setMenu] = useState<{ x: SeriesT; at: DOMRect } | null>(null);
+  // What the search field holds, or null while it is closed. A search looks through every shelf, not just the open one.
+  const [q, setQ] = useState<string | null>(null);
+  const found = q?.trim() ? list.filter((x) => titleHas(x.title, q)) : null;
   const view = useLibraryView();
   const downloads = useDownloads();
   const tab = useLibraryShelf();
@@ -181,7 +184,7 @@ export function Library() {
     setPicked(null);
     // The series left on the shelf start again from its top.
     scrollTo(0, 0);
-    toast(`Moved ${ids.length} series to ${SHELVES.find((q) => q.k === k)!.n}`);
+    toast(`Moved ${ids.length} series to ${shelfName(k)}`);
   };
 
   // With no series at all, every series shelf shows how to start one instead of its own empty line.
@@ -204,106 +207,129 @@ export function Library() {
     </div>
   );
 
+  // The count of series shown, Select all while selecting, and the switch between cards and the list.
+  const bar = (shown: SeriesT[]) => {
+    const all = !!picked && shown.every((x) => picked.includes(x.id));
+    return (
+      <div className="lbar">
+        <span className="sub">
+          {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
+        </span>
+        {picked && shown.length > 0 && (
+          <button className="btn ghost sm all" onClick={() => setPicked(all ? [] : shown.map((x) => x.id))}>
+            {all ? 'Deselect all' : 'Select all'}
+          </button>
+        )}
+        <div className="seg" role="group" aria-label="Show series as">
+          <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
+            {/* four cards */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+              <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+              <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+              <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+            </svg>
+          </button>
+          <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
+            {/* three rows, each a thumbnail and a line */}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  };
+  // Series as cards or a list, both kept mounted. Search results also say which shelf each one is on.
+  const views = (shown: SeriesT[], shelves = false) => (
+    // Both views stay mounted, the other one laid out but hidden under this one, so a switch shows covers already
+    // loaded instead of new images that each flash a gray box first.
+    <div className="views">
+      <div className={view === 'list' ? 'lrows' : 'lrows off'} inert={view !== 'list'}>
+        {shown.map((x) => {
+          const last = x.last || 0;
+          const fresh = freshOf(x);
+          const on = picked?.includes(x.id);
+          return (
+            <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
+              <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
+                {x.cover ? cover(x.cover) : <span className="thumb" />}
+                <span className="linfo">
+                  <b>{x.title}</b>
+                  <span>
+                    {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
+                    {fresh?.n ? (
+                      <em>
+                        {' · '}
+                        {fresh.n}
+                        {fresh.more ? '+' : ''} new
+                      </em>
+                    ) : null}
+                  </span>
+                  {shelves || last > 0 ? (
+                    <span>
+                      {shelves && shelfName(shelfOf(x))}
+                      {shelves && last > 0 && ' · '}
+                      {last > 0 && `Last read ${daysAgo(x.t)}`}
+                    </span>
+                  ) : null}
+                </span>
+                {picked && (
+                  <span className="tick" aria-hidden="true">
+                    {on && '✓'}
+                  </span>
+                )}
+              </button>
+              {!picked && <RowContinue x={x} />}
+            </div>
+          );
+        })}
+      </div>
+      <div className={view === 'cards' ? 'grid' : 'grid off'} inert={view !== 'cards'}>
+        {shown.map((x) => {
+          const on = picked?.includes(x.id);
+          return (
+            <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
+              {face(x)}
+              {shelves && <span className="cs">{shelfName(shelfOf(x))}</span>}
+              {picked && (
+                <span className="tick" aria-hidden="true">
+                  {on && '✓'}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   // Each shelf's series, or its saved chapters for Downloaded.
   const shelfBody = (k: LibraryTab) => {
     const shown = list.filter((x) => shelfOf(x) === k);
-    const all = !!picked && shown.every((x) => picked.includes(x.id));
     return (
       <>
-        {k !== 'downloads' && (
-          <div className="lbar">
-            <span className="sub">
-              {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
-            </span>
-            {picked && shown.length > 0 && (
-              <button className="btn ghost sm all" onClick={() => setPicked(all ? [] : shown.map((x) => x.id))}>
-                {all ? 'Deselect all' : 'Select all'}
-              </button>
-            )}
-            <div className="seg" role="group" aria-label="Show series as">
-              <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
-                {/* four cards */}
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
-                  <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
-                  <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
-                  <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
-                </svg>
-              </button>
-              <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
-                {/* three rows, each a thumbnail and a line */}
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
+        {k !== 'downloads' && bar(shown)}
         {k === 'downloads' ? (
           <OfflineChapters />
         ) : !list.length ? (
           welcome
         ) : !shown.length ? (
-          <p className="hint">Nothing in {SHELVES.find((q) => q.k === k)!.n} yet. To move series here, hold one on another shelf and tap Move.</p>
+          <p className="hint">Nothing in {shelfName(k)} yet. To move series here, hold one on another shelf and tap Move.</p>
         ) : (
-          // Both views stay mounted, the other one laid out but hidden under this one, so a switch shows covers already
-          // loaded instead of new images that each flash a gray box first.
-          <div className="views">
-            <div className={view === 'list' ? 'lrows' : 'lrows off'} inert={view !== 'list'}>
-              {shown.map((x) => {
-                const last = x.last || 0;
-                const fresh = freshOf(x);
-                const on = picked?.includes(x.id);
-                return (
-                  <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
-                    <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                      {x.cover ? cover(x.cover) : <span className="thumb" />}
-                      <span className="linfo">
-                        <b>{x.title}</b>
-                        <span>
-                          {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
-                          {fresh?.n ? (
-                            <em>
-                              {' · '}
-                              {fresh.n}
-                              {fresh.more ? '+' : ''} new
-                            </em>
-                          ) : null}
-                        </span>
-                        {last > 0 && <span>Last read {daysAgo(x.t)}</span>}
-                      </span>
-                      {picked && (
-                        <span className="tick" aria-hidden="true">
-                          {on && '✓'}
-                        </span>
-                      )}
-                    </button>
-                    {!picked && <RowContinue x={x} />}
-                  </div>
-                );
-              })}
-            </div>
-            <div className={view === 'cards' ? 'grid' : 'grid off'} inert={view !== 'cards'}>
-              {shown.map((x) => {
-                const on = picked?.includes(x.id);
-                return (
-                  <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-                    {face(x)}
-                    {picked && (
-                      <span className="tick" aria-hidden="true">
-                        {on && '✓'}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          views(shown)
         )}
       </>
     );
   };
 
+  // A magnifier, on the search button and in the field it opens.
+  const lens = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m15.5 15.5 5 5" />
+    </svg>
+  );
   const settings = (
     <button className="ibtn plain" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -348,7 +374,9 @@ export function Library() {
           </button>
         </HoldMenu>
       )}
-      {moveOpen && shelf !== 'downloads' && <MoveSheet from={shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />}
+      {moveOpen && (
+        <MoveSheet from={found || shelf === 'downloads' ? undefined : shelf} onMove={(k) => move(picked ?? [], k)} onClose={() => setMoveOpen(false)} />
+      )}
     </>
   );
 
@@ -369,9 +397,40 @@ export function Library() {
               Remove
             </button>
           </div>
+        ) : q !== null ? (
+          <form
+            className="row lsearch"
+            role="search"
+            onSubmit={(e) => {
+              // Search runs as you type, so Search on the keyboard only puts the keyboard away.
+              e.preventDefault();
+              (document.activeElement as HTMLElement).blur();
+            }}
+          >
+            <div className="field">
+              {lens}
+              <input
+                type="search"
+                enterKeyHint="search"
+                aria-label="Search My Series"
+                placeholder="Search My Series"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setQ(null)}
+                autoComplete="off"
+                autoFocus
+              />
+            </div>
+            <button type="button" className="btn ghost" onClick={() => setQ(null)}>
+              Cancel
+            </button>
+          </form>
         ) : (
           <header>
             <h1>My Series</h1>
+            <button className="ibtn plain" aria-label="Search My Series" onClick={() => setQ('')}>
+              {lens}
+            </button>
             {shelf !== 'downloads' && (
               <button className="ibtn plain" aria-label="Remove series" onClick={() => setPicked([])}>
                 {/* a trash can: lid with handle, then the can */}
@@ -385,25 +444,35 @@ export function Library() {
             {settings}
           </header>
         )}
-        <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
-          {tabs.map((q) => {
-            const on = q.k === lit;
-            return (
-              <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
-                {q.n}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      {/* Every shelf side by side, so a swipe pulls the next one in beside this one */}
-      <div ref={setTrack} className="track" style={{ translate: `${-at * 100}%` }}>
-        {tabs.map((q) => (
-          <div key={q.k} className={q.k === shelf ? 'on' : undefined} inert={q.k !== shelf}>
-            {shelfBody(q.k)}
+        {/* Search results come from every shelf, so the tabs make way for them */}
+        {!found && (
+          <div ref={tabsRef} className="tabs" role="group" aria-label="Shelves">
+            {tabs.map((q) => {
+              const on = q.k === lit;
+              return (
+                <button key={q.k} aria-pressed={on} onClick={() => openShelf(q.k)}>
+                  {q.n}
+                </button>
+              );
+            })}
           </div>
-        ))}
+        )}
       </div>
+      {found ? (
+        <div className="found">
+          {bar(found)}
+          {found.length ? views(found, true) : <p className="hint">No series in My Series match "{q}".</p>}
+        </div>
+      ) : (
+        // Every shelf side by side, so a swipe pulls the next one in beside this one
+        <div ref={setTrack} className="track" style={{ translate: `${-at * 100}%` }}>
+          {tabs.map((q) => (
+            <div key={q.k} className={q.k === shelf ? 'on' : undefined} inert={q.k !== shelf}>
+              {shelfBody(q.k)}
+            </div>
+          ))}
+        </div>
+      )}
       {f.length > 0 && (
         <div className="pad">
           <p className="hint">
@@ -483,8 +552,8 @@ function HoldMenu({ at, card, label, onClose, children }: { at: DOMRect; card: R
   );
 }
 
-/** Pick the shelf to move the selected series to. */
-function MoveSheet({ from, onMove, onClose }: { from: Shelf; onMove: (k: Shelf) => void; onClose: () => void }) {
+/** Pick the shelf to move the selected series to; every shelf but `from`, the one they are on, when they all share one. */
+function MoveSheet({ from, onMove, onClose }: { from?: Shelf; onMove: (k: Shelf) => void; onClose: () => void }) {
   const sheet = useSheet(onClose);
   return (
     <Sheet label="Move to" sheet={sheet}>
