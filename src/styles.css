@@ -333,7 +333,7 @@ p.pgmsg{max-height:240px}
 .endbar{display:flex;gap:10px;padding:20px 16px 76px}
 .endbar .btn{flex:1}
 /* pull up at the end of a chapter for the next one (Reader.tsx): this bar ends the pages, with an arrow over its text, and rises with them while its ring fills. The page itself does not bounce there while a finger is down, so the pull is all the pages show */
-html.held:has(.pullnext){overscroll-behavior-y:none}
+html.touching:has(.pullnext){overscroll-behavior-y:none}
 #strip{transition:transform .2s ease-out}
 .endbar:has(+ .pullnext){padding-bottom:0}
 .pullnext{padding:8px 16px calc(32px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:var(--font-sm)}

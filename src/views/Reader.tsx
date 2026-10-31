@@ -251,7 +251,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     };
     // The page's own bounce is off only while a finger is down, so a pull moves nothing but the pages, while a flick
     // that glides into the end after the finger lifts still bounces as everywhere else on iPhone.
-    const hold = (on: boolean) => document.documentElement.classList.toggle('held', on);
+    const hold = (on: boolean) => document.documentElement.classList.toggle('touching', on);
     const touch = () => hold(true);
     const release = () => {
       from = null;
