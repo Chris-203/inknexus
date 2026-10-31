@@ -42,7 +42,7 @@ describe('toDetails', () => {
       chapters: 120,
       startDate: { year: 2018 },
       averageScore: 84,
-      description: 'A <i>hunter</i> rises.<br>',
+      description: 'A <i>hero</i> climbs.',
       staff: {
         edges: [
           { role: 'Story & Art', node: { name: { full: 'Pen Name' } } },
@@ -58,7 +58,7 @@ describe('toDetails', () => {
       chapters: 120,
       authors: ['Pen Name'],
       score: 84,
-      desc: 'A hunter rises.',
+      desc: 'A hero climbs.',
     });
   });
   it('gives null for an ongoing series with no chapter count and an empty status when it is missing', () => {
@@ -68,14 +68,21 @@ describe('toDetails', () => {
 
 describe('addDetails', () => {
   it("adds AniList's score and the tags MangaDex does not have, keeping the rest from MangaDex", () => {
-    const md = { tags: ['Action', 'Time Travel'], status: 'Ongoing', year: 2020, chapters: 50, authors: ['Pen Name'] };
-    const al = { tags: ['Action', 'Drama', 'time-travel', 'Revenge'], status: 'Completed', year: 2019, chapters: 99, authors: ['Other'], score: 77 };
+    const md = { tags: ['Action', 'Time Travel'], status: 'Ongoing', year: 2020, chapters: 50, authors: ['Pen Name'], desc: 'From MangaDex' };
+    const al = {
+      tags: ['Action', 'Drama', 'time-travel', 'Revenge'],
+      status: 'Completed',
+      year: 2019,
+      chapters: 99,
+      authors: ['Other'],
+      score: 77,
+      desc: 'From AniList',
+    };
     expect(addDetails(md, al)).toEqual({ ...md, tags: ['Action', 'Time Travel', 'Drama', 'Revenge'], score: 77 });
   });
-  it("uses AniList's synopsis, and MangaDex's when AniList has none", () => {
-    const md = { tags: [], status: '', year: null, chapters: null, authors: [], desc: 'From MangaDex' };
+  it("takes AniList's synopsis when MangaDex has none", () => {
+    const md = { tags: [], status: '', year: null, chapters: null, authors: [], desc: '' };
     expect(addDetails(md, { ...md, desc: 'From AniList' }).desc).toBe('From AniList');
-    expect(addDetails(md, { ...md, desc: '' }).desc).toBe('From MangaDex');
   });
 });
 

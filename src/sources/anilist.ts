@@ -196,15 +196,15 @@ export function toDetails(m: AlDetails): Details {
   };
 }
 
-/** A MangaDex series' details with AniList's added: its score and synopsis, and its genres and tags MangaDex does not have. */
+/** A MangaDex series' details with AniList's added: its score, its genres and tags MangaDex does not have, and its synopsis when MangaDex has none. */
 export function addDetails(md: Details, al: Details): Details {
   const has = new Set(md.tags.map(norm));
-  return { ...md, tags: [...md.tags, ...al.tags.filter((t) => !has.has(norm(t)))], score: al.score, desc: al.desc || md.desc };
+  return { ...md, tags: [...md.tags, ...al.tags.filter((t) => !has.has(norm(t)))], score: al.score, desc: md.desc || al.desc };
 }
 
 export async function details(id: number): Promise<Details> {
   const data = await query<{ Media?: AlDetails | null }>(
-    `query($id:Int){Media(id:$id,type:MANGA){description genres tags{name rank isMediaSpoiler} status chapters startDate{year} averageScore staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
+    `query($id:Int){Media(id:$id,type:MANGA){genres tags{name rank isMediaSpoiler} status chapters startDate{year} averageScore description(asHtml:false) staff(perPage:6,sort:RELEVANCE){edges{role node{name{full}}}}}}`,
     { id },
   );
   if (!data.Media) throw new Error('AniList no longer has this series');

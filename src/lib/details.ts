@@ -1,37 +1,50 @@
 import { createDeviceCache } from './deviceCache';
-import type { Details, Ranking, SearchResult } from './types';
+import type { LikeOf } from './moreLikeThis';
+import type { Details, Ranking } from './types';
 import * as anilist from '../sources/anilist';
 import * as mangadex from '../sources/mangadex';
 
 /**
- * What a series' details screen loads, kept for the series that were opened: Browse rows and More like this cards keep
- * only a title, cover and the start of the synopsis until then. Opening one again within a day shows it at once; after
+ * What a Browse result's details screen loads, kept for the series that were opened: Browse rows and More like this cards
+ * keep only a title, cover and the start of the synopsis until then. Opening one again within a day shows it at once; after
  * that it loads again, so a chapter count does not fall behind.
  */
 const saved = createDeviceCache<Details | Ranking | anilist.Trailer | null>('inknexus-details', 100, 864e5);
 
-function detailsKey(o: SearchResult): string {
-  return `${o.src}:${o.ref}`;
+function detailsKey(x: LikeOf): string {
+  return `${x.al}|${x.md}|${x.title}`;
 }
 
-/** The details saved for `o` in the last day. */
-export function savedDetails(o: SearchResult): Details | undefined {
-  return saved.get(detailsKey(o)) as Details | undefined;
+/**
+ * More about series `x`, whichever of its sources is shown: MangaDex's details with AniList's added, or either one alone,
+ * or null when neither has the series. With MangaDex, AniList only adds to its details, so they show without AniList when it fails.
+ */
+export async function seriesDetails(x: LikeOf): Promise<Details | null> {
+  const md = x.md ? mangadex.details(x.md) : null;
+  const al = aniListDetails(x, md).catch((e) => {
+    if (!md) throw e;
+    return null;
+  });
+  const [m, a] = await Promise.all([md, al]);
+  if (m && a) return { ...anilist.addDetails(m, a), al: a.al };
+  return m ?? a;
 }
 
-/** More about a result, saved for next time. On MangaDex, AniList's score and tags are added when MangaDex links the series to AniList. */
-export async function loadDetails(o: SearchResult): Promise<Details> {
-  let d: Details;
-  if (o.src === 'al') d = await anilist.details(Number(o.ref));
-  else {
-    const [md, al] = await Promise.all([
-      mangadex.details(String(o.ref)),
-      // AniList only adds to MangaDex's details, so the page shows without it when AniList fails.
-      o.al ? anilist.details(o.al).catch(() => null) : null,
-    ]);
-    d = al ? anilist.addDetails(md, al) : md;
-  }
-  saved.set(detailsKey(o), d);
+/** AniList's details for `x`, with the id they are for: the one `x` has, else the one MangaDex links it to, else the series AniList has under its name. */
+async function aniListDetails(x: LikeOf, md: Promise<Details> | null): Promise<Details | null> {
+  const id = x.al || (await md)?.al || Number((await anilist.matchTitles([x.title]))[0]?.ref) || null;
+  return id ? { ...(await anilist.details(id)), al: id } : null;
+}
+
+/** The details saved for `x` in the last day: null when neither source has it, undefined when not saved. */
+export function savedDetails(x: LikeOf): Details | null | undefined {
+  return saved.get(detailsKey(x)) as Details | null | undefined;
+}
+
+/** seriesDetails(), saved for next time. */
+export async function loadDetails(x: LikeOf): Promise<Details | null> {
+  const d = await seriesDetails(x);
+  saved.set(detailsKey(x), d);
   return d;
 }
 
