@@ -73,7 +73,7 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
   const l = x.links[i];
   let body: ReactNode;
   if (cur === 'md') body = <MangaDexSource x={x} chs={chs} shown={shown} />;
-  else if (l) body = <LinkSource x={x} l={l} i={i} shown={shown} />;
+  else if (l) body = <LinkSource x={x} l={l} i={i} />;
   else body = <p className="hint">{all.length ? 'All sources are hidden. Bring one back with + Source.' : 'No sources yet. Add one with + Source.'}</p>;
 
   return (
@@ -121,7 +121,7 @@ export function Series({ x, info }: { x: SeriesT; info?: boolean }) {
         </div>
       )}
       {cur === 'md' && chs?.status === 'ready' && chs.list.chapters.length > 0 && !next && <p className="hint">You're caught up on this source.</p>}
-      {l?.tpl && <LinkContinue x={x} l={l} i={i} shown={shown} />}
+      {l && <LinkOpen x={x} l={l} i={i} shown={shown} />}
       <div className="chips">
         {vis.map((q) => (
           <span key={q.k} className={`chip src${cur === q.k ? ' on' : ''}`}>
@@ -324,40 +324,42 @@ function DownloadSheet({ x, all, onClose }: { x: SeriesT; all: Chapter[]; onClos
   );
 }
 
-/** A link source's Continue, shown above the source chips like MangaDex's. */
-function LinkContinue({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
+/** A link source's ways in, shown above the source chips like MangaDex's Continue: Continue or the saved link, and its series page. */
+function LinkOpen({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
+  const ob = useOpensInBrowser(host(l.url));
   const open = useOpenLink(x, l, i, shown);
   return (
     <div className="pad">
-      <button className="btn" onClick={() => open('cont')}>
-        Continue with ch. {nextWhole(shown)}
+      {l.tpl && (
+        <button className="btn" onClick={() => open('cont')}>
+          Continue with ch. {nextWhole(shown)}
+        </button>
+      )}
+      {!l.tpl && l.resume && (
+        <button className="btn" onClick={() => open('resume')}>
+          Resume ch. {fmt(l.rn || 0)} (saved link)
+        </button>
+      )}
+      <button className={`btn${l.tpl || l.resume ? ' ghost' : ''}`} onClick={() => open('page')}>
+        Open the series page{ob ? ' ↗' : ' in app'}
       </button>
     </div>
   );
 }
 
 /**
- * A link-only source: open it in the app or the browser, and its settings under More. Until it knows its chapter link
- * pattern (and so has Continue), it also offers the saved link and updating the chapter from a copied link.
+ * A link-only source, below the chips: its settings under More. Until it knows its chapter link pattern (and so has
+ * Continue), it also offers updating the chapter from a copied link.
  */
-function LinkSource({ x, l, i, shown }: { x: SeriesT; l: Link; i: number; shown: number }) {
+function LinkSource({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
   const { toast } = useApp();
   const site = host(l.url);
   const ob = useOpensInBrowser(site);
-  const open = useOpenLink(x, l, i, shown);
   const [moving, setMoving] = useState(false);
 
   return (
     <>
       <div className="pad">
-        {!l.tpl && l.resume && (
-          <button className="btn" onClick={() => open('resume')}>
-            Resume ch. {fmt(l.rn || 0)} (saved link)
-          </button>
-        )}
-        <button className={`btn${l.tpl || l.resume ? ' ghost' : ''}`} onClick={() => open('page')}>
-          Open the series page{ob ? ' ↗' : ' in app'}
-        </button>
         {!l.tpl && (
           <button className="btn ghost" onClick={() => void pasteChapterLink(x.id, i, toast)}>
             Update chapter from a link
