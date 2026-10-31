@@ -80,6 +80,9 @@ header .btn,header .ibtn{align-self:center}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
+/* Select all, while selecting: as tall as the switch beside it, with its tap area still reaching 44px tall */
+.lbar .all{margin-left:auto;flex:none;min-height:30px;padding-block:0;position:relative}
+.lbar .all::before{content:'';position:absolute;inset:-7px 0}
 /* as tall as the count beside it; each button's tap area still reaches 44px tall, past the frame */
 .lbar .seg button{min-width:44px;min-height:26px;padding:0;position:relative;display:flex;align-items:center;justify-content:center}
 .lbar .seg button::before{content:'';position:absolute;inset:-9px 0}
