@@ -1,4 +1,4 @@
-import { chapterNote, daysAgo, fileSize, fmt, norm, plural, shortDate } from './format';
+import { chapterNote, daysAgo, fileSize, fmt, norm, plural, shortDate, titleHas } from './format';
 
 describe('format', () => {
   it('fmt shows whole and one-decimal chapters', () => {
@@ -38,4 +38,24 @@ describe('format', () => {
     expect(fileSize(18.4 * 1024 * 1024)).toBe('18 MB');
   });
   it('norm keeps letters and digits only', () => expect(norm('Solo Leveling: Ragnarok!')).toBe('sololevelingragnarok'));
+});
+
+describe('titleHas', () => {
+  it('finds a title by any part of it, ignoring case', () => {
+    expect(titleHas('Solo Leveling', 'level')).toBe(true);
+    expect(titleHas('Solo Leveling', 'SOLO')).toBe(true);
+    expect(titleHas('Solo Leveling', 'tower')).toBe(false);
+  });
+  it('ignores spaces and punctuation', () => {
+    expect(titleHas('Solo Leveling', 'solo-leveling')).toBe(true);
+    expect(titleHas('The Beginning After the End', 'beginningafter')).toBe(true);
+    expect(titleHas("Omniscient Reader's Viewpoint", 'readers')).toBe(true);
+  });
+  it('finds titles in other scripts, which have no letters for norm() to keep', () => {
+    expect(titleHas('나 혼자만 레벨업', '혼자')).toBe(true);
+    expect(titleHas('나 혼자만 레벨업', '탑')).toBe(false);
+  });
+  it('trims the query', () => {
+    expect(titleHas('Solo Leveling', '  solo ')).toBe(true);
+  });
 });

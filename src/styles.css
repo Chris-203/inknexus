@@ -77,6 +77,11 @@ header .btn,header .ibtn{align-self:center}
 /* My Series' other view, cards or the list: under the shown one, laid out so its covers load, but unseen and adding no scroll */
 .views{position:relative;overflow-y:clip}
 .views>.off{position:absolute;top:0;left:0;right:0;visibility:hidden}
+/* My Series' search field, in the header's place and at its height */
+.row.lsearch{align-items:center;padding:16px 16px 8px}
+/* search results across shelves: each card's shelf under its title */
+.found{margin-top:8px}
+.card .cs{display:block;font-size:var(--font-sm);color:var(--muted)}
 /* My Series: the count, and the switch between cards and the list */
 .lbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 4px}
 .lbar .seg{margin:0;flex:none;padding:2px;gap:2px}
