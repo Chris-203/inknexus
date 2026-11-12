@@ -39,7 +39,7 @@ export function Frame({ x, view }: { x: Series; view: Extract<View, { name: 'fra
     if (!l.tpl) return;
     setLast(x.id, Math.max(x.last || 0, view.ch));
     toast(`Chapter ${fmt(view.ch)} marked read`, true);
-    toChapter(view.ch + 1);
+    toChapter(stepChapter(view.ch, 1));
   };
   const plusOne = () => {
     const n = nextWhole(x.last || 0);
