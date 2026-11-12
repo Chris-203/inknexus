@@ -1,4 +1,4 @@
-// Checks the Mobile first rules in CLAUDE.md on each main screen in WebKit (Safari's engine) as an iPhone 14, with
+// Checks the Mobile first rules in CLAUDE.md on each main screen in WebKit (Safari's engine) as an iPhone 16 Pro Max, with
 // reduced motion on, and saves a screenshot of each to mobile-check/ (git-ignored). Not part of the app or the build.
 //
 //   npm run build && npx vite preview --port 4173   the screens that need no MangaDex
@@ -6,6 +6,7 @@
 //   npm run mobile-check
 //
 // Other addresses: APP_URL=http://localhost:4173 MD_URL=http://localhost:3000 npm run mobile-check
+// Another size: DEVICE='iPhone 14' npm run mobile-check (any playwright-core device name; iPhone 14 is 390px wide).
 // A screen whose server is not running is skipped. Install WebKit once with
 // `npx playwright@<the playwright-core version in package.json> install webkit`.
 import { mkdir } from 'node:fs/promises';
@@ -206,6 +207,7 @@ async function reachable(url) {
 async function check(screen) {
   const { browser, page } = await open(screen.server, screen.server === MD ? MD_LIB : PLACEHOLDER_LIB, {
     browser: 'webkit',
+    device: process.env.DEVICE,
     reducedMotion: 'reduce',
     // The service worker fetches images where the gray boxes cannot replace them.
     serviceWorkers: 'block',

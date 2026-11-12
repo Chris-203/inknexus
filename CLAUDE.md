@@ -44,8 +44,8 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 - `api/mangadex.js`: Vercel Function that relays MangaDex API GETs (CORS workaround) at `/api/mangadex`, limited to `https://api.mangadex.org` and same-site requests
 - `api/mdimage.js`: Vercel Function that relays MangaDex page images and covers at `/api/mdimage`, limited to MangaDex image hosts and same-site requests; reports each MangaDex@Home image to MangaDex. `api/_relay.js`: what both relays share (`USER_AGENT`, `send()`, `sameSite()`)
 - `assets/`: cover art (`cover.svg` is the source, `cover.png` is rendered from it)
-- `scripts/pr-media.mjs`: screenshots and GIFs for PR bodies (`open()`, `gif()`), with Playwright driving the installed Chrome, or WebKit as an iPhone with `{ browser: 'webkit' }`. Not part of the app or the build
-- `scripts/mobile-check.mjs`: `npm run mobile-check` opens each main screen in WebKit as an iPhone and checks the Mobile first rules, with screenshots in the git-ignored `mobile-check/` (usage at its top). Not part of the app, the build or `npm test`
+- `scripts/pr-media.mjs`: screenshots and GIFs for PR bodies (`open()`, `gif()`), with Playwright driving the installed Chrome, or WebKit as an iPhone 16 Pro Max with `{ browser: 'webkit' }`. Not part of the app or the build
+- `scripts/mobile-check.mjs`: `npm run mobile-check` opens each main screen in WebKit as an iPhone 16 Pro Max and checks the Mobile first rules, with screenshots in the git-ignored `mobile-check/` (usage at its top). Not part of the app, the build or `npm test`
 - `public/`: icons, and the Latin font files with their licenses in `public/fonts/`, copied as-is into the build
 - `vercel.json`: builds with Vite into `dist/`, and caches `/fonts/` for a year so text never starts in a fallback font on launch. A changed font file needs a new name, also in its `index.html` preload
 

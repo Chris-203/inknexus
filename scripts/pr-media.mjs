@@ -6,7 +6,8 @@
 //   await gif(page, 'after.gif', () => page.getByRole('button', { name: 'Settings' }).click());
 //   await browser.close();
 //
-// open(url, lib, { browser: 'webkit' }) uses Playwright's WebKit (Safari's engine) as an iPhone 14 instead of Chrome.
+// open(url, lib, { browser: 'webkit' }) uses Playwright's WebKit (Safari's engine) as an iPhone 16 Pro Max (440px wide)
+// instead of Chrome; `device` names another playwright-core device, such as 'iPhone 14' for 390px.
 // Install it once with `npx playwright@<the playwright-core version in package.json> install webkit`.
 import { writeFile } from 'node:fs/promises';
 import gifenc from 'gifenc';
@@ -32,13 +33,15 @@ export const PLACEHOLDER_LIB = TITLES.map((title, i) => ({
 const BLANK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 3"><rect width="2" height="3" fill="#8a8a96"/></svg>';
 
 /**
- * Opens `url` in Chrome at 390 by 844, or with `browser: 'webkit'` in WebKit as an iPhone 14 (390 wide), with `lib` as
- * the library when none is saved yet. Other options go to the page's browser context. Images from other sites and the
- * MangaDex image relay are replaced with a gray box, so no real covers or pages show.
+ * Opens `url` in Chrome at 390 by 844, or with `browser: 'webkit'` in WebKit as `device` (an iPhone 16 Pro Max, 440
+ * wide, unless another is named), with `lib` as the library when none is saved yet. Other options go to the page's
+ * browser context. Images from other sites and the MangaDex image relay are replaced with a gray box, so no real covers
+ * or pages show.
  */
-export async function open(url, lib = PLACEHOLDER_LIB, { browser: engine = 'chrome', ...options } = {}) {
+export async function open(url, lib = PLACEHOLDER_LIB, { browser: engine = 'chrome', device: name = 'iPhone 16 Pro Max', ...options } = {}) {
   const browser = engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'chrome' });
-  const device = engine === 'webkit' ? devices['iPhone 14'] : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+  if (engine === 'webkit' && !devices[name]) throw new Error(`playwright-core has no device named "${name}"`);
+  const device = engine === 'webkit' ? devices[name] : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
   const page = await browser.newPage({ ...device, ...options });
   const site = new URL(url).origin;
   await page.addInitScript((saved) => localStorage.getItem('longstrip') || localStorage.setItem('longstrip', saved), JSON.stringify({ lib }));
