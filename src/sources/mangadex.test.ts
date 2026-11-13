@@ -62,6 +62,13 @@ describe('toChapterList', () => {
       { id: 'off', num: 5, title: '', ext: 'https://official.example/5', grp: '' },
     ]);
   });
+  it('treats an external link that is not http(s) as none', () => {
+    expect(toChapterList([ch('js', '6', 0, { externalUrl: 'javascript:alert(1)' })]).chapters).toEqual([]);
+    expect(toChapterList([ch('ftp', '7', 12, { externalUrl: 'ftp://official.example/7' })]).chapters).toEqual([
+      { id: 'ftp', num: 7, title: '', ext: '', grp: '' },
+    ]);
+    expect(toChapterList([ch('rel', '8', 0, { externalUrl: '/chapter/8' })]).chapters).toEqual([]);
+  });
   it('reports how many were listed when none are readable', () => {
     expect(toChapterList([ch('a', '1', 0), ch('b', '2', 0)])).toEqual({ chapters: [], listed: 2 });
   });
