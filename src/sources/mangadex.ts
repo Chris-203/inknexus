@@ -268,6 +268,15 @@ export function pages(id: string): Promise<Page[]> {
   return list;
 }
 
+/**
+ * pages() asked of MangaDex again, skipping the saved answer, for when a page will not load: a new answer can name a
+ * working server. It replaces the saved answer, so the chapter keeps the new server when opened again.
+ */
+export function refreshPages(id: string): Promise<Page[]> {
+  pageCache.delete(id);
+  return pages(id);
+}
+
 async function fetchPages(id: string): Promise<Page[]> {
   const j: { baseUrl: string; chapter: { hash: string; data: string[]; dataSaver: string[] } } = await (await api(`${MD}/at-home/server/${id}`)).json();
   return j.chapter.dataSaver.map((f, i) => ({

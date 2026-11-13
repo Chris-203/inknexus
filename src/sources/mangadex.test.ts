@@ -11,6 +11,7 @@ import {
   PAGES_TTL,
   recIds,
   recommended,
+  refreshPages,
   search,
   toChapterList,
   toDetails,
@@ -259,6 +260,24 @@ describe('pages cache', () => {
     const seen = nodes();
     expect(await pages('fail')).toHaveLength(1);
     expect(seen).toHaveLength(1);
+  });
+  it('refreshPages asks again within PAGES_TTL and keeps the new answer', async () => {
+    const seen = nodes();
+    const a = await pages('stale');
+    const b = await refreshPages('stale');
+    expect(b[0]!.a).not.toBe(a[0]!.a);
+    expect(b[0]!.a).toBe('https://node2.example/data-saver/h/1.jpg');
+    expect(await pages('stale')).toEqual(b);
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/stale', 'https://api.mangadex.org/at-home/server/stale']);
+  });
+  it('refreshPages does not keep a failed answer, so the next load asks again', async () => {
+    nodes();
+    await pages('down');
+    vi.stubGlobal('fetch', async () => new Response('', { status: 429 }));
+    await expect(refreshPages('down')).rejects.toThrow('HTTP 429');
+    const seen = nodes();
+    expect(await pages('down')).toHaveLength(1);
+    expect(seen).toEqual(['https://api.mangadex.org/at-home/server/down']);
   });
 });
 
