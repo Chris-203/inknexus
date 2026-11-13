@@ -13,7 +13,7 @@ import { nextChapter, preloadChapter } from '../lib/preload';
 import { readProgress } from '../lib/progress';
 import { getSpot, setSpot, spotAt, type Spot } from '../lib/spots';
 import { findSeries, setLast, useStore } from '../lib/store';
-import type { Chapter, Series } from '../lib/types';
+import type { Chapter, Page, Series } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
@@ -39,6 +39,9 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const pagesRef = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const failedOnce = useRef(false);
+  // Asking MangaDex for a server again after the first failed page: whether it gave one, and its pages.
+  const moved = useRef<Promise<boolean> | null>(null);
+  const fresh = useRef<Page[] | null>(null);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
@@ -315,11 +318,35 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     mark(i, 'done');
   };
 
-  // Data-saver image first; on error try full quality once, then mark the page failed and say so once for this chapter.
-  const onImgError = (img: HTMLImageElement, i: number, b: string) => {
+  // The chapter's first failed page asks MangaDex for a server again, once (at-home allows 40 requests a minute), and moves
+  // every page not loaded yet to it. A saved chapter loads from the device, so it is left as it is.
+  const moveServer = async (id: string) => {
+    try {
+      const list = await mangadex.refreshPages(id);
+      fresh.current = list;
+      pagesRef.current?.querySelectorAll<HTMLImageElement>('.pg > img').forEach((img, k) => {
+        if (img.naturalWidth || !list[k]) return;
+        img.dataset.r = '1';
+        img.src = imageSrc(list[k].a);
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Data-saver image first; on error try a new server, then full quality once, then mark the page failed and say so
+  // once for this chapter.
+  const onImgError = async (img: HTMLImageElement, i: number, u: Page) => {
+    if (!saved && readable && !img.dataset.r) {
+      moved.current ??= moveServer(readable.id);
+      // Moved to the new server: its own load or error follows.
+      if (await moved.current) return;
+    }
+    const b = (fresh.current?.[i] ?? u).b;
     if (!img.dataset.t && b) {
       img.dataset.t = '1';
-      img.src = b;
+      img.src = imageSrc(b);
       return;
     }
     mark(i, 'failed');
@@ -349,7 +376,7 @@ export function Reader({ x, n }: { x: Series; n: number }) {
                   decoding="async"
                   alt={`Page ${i + 1}`}
                   onLoad={(e) => onImgLoad(e.currentTarget, i)}
-                  onError={(e) => onImgError(e.currentTarget, i, u.b && imageSrc(u.b))}
+                  onError={(e) => onImgError(e.currentTarget, i, u)}
                 />
                 {shown[i] === 'failed' ? (
                   <div className="pgmsg">

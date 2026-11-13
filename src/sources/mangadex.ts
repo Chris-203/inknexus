@@ -1,5 +1,6 @@
 import { api, MD } from '../lib/api';
 import { norm } from '../lib/format';
+import { isWebUrl } from '../lib/links';
 import { bestFits, fit, SURE, type MatchHint } from '../lib/match';
 import { mdNames, pickTitle, type Name } from '../lib/names';
 import type { Chapter, ChapterList, Details, Latest, Page, SearchResult } from '../lib/types';
@@ -199,7 +200,7 @@ export function browse(tag: string | null, sort: BrowseSort, origin?: Origin, st
 }
 
 /**
- * One chapter per number, sorted. Drops chapters MangaDex cannot show (no pages and no official link).
+ * One chapter per number, sorted. Drops chapters MangaDex cannot show (no pages and no official web link).
  * When a number has several uploads, the first one readable on MangaDex wins over official-site links.
  */
 export function toChapterList(raw: MdChapter[]): ChapterList {
@@ -207,7 +208,9 @@ export function toChapterList(raw: MdChapter[]): ChapterList {
   for (const c of raw) {
     const n = parseFloat(c.attributes.chapter ?? '');
     if (isNaN(n)) continue;
-    const ext = c.attributes.externalUrl || '';
+    // Only a web link can be opened; anything else (a javascript: link, say) counts as none.
+    const url = c.attributes.externalUrl || '';
+    const ext = isWebUrl(url) ? url : '';
     if (!ext && !((c.attributes.pages ?? 0) > 0)) continue;
     const cur = byNum.get(n);
     if (cur && (!cur.ext || ext)) continue;
@@ -266,6 +269,15 @@ export function pages(id: string): Promise<Page[]> {
     if (pageCache.get(id)?.list === list) pageCache.delete(id);
   });
   return list;
+}
+
+/**
+ * pages() asked of MangaDex again, skipping the saved answer, for when a page will not load: a new answer can name a
+ * working server. It replaces the saved answer, so the chapter keeps the new server when opened again.
+ */
+export function refreshPages(id: string): Promise<Page[]> {
+  pageCache.delete(id);
+  return pages(id);
 }
 
 async function fetchPages(id: string): Promise<Page[]> {

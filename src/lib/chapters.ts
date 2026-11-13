@@ -9,7 +9,7 @@ import { chapters as fetchChapters } from '../sources/mangadex';
 /**
  * Chapter lists per MangaDex id, shared by the series and reader screens and kept on the device under their own key,
  * never in the library or backups. A list is used as is for 30 minutes, then shown while it reloads, and dropped after
- * a day so chapters MangaDex removed (for example at a scanlation group's request) do not linger.
+ * a week so chapters MangaDex removed (for example at a scanlation group's request) do not linger.
  */
 const KEY = 'inknexus-chapters';
 const FRESH = 30 * 60 * 1000;
