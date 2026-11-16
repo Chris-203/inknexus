@@ -41,6 +41,7 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 - `src/sources/`: `mangadex.ts` (`toChapterList()` is the chapter filter) and `anilist.ts`
 - `*.test.ts`: Vitest tests next to the code they test
 - `src/styles.css`: all styles
+- The reader's parts outside `src/views/Reader.tsx`: in `src/components/`, `ReaderPages` (the pages, each with its loading or failed message), `ReaderTools` (the side toolbar), `ChapterCredit` (the scanlation group and MangaDex credit under the chapter switcher), `ChaptersSheet`, `AutoScrollBar` (auto scroll's controls) and `PullNext` (the ring that ends a chapter); in `src/lib/`, `pageLoads.ts` (`usePageLoads()`: which pages have shown or failed, with the new server and full quality retries), `scrollModes.ts` (`useScrollModes()`: auto scroll and tap to scroll, never on together) and `pullNext.ts` (`usePullNext()`, `pullBy()`: pulling up at the end to open the next chapter)
 - `api/mangadex.js`: Vercel Function that relays MangaDex API GETs (CORS workaround) at `/api/mangadex`, limited to `https://api.mangadex.org` and same-site requests
 - `api/mdimage.js`: Vercel Function that relays MangaDex page images and covers at `/api/mdimage`, limited to MangaDex image hosts and same-site requests; reports each MangaDex@Home image to MangaDex. `api/_relay.js`: what both relays share (`USER_AGENT`, `send()`, `sameSite()`)
 - `assets/`: cover art (`cover.svg` is the source, `cover.png` is rendered from it)
