@@ -32,6 +32,11 @@ export function newCount(l: Latest | undefined, last: number): { n: number; more
   return { n, more: l.full && n > 0 && n === l.nums.length };
 }
 
+/** The new chapters of a started series whose MangaDex source is shown, or null for any other series. */
+export function freshOf(x: Series): { n: number; more: boolean } | null {
+  return x.md && !x.mdh && x.last ? newCount(latestFor(x.md), x.last) : null;
+}
+
 export const updates = { checking: false, failed: [] as { title: string; error: string }[] };
 const changes = createChanges();
 
