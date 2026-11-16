@@ -35,5 +35,10 @@ Browsers block direct calls to the MangaDex API, so `api/mangadex.js`, a Vercel 
 
 To run it locally, use `vercel dev`. `npm run dev` serves the page but not `/api/mangadex`, so MangaDex search fails with HTTP 404.
 
+### Sync server
+`api/sync.js`, a third Vercel Function at `/api/sync`, keeps a library for syncing between devices. The app does not use it yet. It needs an Upstash Redis store: in the Vercel project open Storage, add Upstash Redis (it has a free plan) and connect it to Production and Preview. Vercel then sets the store's address and token as environment variables, so nothing goes in the repo. Without the store it answers HTTP 503 and says so.
+
+A device loads with GET and saves with PUT, with its sync code in the `Authorization` header. The library is stored under a hash of the code, never the code itself. Each save names the version it was based on, and one based on an older version is refused with the current copy (HTTP 409), so one device cannot overwrite another's changes. It only answers pages on the same site, takes libraries up to 512 KB, and allows each address 60 requests a minute.
+
 ## Data
 Your library is stored in your browser's local storage, separately for each browser and each installed home-screen shortcut. Use Export backup regularly and Import to move a library between browsers.
