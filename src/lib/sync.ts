@@ -94,39 +94,48 @@ export interface Merged extends Synced {
 }
 
 /**
- * This device's library merged with the synced copy. Series are paired by id, then like a backup import (MangaDex
- * id, AniList id or title), except that two series MangaDex or AniList know as different ones stay apart. A pair
- * keeps the synced copy's id, so every device ends on the same ids. A removal on either side wins unless the other
- * side changed the series after it.
+ * This device's library merged with the synced copy. A removal on either side wins unless the other side changed the
+ * series after it. A series both sides have under one id is that series. The rest are paired like a backup import
+ * (MangaDex id, AniList id or title), one to one, except that two series MangaDex or AniList know as different ones
+ * stay apart. A pair keeps the synced copy's id, so every device ends on the same ids.
  */
 export function mergeSynced(mine: Synced, theirs: Synced, now: number): Merged {
   const removed: Record<string, number> = {};
   for (const [id, at] of [...Object.entries(mine.log.removed), ...Object.entries(theirs.log.removed)]) {
     if (now - at < REMOVED_FOR) removed[id] = Math.max(at, removed[id] ?? 0);
   }
+  // Removed series go before any pairing, so a removed series is never taken for another one with its name.
+  const stays = (s: Synced) => s.lib.filter((x) => (removed[x.id] ?? -1) < Math.max(0, ...Object.values(s.log.changed[x.id] ?? {})));
+  const ours = new Map(stays(mine).map((x) => [x.id, x]));
+  const their = stays(theirs);
+  const there = new Set(their.map((x) => x.id));
 
-  const plan = planImport(theirs.lib, mine.lib);
   // In planImport's words the library is the synced copy, so a duplicate's `mine` is their series and its `theirs` is ours.
-  const pairs = plan.dupes.filter((d) => sameIds(d.mine, d.theirs) || !clash(d.mine, d.theirs));
-  const alone = mine.lib.filter((x) => !pairs.some((d) => d.theirs === x));
-
-  const merged = new Map(theirs.lib.map((x) => [x.id, { x, times: theirs.log.changed[x.id] ?? {}, ids: [x.id] }]));
+  const plan = planImport(
+    their.filter((x) => !ours.has(x.id)),
+    [...ours.values()].filter((x) => !there.has(x.id)),
+  );
+  const pairs = new Map<string, Series>();
   const moved: Record<string, string> = {};
-  for (const d of pairs) {
-    const m = merged.get(d.mine.id)!;
-    merged.set(d.mine.id, { ...mergePair(d.theirs, mine.log.changed[d.theirs.id] ?? {}, m.x, m.times), ids: [...m.ids, d.theirs.id] });
-    if (d.theirs.id !== d.mine.id) moved[d.theirs.id] = d.mine.id;
+  for (const d of plan.dupes) {
+    if (pairs.has(d.mine.id) || (!sameIds(d.mine, d.theirs) && clash(d.mine, d.theirs))) continue;
+    pairs.set(d.mine.id, d.theirs);
+    moved[d.theirs.id] = d.mine.id;
   }
-  const all = [...merged.values(), ...alone.map((x) => ({ x, times: mine.log.changed[x.id] ?? {}, ids: [x.id] }))];
 
   const lib: Series[] = [];
   const changed: Record<string, Times> = {};
-  for (const { x, times, ids } of all) {
-    const gone = Math.max(0, ...ids.map((id) => removed[id] ?? 0));
-    if (gone && gone >= Math.max(0, ...Object.values(times))) continue;
+  const add = (x: Series, times: Times) => {
     lib.push(x);
     if (Object.keys(times).length) changed[x.id] = times;
-    for (const id of ids) delete removed[id];
+    delete removed[x.id];
+  };
+  for (const y of their) {
+    const x = pairs.get(y.id) ?? ours.get(y.id);
+    const times = theirs.log.changed[y.id] ?? {};
+    const pair = x && mergePair(x, mine.log.changed[x.id] ?? {}, y, times);
+    add(pair?.x ?? y, pair?.times ?? times);
   }
+  for (const x of ours.values()) if (!there.has(x.id) && !(x.id in moved)) add(x, mine.log.changed[x.id] ?? {});
   return { lib, log: { changed, removed }, moved };
 }

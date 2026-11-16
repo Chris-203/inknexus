@@ -126,10 +126,20 @@ describe('mergeSynced', () => {
     }
   });
 
-  it('removes a series that never changed, and one paired under another id', () => {
-    const r = mergeSynced(side([s({ id: 'a' }), s({ id: 'p', md: MD1 })]), side([s({ id: 'c', md: MD1 })], { removed: { a: 50, p: 50 } }), 100);
-    expect(r.lib).toEqual([]);
-    expect(r.log.removed).toEqual({ a: 50, p: 50 });
+  it('removes a series that never changed, and never takes a removed series for another one with its name', () => {
+    const kept = side([s({ id: 'a', last: 4 }), s({ id: 'b' })]);
+    const removed = side([s({ id: 'a', last: 4 })], { removed: { b: 50 } });
+    for (const r of [mergeSynced(kept, removed, 100), mergeSynced(removed, kept, 100)]) {
+      expect(r.lib).toEqual([s({ id: 'a', last: 4 })]);
+      expect(r.log.removed).toEqual({ b: 50 });
+      expect(r.moved).toEqual({});
+    }
+  });
+
+  it('keeps the synced copy’s series when this device removed its own copy before the two were paired', () => {
+    const r = mergeSynced(side([], { removed: { p: 50 } }), side([s({ id: 'c', md: MD1 })]), 100);
+    expect(r.lib).toEqual([s({ id: 'c', md: MD1 })]);
+    expect(r.log.removed).toEqual({ p: 50 });
   });
 
   it('forgets a removal after 90 days, so a device away for longer brings the series back', () => {
@@ -153,11 +163,19 @@ describe('mergeSynced', () => {
     expect(none.lib[0]!.info).toBeUndefined();
   });
 
-  it('merges two of this device’s series that the synced copy has as one', () => {
-    const mine = side([s({ id: 'p1', md: MD1, last: 3 }), s({ id: 'p2', title: 'Other', al: 7, last: 9 })]);
-    const r = mergeSynced(mine, side([s({ id: 'c', md: MD1, al: 7 })]), 100);
-    expect(r.lib).toEqual([s({ id: 'c', md: MD1, al: 7, last: 9 })]);
-    expect(r.moved).toEqual({ p1: 'c', p2: 'c' });
+  it('pairs series one to one, and only those the other side does not have under their own id', () => {
+    // Two series here match one in the synced copy: the first is paired, the second stays a series of its own.
+    const two = mergeSynced(
+      side([s({ id: 'p1', md: MD1, last: 3 }), s({ id: 'p2', title: 'Other', al: 7, last: 9 })]),
+      side([s({ id: 'c', md: MD1, al: 7 })]),
+      100,
+    );
+    expect(two.lib).toEqual([s({ id: 'c', md: MD1, al: 7, last: 3 }), s({ id: 'p2', title: 'Other', al: 7, last: 9 })]);
+    expect(two.moved).toEqual({ p1: 'c' });
+    // A second series with the same name added here is not the one both sides already have.
+    const added = mergeSynced(side([s({ id: 'a', last: 3 }), s({ id: 'b', last: 9 })]), side([s({ id: 'a', last: 3 })]), 100);
+    expect(added.lib).toEqual([s({ id: 'a', last: 3 }), s({ id: 'b', last: 9 })]);
+    expect(added.moved).toEqual({});
   });
 
   it('brings every device to the same library whatever order they sync in', () => {
