@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { ImportSheet } from './components/ImportSheet';
+import { movedTo } from './lib/deviceSync';
 import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
 import { showsReadingUpdates } from './lib/readingUpdates';
 import { preloadBrowse } from './lib/searchResults';
@@ -36,7 +37,8 @@ function cameFrom(): string | undefined {
 /** The series a view shows, or undefined when it is gone (removed, or its MangaDex source or link is). */
 function seriesFor(view: View): SeriesT | undefined {
   if (!('id' in view)) return undefined;
-  const x = findSeries(view.id);
+  // Sync can give a series the id it has on another device while its page is open.
+  const x = findSeries(movedTo(view.id));
   if (view.name === 'reader' && !x?.md) return undefined;
   if (view.name === 'frame' && !x?.links[view.i]) return undefined;
   return x;

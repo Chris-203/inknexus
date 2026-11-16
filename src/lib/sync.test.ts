@@ -1,4 +1,4 @@
-import { mergeSynced, noteChanges, REMOVED_FOR, type SyncLog, type Synced } from './sync';
+import { mergeSynced, noteChanges, REMOVED_FOR, toLog, toSynced, type SyncLog, type Synced } from './sync';
 import type { Link, Series } from './types';
 
 const s = (o: Partial<Series>): Series => ({ id: 'x', title: 'T', cover: '', md: null, al: null, links: [], last: 0, t: 0, ...o });
@@ -203,5 +203,38 @@ describe('mergeSynced', () => {
     ]);
     // Merging again changes nothing.
     expect(mergeSynced(t!, t!, 100)).toEqual({ ...t!, moved: {} });
+  });
+});
+
+describe('toLog', () => {
+  it('keeps the times it knows and drops everything else', () => {
+    const log = toLog({
+      changed: { b: { last: 5, shelf: 'x', other: 9, title: -1 }, a: { sources: 7, cover: 6 }, c: {}, d: 'x' },
+      removed: { z: 3, y: 'x', x: 0, w: 4 },
+      extra: 1,
+    });
+    expect(log).toEqual({ changed: { a: { cover: 6, sources: 7 }, b: { last: 5 } }, removed: { w: 4, z: 3 } });
+  });
+
+  it('is empty for anything that is not a log', () => {
+    for (const v of [null, undefined, 'x', [], { changed: [], removed: 'x' }]) expect(toLog(v)).toEqual(EMPTY);
+  });
+});
+
+describe('toSynced', () => {
+  it('checks the library like a backup and the log with it', () => {
+    const r = toSynced({ lib: [{ id: 'a', title: ' A ', last: 'x', links: [{ url: 'javascript:alert(1)' }] }, 'junk'], log: { removed: { z: 3 } } });
+    expect(r).toEqual({ lib: [s({ id: 'a', title: 'A' })], log: { changed: {}, removed: { z: 3 } } });
+  });
+
+  it('is null for anything that is not a library', () => {
+    for (const v of [null, 'x', [], {}, { lib: 'x' }]) expect(toSynced(v)).toBeNull();
+  });
+
+  it('gives the same JSON for the same library however its series and log were put together', () => {
+    const a = side([{ ...s({ id: 'a', shelf: 'done' }), src: 'md', mdh: true }], { changed: { b: { title: 2, last: 1 }, a: { last: 1 } } });
+    const b = side([{ mdh: true, src: 'md', shelf: 'done', info: undefined, ...s({ id: 'a' }) }], { changed: { a: { last: 1 }, b: { last: 1, title: 2 } } });
+    expect(JSON.stringify(a)).not.toBe(JSON.stringify(b));
+    expect(JSON.stringify(toSynced(a))).toBe(JSON.stringify(toSynced(b)));
   });
 });

@@ -1,4 +1,4 @@
-import { getSpot, leftChapter, setSpot, spotAt } from './spots';
+import { getSpot, leftChapter, moveSpots, setSpot, spotAt } from './spots';
 
 const memory = new Map<string, string>();
 beforeEach(() => {
@@ -70,5 +70,26 @@ describe('spots', () => {
     expect(getSpot('b', 7)).toEqual({ i: 2, f: 1 });
     memory.set('inknexus-reader-spots', '[1]');
     expect(getSpot('a', 93)).toBeNull();
+  });
+
+  it('carries a spot over to a series’ new id, unless the new id has one', () => {
+    setSpot('a', 93, { i: 4, f: 0.5 });
+    setSpot('b', 7, { i: 1, f: 0 });
+    setSpot('c', 2, { i: 2, f: 0 });
+    setSpot('d', 5, { i: 3, f: 0 });
+    moveSpots({ a: 'z', b: 'c', gone: 'y' });
+    expect(getSpot('z', 93)).toEqual({ i: 4, f: 0.5 });
+    expect(leftChapter('a')).toBeUndefined();
+    expect(leftChapter('b')).toBeUndefined();
+    expect(getSpot('c', 2)).toEqual({ i: 2, f: 0 });
+    expect(getSpot('d', 5)).toEqual({ i: 3, f: 0 });
+  });
+
+  it('leaves the spots alone when no series with one changed id', () => {
+    setSpot('a', 93, { i: 4, f: 0.5 });
+    const before = memory.get('inknexus-reader-spots');
+    moveSpots({ b: 'c' });
+    moveSpots({});
+    expect(memory.get('inknexus-reader-spots')).toBe(before);
   });
 });

@@ -3,6 +3,7 @@ import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
 import { ReadButton } from '../components/ReadButton';
 import { Sheet, useDialogFocus, useSheet } from '../components/Sheet';
+import { SyncSettings } from '../components/SyncSettings';
 import { ThemePicker } from '../components/ThemePicker';
 import { WebtoonSheet } from '../components/WebtoonSheet';
 import { imageSrc } from '../lib/api';
@@ -595,6 +596,7 @@ function SettingsSheet({ onClose, onWebtoon }: { onClose: () => void; onWebtoon:
           Show reading updates, like "Chapter 5 marked read" and "Zoom 150%"
         </label>
       </div>
+      <SyncSettings />
       <BackupSettings close={sheet.close} onWebtoon={onWebtoon} />
     </Sheet>
   );
