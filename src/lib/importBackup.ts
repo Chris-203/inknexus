@@ -9,7 +9,7 @@ export interface Duplicate {
 }
 
 /** Same series by id, MangaDex id or AniList id. */
-function sameIds(a: Series, b: Series): boolean {
+export function sameIds(a: Series, b: Series): boolean {
   return a.id === b.id || (!!a.md && a.md === b.md) || (a.al !== null && a.al === b.al);
 }
 
