@@ -1,43 +1,31 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { useApp } from '../context';
 import { AddByLinkSheet } from '../components/AddByLinkSheet';
-import { ReadButton } from '../components/ReadButton';
+import { CardFace } from '../components/CardFace';
+import { LibraryBar } from '../components/LibraryBar';
+import { LibraryWelcome } from '../components/LibraryWelcome';
+import { OfflineChapters } from '../components/OfflineChapters';
+import { SeriesViews } from '../components/SeriesViews';
 import { Sheet, useDialogFocus, useSheet } from '../components/Sheet';
 import { SyncSettings } from '../components/SyncSettings';
 import { ThemePicker } from '../components/ThemePicker';
 import { WebtoonSheet } from '../components/WebtoonSheet';
-import { imageSrc } from '../lib/api';
 import { backupStatus, saveBackup, useLastBackup } from '../lib/backup';
-import { loadChapters, prefetchChapters, useChapterState } from '../lib/chapters';
+import { loadChapters, prefetchChapters } from '../lib/chapters';
 import { keepCovers } from '../lib/covers';
-import { removeAllDownloads, removeDownload, useDownloads } from '../lib/downloads';
-import { daysAgo, fileSize, fmt, plural, titleHas } from '../lib/format';
-import { SHELVES, setLibraryShelf, type LibraryTab, setLibraryView, shelfName, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
-import { nextWhole } from '../lib/links';
-import { useOpenLink } from '../lib/openLink';
-import { continueChapter } from '../lib/preload';
+import { useDownloads } from '../lib/downloads';
+import { titleHas } from '../lib/format';
+import { useHold } from '../lib/hold';
+import { SHELVES, setLibraryShelf, type LibraryTab, shelfName, shelfOf, useLibraryShelf, useLibraryView } from '../lib/libraryView';
 import { setShowsReadingUpdates, useShowsReadingUpdates } from '../lib/readingUpdates';
+import { useShelfSwipe } from '../lib/shelfSwipe';
 import { shareSeries } from '../lib/share';
-import { leftChapter } from '../lib/spots';
-import { removeSeries, setShelf, shownSource, useStore } from '../lib/store';
-import { pastSlop, useSwipe } from '../lib/swipe';
-import type { Link, Series as SeriesT, Shelf } from '../lib/types';
-import { checkUpdates, latestFor, newCount, useUpdates } from '../lib/updates';
-
-/** The covers that have loaded, by address. */
-const loaded = new Set<string>();
-
-/**
- * A series' cover. One that has loaded before loads at once wherever it shows again, as on the shelf a series was moved
- * to, rather than waiting until it scrolls into view and showing a gray box until then.
- */
-function cover(url: string) {
-  const src = imageSrc(url);
-  return <img src={src} referrerPolicy="same-origin" loading={loaded.has(src) ? 'eager' : 'lazy'} onLoad={() => loaded.add(src)} alt="" />;
-}
+import { removeSeries, setShelf, useStore } from '../lib/store';
+import type { Series as SeriesT, Shelf } from '../lib/types';
+import { checkUpdates, useUpdates } from '../lib/updates';
 
 export function Library() {
-  const { navigate, importBackup, toast } = useApp();
+  const { navigate, toast } = useApp();
   const { lib } = useStore();
   const list = [...lib].sort((a, b) => (b.t || 0) - (a.t || 0));
   const mds = list.flatMap((x) => (x.md && !x.mdh ? [x.md] : []));
@@ -69,82 +57,15 @@ export function Library() {
     // Picks stay on the shelf they were made on, so Move and Remove only act on series in view. Downloaded has no series to pick.
     setPicked((p) => (k === 'downloads' ? null : p && []));
   };
-  // A swipe to the left opens the shelf on the right of this one, and a swipe to the right the one on its left.
-  const at = tabs.findIndex((q) => q.k === shelf);
-  // The shelf a swipe is settling on: its tab lights up as the finger lets go, not once the shelf has slid into place.
-  const [aim, setAim] = useState<LibraryTab | null>(null);
-  const lit = aim ?? shelf;
-  const swipe = useSwipe(
-    (dir) => !!tabs[at - dir],
-    (dir) => {
-      setAim(null);
-      openShelf(tabs[at - dir]!.k);
-    },
-    false,
-    (dir) => setAim(tabs[at - dir]!.k),
-  );
-  // A shelf pulled in by a swipe shows from its top, where it opens, however far down this one is scrolled (`.swiping` in styles.css).
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const setTrack = useCallback(
-    (el: HTMLDivElement | null) => {
-      trackRef.current = el;
-      return swipe(el);
-    },
-    [swipe],
-  );
-  useEffect(() => {
-    const down = () => trackRef.current?.style.setProperty('--scrolled', `${scrollY}px`);
-    addEventListener('pointerdown', down, true);
-    return () => removeEventListener('pointerdown', down, true);
-  }, []);
-  // A swipe can open a shelf whose tab is scrolled out of the row.
-  const tabsRef = useRef<HTMLDivElement>(null);
-  // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React would call it as the cleanup.
-  useEffect(() => {
-    tabsRef.current?.querySelector('[aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [lit]);
-  // Holding a card opens its menu, and holding a row starts selecting with it picked; the click that ends the hold is not a tap.
-  const holdTimer = useRef(0);
-  const holdAt = useRef({ x: 0, y: 0 });
-  const held = useRef(false);
+  const { at, lit, setTrack, tabsRef } = useShelfSwipe(tabs, shelf, openShelf);
+  const hold = useHold();
   const f = updates.failed;
 
-  const hold = (x: SeriesT, el: HTMLElement) => {
+  // Holding a card opens its menu, and holding a row starts selecting with it picked.
+  const onHold = (x: SeriesT, el: HTMLElement) => {
     if (view === 'cards') setMenu({ x, at: el.getBoundingClientRect() });
     else setPicked([x.id]);
     navigator.vibrate?.(10);
-  };
-  const startHold = (x: SeriesT, e: PointerEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    held.current = false;
-    holdAt.current = { x: e.clientX, y: e.clientY };
-    holdTimer.current = window.setTimeout(() => {
-      held.current = true;
-      hold(x, el);
-    }, 500);
-  };
-  const endHold = () => clearTimeout(holdTimer.current);
-
-  const freshOf = (x: SeriesT) => (x.md && !x.mdh && x.last ? newCount(latestFor(x.md), x.last) : null);
-  // A card's cover, badges and title, on the shelf and lifted over it by its menu.
-  const face = (x: SeriesT) => {
-    const last = x.last || 0;
-    const fresh = freshOf(x);
-    return (
-      <>
-        {x.cover ? cover(x.cover) : <span className="cover" />}
-        <span className="badges">
-          {last > 0 && <span className="badge">Ch. {fmt(last)}</span>}
-          {fresh?.n ? (
-            <span className="badge new">
-              {fresh.n}
-              {fresh.more ? '+' : ''} new
-            </span>
-          ) : null}
-        </span>
-        <span className="ct">{x.title}</span>
-      </>
-    );
   };
   // What pressing a series does, in either view: a tap opens it, or picks it while selecting; holding opens its menu or starts selecting.
   const press = (x: SeriesT) => ({
@@ -152,25 +73,22 @@ export function Library() {
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       if (picked) return;
       if (x.md && !x.mdh) loadChapters(x.md);
-      startHold(x, e);
+      hold.start(e, (el) => onHold(x, el));
     },
-    // A swipe between shelves keeps the pointer, and the card moves along under it, so moving the finger at all ends the hold.
-    onPointerMove: (e: PointerEvent) => {
-      if (pastSlop(e.clientX - holdAt.current.x, e.clientY - holdAt.current.y)) endHold();
-    },
-    onPointerUp: endHold,
-    onPointerLeave: endHold,
-    onPointerCancel: endHold,
+    onPointerMove: hold.move,
+    onPointerUp: hold.end,
+    onPointerLeave: hold.end,
+    onPointerCancel: hold.end,
     // A right-click, or the menu key, opens a card's menu at once.
     onContextMenu: (e: MouseEvent<HTMLElement>) => {
       e.preventDefault();
       if (view !== 'cards' || picked) return;
-      endHold();
-      hold(x, e.currentTarget);
+      hold.end();
+      onHold(x, e.currentTarget);
     },
     onClick: () => {
-      if (held.current) held.current = false;
-      else if (picked) toggle(x.id);
+      if (hold.took()) return;
+      if (picked) toggle(x.id);
       else navigate({ name: 'series', id: x.id });
     },
   });
@@ -190,123 +108,7 @@ export function Library() {
     toast(`Moved ${ids.length} series to ${shelfName(k)}`);
   };
 
-  // With no series at all, every series shelf shows how to start one instead of its own empty line.
-  const welcome = (
-    <div className="empty">
-      <p>No series yet.</p>
-      <button className="btn" onClick={() => navigate({ name: 'search' })}>
-        Browse series
-      </button>
-      <p className="restore">
-        Used InkNexus before, in another browser or on another device? Each one keeps its own list. Import the backup file you exported there.
-      </p>
-      <button className="btn ghost" onClick={importBackup}>
-        Import backup
-      </button>
-      <p className="restore">Reading on Webtoon? Bring in every series from your Recent list.</p>
-      <button className="btn ghost" onClick={() => setWebtoonOpen(true)}>
-        Import from Webtoon
-      </button>
-    </div>
-  );
-
-  // The count of series shown, Select all while selecting, and the switch between cards and the list.
-  const bar = (shown: SeriesT[]) => {
-    const all = !!picked && shown.every((x) => picked.includes(x.id));
-    return (
-      <div className="lbar">
-        <span className="sub">
-          {shown.length} series{updates.checking ? ' · checking for new chapters…' : ''}
-        </span>
-        {picked && shown.length > 0 && (
-          <button className="btn ghost sm all" onClick={() => setPicked(all ? [] : shown.map((x) => x.id))}>
-            {all ? 'Deselect all' : 'Select all'}
-          </button>
-        )}
-        <div className="seg" role="group" aria-label="Show series as">
-          <button aria-label="Cards" aria-pressed={view === 'cards'} onClick={() => setLibraryView('cards')}>
-            {/* four cards */}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
-              <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
-              <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
-              <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
-            </svg>
-          </button>
-          <button aria-label="List" aria-pressed={view === 'list'} onClick={() => setLibraryView('list')}>
-            {/* three rows, each a thumbnail and a line */}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 5.5h2M4 12h2M4 18.5h2M9.5 5.5H20M9.5 12H20M9.5 18.5H20" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    );
-  };
-  // Series as cards or a list, both kept mounted. Search results also say which shelf each one is on.
-  const views = (shown: SeriesT[], shelves = false) => (
-    // Both views stay mounted, the other one laid out but hidden under this one, so a switch shows covers already
-    // loaded instead of new images that each flash a gray box first.
-    <div className="views">
-      <div className={view === 'list' ? 'lrows' : 'lrows off'} inert={view !== 'list'}>
-        {shown.map((x) => {
-          const last = x.last || 0;
-          const fresh = freshOf(x);
-          const on = picked?.includes(x.id);
-          return (
-            <div key={x.id} className={`lrow${on ? ' on' : ''}`}>
-              <button className="lmain" aria-pressed={picked ? on : undefined} {...press(x)}>
-                {x.cover ? cover(x.cover) : <span className="thumb" />}
-                <span className="linfo">
-                  <b>{x.title}</b>
-                  <span>
-                    {last > 0 ? `Ch. ${fmt(last)}` : 'Not started'}
-                    {fresh?.n ? (
-                      <em>
-                        {' · '}
-                        {fresh.n}
-                        {fresh.more ? '+' : ''} new
-                      </em>
-                    ) : null}
-                  </span>
-                  {shelves || last > 0 ? (
-                    <span>
-                      {shelves && shelfName(shelfOf(x))}
-                      {shelves && last > 0 && ' · '}
-                      {last > 0 && `Last read ${daysAgo(x.t)}`}
-                    </span>
-                  ) : null}
-                </span>
-                {picked && (
-                  <span className="tick" aria-hidden="true">
-                    {on && '✓'}
-                  </span>
-                )}
-              </button>
-              {!picked && <RowContinue x={x} />}
-            </div>
-          );
-        })}
-      </div>
-      <div className={view === 'cards' ? 'grid' : 'grid off'} inert={view !== 'cards'}>
-        {shown.map((x) => {
-          const on = picked?.includes(x.id);
-          return (
-            <button key={x.id} className={`card${on ? ' on' : ''}`} aria-pressed={picked ? on : undefined} {...press(x)}>
-              {face(x)}
-              {shelves && <span className="cs">{shelfName(shelfOf(x))}</span>}
-              {picked && (
-                <span className="tick" aria-hidden="true">
-                  {on && '✓'}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
+  const bar = (shown: SeriesT[]) => <LibraryBar shown={shown} picked={picked} onPick={setPicked} checking={updates.checking} />;
   // Each shelf's series, or its saved chapters for Downloaded.
   const shelfBody = (k: LibraryTab) => {
     const shown = list.filter((x) => shelfOf(x) === k);
@@ -316,11 +118,12 @@ export function Library() {
         {k === 'downloads' ? (
           <OfflineChapters />
         ) : !list.length ? (
-          welcome
+          // With no series at all, every series shelf shows how to start one instead of its own empty line.
+          <LibraryWelcome onWebtoon={() => setWebtoonOpen(true)} />
         ) : !shown.length ? (
           <p className="hint">Nothing in {shelfName(k)} yet. To move series here, hold one on another shelf and tap Move.</p>
         ) : (
-          views(shown)
+          <SeriesViews shown={shown} picked={picked} press={press} />
         )}
       </>
     );
@@ -352,7 +155,7 @@ export function Library() {
       {linkOpen && <AddByLinkSheet onClose={() => setLinkOpen(false)} />}
       {webtoonOpen && <WebtoonSheet onClose={() => setWebtoonOpen(false)} />}
       {menu && (
-        <HoldMenu at={menu.at} card={face(menu.x)} label={menu.x.title} onClose={() => setMenu(null)}>
+        <HoldMenu at={menu.at} card={<CardFace x={menu.x} />} label={menu.x.title} onClose={() => setMenu(null)}>
           <button onClick={() => navigate({ name: 'series', id: menu.x.id, info: true })}>
             More info
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -464,7 +267,7 @@ export function Library() {
       {found ? (
         <div className="found">
           {bar(found)}
-          {found.length ? views(found, true) : <p className="hint">No series in My Series match "{q}".</p>}
+          {found.length ? <SeriesViews shown={found} shelves picked={picked} press={press} /> : <p className="hint">No series in My Series match "{q}".</p>}
         </div>
       ) : (
         // Every shelf side by side, so a swipe pulls the next one in beside this one
@@ -488,44 +291,6 @@ export function Library() {
       )}
       {sheets}
     </>
-  );
-}
-
-/**
- * A list row's Continue: the chapter the series screen would continue with, in the reader or on the site. Until that is
- * known (the chapter list is still loading, the source has no chapter links, or every chapter is read) it opens the series.
- */
-function RowContinue({ x }: { x: SeriesT }) {
-  const { navigate } = useApp();
-  const cur = shownSource(x);
-  const chs = useChapterState(cur === 'md' ? x.md : null);
-  const last = x.last || 0;
-  const left = leftChapter(x.id) ?? -1;
-  const c = chs?.status === 'ready' ? continueChapter(chs.list.chapters, last, left) : undefined;
-  const i = cur.startsWith('l') ? +cur.slice(1) : -1;
-  const l = x.links[i];
-  if (c)
-    return (
-      <ReadButton x={x} c={c} className="btn ghost sm go">
-        {last || c.num === left ? 'Continue' : 'Start'}
-        <small>Ch. {fmt(c.num)}</small>
-      </ReadButton>
-    );
-  if (l?.tpl) return <LinkRowContinue x={x} l={l} i={i} />;
-  return (
-    <button className="btn ghost sm go" onClick={() => navigate({ name: 'series', id: x.id })}>
-      {last ? 'Continue' : 'Start'}
-    </button>
-  );
-}
-
-function LinkRowContinue({ x, l, i }: { x: SeriesT; l: Link; i: number }) {
-  const open = useOpenLink(x, l, i, x.last || 0);
-  return (
-    <button className="btn ghost sm go" onClick={() => open('cont')}>
-      Continue
-      <small>Ch. {nextWhole(x.last || 0)}</small>
-    </button>
   );
 }
 
@@ -636,43 +401,6 @@ function BackupSettings({ close, onWebtoon }: { close: () => void; onWebtoon: ()
       >
         Import from Webtoon
       </button>
-    </>
-  );
-}
-
-/** My Series' Downloaded tab: the chapters saved for reading offline, by series, with their sizes and a way to remove each or all. */
-function OfflineChapters() {
-  const { saved, saving } = useDownloads();
-  const total = saved.reduce((t, d) => t + d.bytes, 0);
-  const sorted = [...saved].sort((a, b) => a.t.localeCompare(b.t) || a.c.num - b.c.num);
-  return (
-    <>
-      <div>
-        {sorted.map((d) => (
-          <div key={d.c.id} className="dl">
-            <span>
-              <b>{d.t}</b>
-              Ch. {fmt(d.c.num)} · {fileSize(d.bytes)}
-            </span>
-            <button className="ibtn plain" aria-label={`Remove ch. ${fmt(d.c.num)} of ${d.t}`} onClick={() => removeDownload(d.c.id)}>
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="pad">
-        <p className="hint">
-          {saved.length
-            ? `${plural(saved.length, 'chapter')}, ${fileSize(total)}. A chapter is removed once you finish reading it.`
-            : "None yet. Save a chapter with the arrow next to it in a series' MangaDex chapters."}{' '}
-          They are kept on this device only. On iPhone, add InkNexus to the Home Screen: Safari can clear a site's data after a week without a visit.
-        </p>
-        {saved.length > 0 && (
-          <button className="btn danger sm" disabled={!!saving} onClick={() => confirm('Remove all offline chapters?') && removeAllDownloads()}>
-            Remove all
-          </button>
-        )}
-      </div>
     </>
   );
 }
