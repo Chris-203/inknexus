@@ -41,3 +41,15 @@ export function setSpot(id: string, n: number, s: Spot | null) {
   if (s && (s.i || s.f)) writeJson(SPOTS_KEY, { ...rest, [id]: { n, ...s } });
   else if (isObj(old) && old.n === n) writeJson(SPOTS_KEY, rest);
 }
+
+/** Carry the spots of series whose id changed over to the new id (`moved` is old id to new), unless the new id has one. */
+export function moveSpots(moved: Record<string, string>) {
+  const all = readJson(SPOTS_KEY);
+  if (!isObj(all) || !Object.keys(moved).some((id) => id in all)) return;
+  const next = { ...all };
+  for (const [from, to] of Object.entries(moved)) {
+    if (from in next && !(to in next)) next[to] = next[from];
+    delete next[from];
+  }
+  writeJson(SPOTS_KEY, next);
+}

@@ -22,6 +22,11 @@ export function useStore(): State {
   return useSyncExternalStore(changes.subscribe, getState);
 }
 
+/** Call `l` after every change to the library, outside React. Gives a function that stops it. */
+export function watchStore(l: () => void) {
+  return changes.subscribe(l);
+}
+
 export function findSeries(id: string): Series | undefined {
   return state.lib.find((x) => x.id === id);
 }

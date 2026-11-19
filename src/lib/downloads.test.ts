@@ -125,6 +125,21 @@ describe('removing', () => {
   });
 });
 
+describe('moveDownloads', () => {
+  it('keeps saved chapters with a series whose id changed, and leaves the others', async () => {
+    const { saveChapter, savedChapter, moveDownloads } = await load();
+    await saveChapter(x, chap(1));
+    await saveChapter({ id: 's2', title: 'Other' }, chap(2));
+    moveDownloads({ s1: 'z', gone: 'y' });
+    expect(saved().map((d: { x: string }) => d.x)).toEqual(['z', 's2']);
+    expect(savedChapter('z', 1)?.c.id).toBe('c1');
+    expect(savedChapter('s1', 1)).toBeUndefined();
+    const before = stored.get('inknexus-downloads');
+    moveDownloads({ s1: 'q' });
+    expect(stored.get('inknexus-downloads')).toBe(before);
+  });
+});
+
 describe('on launch', () => {
   it('drops chapters whose images the browser cleared and images no chapter needs', async () => {
     const page = (id: string) => ({ a: `https://n.mangadex.network/data-saver/${id}/1.jpg`, b: '' });

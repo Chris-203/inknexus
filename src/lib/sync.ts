@@ -1,10 +1,12 @@
 import { planImport, sameIds } from './importBackup';
+import { isObj, toState } from './storage';
 import { joined } from './store';
 import type { Series } from './types';
 
 /**
  * The parts of a series that sync on their own, so a shelf move on one device and a chapter read on another both
- * survive. A series' sources change together, because its chosen source is a place in its links.
+ * survive. A series' sources change together, because its chosen source is a place in its links. A field added to a
+ * series syncs once it is in a part here. The ranking and the last-touched time follow on their own (see mergePair).
  */
 const PARTS = {
   last: ['last'],
@@ -32,6 +34,44 @@ export interface SyncLog {
 export interface Synced {
   lib: Series[];
   log: SyncLog;
+}
+
+function isTime(v: unknown): v is number {
+  return typeof v === 'number' && v > 0 && Number.isFinite(v);
+}
+
+function toTimes(v: unknown): Times {
+  const times: Times = {};
+  for (const p of NAMES) {
+    const at = isObj(v) ? v[p] : 0;
+    if (isTime(at)) times[p] = at;
+  }
+  return times;
+}
+
+/** A sync log from saved or synced data, with every time checked. Ids and parts come out in one order. */
+export function toLog(v: unknown): SyncLog {
+  const log: SyncLog = { changed: {}, removed: {} };
+  const changed = isObj(v) && isObj(v.changed) ? v.changed : {};
+  const removed = isObj(v) && isObj(v.removed) ? v.removed : {};
+  for (const id of Object.keys(changed).sort()) {
+    const times = toTimes(changed[id]);
+    if (Object.keys(times).length) log.changed[id] = times;
+  }
+  for (const id of Object.keys(removed).sort()) {
+    const at = removed[id];
+    if (isTime(at)) log.removed[id] = at;
+  }
+  return log;
+}
+
+/**
+ * A library with its sync log from saved or synced data, with every field checked and in one order, so two that hold
+ * the same are the same as JSON. Null when it is not one.
+ */
+export function toSynced(v: unknown): Synced | null {
+  const s = isObj(v) ? toState({ lib: v.lib }) : null;
+  return s && { lib: s.lib, log: toLog(isObj(v) ? v.log : null) };
 }
 
 /** A removal is passed on for this long, then forgotten. A device away for longer brings the series back. */

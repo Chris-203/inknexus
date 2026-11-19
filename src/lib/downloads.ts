@@ -75,6 +75,11 @@ export function savedChapter(x: string, n: number): Download | undefined {
   return canSave() ? state.saved.find((d) => d.x === x && d.c.num === n) : undefined;
 }
 
+/** Keep the saved chapters of series whose id changed with their series (`moved` is old id to new). */
+export function moveDownloads(moved: Record<string, string>) {
+  if (state.saved.some((d) => d.x in moved)) update({ saved: state.saved.map((d) => ({ ...d, x: moved[d.x] ?? d.x })) });
+}
+
 /** The last chapter asked to save; the next one starts after it. */
 let lastSave: Promise<unknown> = Promise.resolve();
 

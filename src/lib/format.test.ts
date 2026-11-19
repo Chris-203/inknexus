@@ -1,4 +1,4 @@
-import { chapterNote, daysAgo, fileSize, fmt, norm, plural, shortDate, titleHas } from './format';
+import { ago, chapterNote, daysAgo, fileSize, fmt, norm, plural, shortDate, titleHas } from './format';
 
 describe('format', () => {
   it('fmt shows whole and one-decimal chapters', () => {
@@ -29,6 +29,17 @@ describe('format', () => {
   });
   it('daysAgo says today for a time later than now, as from another device with its clock ahead', () => {
     expect(daysAgo(new Date(2026, 9, 29).getTime(), new Date(2026, 9, 27).getTime())).toBe('today');
+  });
+  it('ago counts minutes, then hours, then calendar days', () => {
+    const now = new Date(2026, 9, 27, 12).getTime();
+    expect(ago(now - 59e3, now)).toBe('just now');
+    expect(ago(now + 5e3, now)).toBe('just now');
+    expect(ago(now - 60e3, now)).toBe('1 min ago');
+    expect(ago(now - 59 * 60e3, now)).toBe('59 min ago');
+    expect(ago(now - 60 * 60e3, now)).toBe('1 hour ago');
+    expect(ago(now - 23 * 3600e3, now)).toBe('23 hours ago');
+    expect(ago(now - 24 * 3600e3, now)).toBe('yesterday');
+    expect(ago(now - 3 * 864e5, now)).toBe('3 days ago');
   });
   it('fileSize shows KB under 1 MB and MB above, never 0 KB', () => {
     expect(fileSize(0)).toBe('1 KB');

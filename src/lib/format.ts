@@ -35,6 +35,14 @@ export function daysAgo(t: number, now = Date.now()): string {
   return d === 0 ? 'today' : d === 1 ? 'yesterday' : `${plural(d, 'day')} ago`;
 }
 
+/** How long ago `t` was: 'just now', '5 min ago', '2 hours ago', then whole days like daysAgo(). */
+export function ago(t: number, now = Date.now()): string {
+  const min = Math.floor((now - t) / 60e3);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  return min < 24 * 60 ? `${plural(Math.floor(min / 60), 'hour')} ago` : daysAgo(t, now);
+}
+
 /** Loose title match: lowercase letters and digits only. */
 export function norm(s: unknown): string {
   return String(s || '')
