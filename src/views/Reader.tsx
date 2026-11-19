@@ -1,25 +1,27 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../context';
-import { HouseIcon } from '../components/HouseIcon';
-import { ReadButton } from '../components/ReadButton';
-import { Sheet, useSheet } from '../components/Sheet';
+import { AutoScrollBar } from '../components/AutoScrollBar';
+import { ChapterCredit } from '../components/ChapterCredit';
+import { ChaptersSheet } from '../components/ChaptersSheet';
+import { PullNext } from '../components/PullNext';
+import { ReaderPages } from '../components/ReaderPages';
+import { ReaderTools } from '../components/ReaderTools';
 import { TopBar } from '../components/TopBar';
-import { imageSrc } from '../lib/api';
-import { getScrollSpeed, getTapScroll, scrollDistance, setScrollSpeed, setTapScroll, SPEEDS, stepSpeed, tapAction } from '../lib/autoScroll';
+import { tapAction } from '../lib/autoScroll';
 import { useChapters } from '../lib/chapters';
 import { removeDownload, savedChapter } from '../lib/downloads';
-import { chapterNote, fmt } from '../lib/format';
+import { fmt } from '../lib/format';
+import { usePageLoads } from '../lib/pageLoads';
 import { nextChapter, preloadChapter } from '../lib/preload';
 import { readProgress } from '../lib/progress';
+import { usePullNext } from '../lib/pullNext';
+import { useScrollModes } from '../lib/scrollModes';
 import { getSpot, setSpot, spotAt, type Spot } from '../lib/spots';
-import { findSeries, setLast, useStore } from '../lib/store';
-import type { Chapter, Page, Series } from '../lib/types';
+import { findSeries, setLast } from '../lib/store';
+import type { Series } from '../lib/types';
 import { useLoad } from '../lib/useLoad';
 import { zoomable } from '../lib/zoom';
 import * as mangadex from '../sources/mangadex';
-
-/** How far the pages rise, in px, when pulling up at the end of a chapter to open the next one. */
-const PULL = 80;
 
 /** How long the loading screen stays at least, in ms, from when the chapter opens. */
 const COVER_MIN = 1000;
@@ -38,32 +40,18 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
-  const failedOnce = useRef(false);
-  // Asking MangaDex for a server again after the first failed page: whether it gave one, and its pages.
-  const moved = useRef<Promise<boolean> | null>(null);
-  const fresh = useRef<Page[] | null>(null);
   const zoom = useRef<ReturnType<typeof zoomable> | null>(null);
   const [bar, setBar] = useState(true);
   const [toTop, setToTop] = useState(false);
-  const [pulled, setPulled] = useState(0);
   const [chaptersOpen, setChaptersOpen] = useState(false);
-  // Auto scroll: `auto` shows its controls, `paused` stops it there. It pauses itself at the end of the chapter.
-  const [auto, setAuto] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [speed, setSpeed] = useState(getScrollSpeed);
-  const [tapScroll, setTapScrollOn] = useState(getTapScroll);
+  const scroll = useScrollModes(done, chaptersOpen);
   // Read by the tap handler, which is set up once per chapter.
-  const tapScrollRef = useRef(tapScroll);
-  tapScrollRef.current = tapScroll;
+  const tapScrollRef = useRef(scroll.tapScroll);
+  tapScrollRef.current = scroll.tapScroll;
   // The loading screen: 'on' until the pages that fill the first screen have shown, then 'out' while it fades, then gone.
   const [cover, setCover] = useState<'on' | 'out' | null>('on');
   const opened = useRef(performance.now());
-  // Pages that showed or failed for good, by index; the rest are still loading.
-  const [shown, setShown] = useState<Record<number, 'done' | 'failed'>>({});
-  const mark = (i: number, st: 'done' | 'failed') => setShown((m) => ({ ...m, [i]: st }));
-  // The loaded pages' sizes added up. Pages still loading take their average shape (--pa), so the chapter's length
-  // barely changes as pages load and the scroll bar does not jump back.
-  const loaded = useRef({ w: 0, h: 0 });
+  const { shown, onImgLoad, onImgError } = usePageLoads(pagesRef, readable, !!saved);
   // Where the bar was last shown, or the highest point scrolled to since; scrolling 30px down from there hides it.
   // Scrolling up leaves it hidden; a tap brings it back.
   const base = useRef(0);
@@ -163,34 +151,6 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     };
   }, [done, shown, resume, x.id, n, toast]);
 
-  // Auto scroll moves the pages on each frame, and waits while a finger is on the screen or the chapter list is open.
-  useEffect(() => {
-    if (!auto || paused || chaptersOpen || !done) return;
-    let raf = 0;
-    let last = performance.now();
-    let carry = 0;
-    let held = false;
-    const hold = (e: TouchEvent) => {
-      held = e.touches.length > 0;
-    };
-    const frame = (t: number) => {
-      if (!held) {
-        const [px, rest] = scrollDistance(speed, t - last, carry);
-        carry = rest;
-        if (innerHeight + scrollY >= document.documentElement.scrollHeight - 1) return setPaused(true);
-        if (px) scrollBy(0, px);
-      }
-      last = t;
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) addEventListener(ev, hold, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      for (const ev of ['touchstart', 'touchend', 'touchcancel'] as const) removeEventListener(ev, hold);
-    };
-  }, [auto, paused, chaptersOpen, done, speed]);
-
   // A chapter opened at its top stays there until the loading screen lifts. After App's scrollTo(0, 0), iPhone Safari
   // can put back where the previous chapter's pull or flick left the page, part way down this chapter, where the
   // pages the loading screen waits for never start loading.
@@ -228,51 +188,10 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     if (lastShown && next && !savedChapter(x.id, next.num)) return preloadChapter(next);
   }, [lastShown, next?.id]);
 
-  // Pulling up at the end of the chapter opens the next one, as in webtoon apps: the pages rise by up to PULL px with
-  // the ring that ends them filling, and a full ring opens the chapter. Only a finger pulls, so auto scroll stops at the end.
+  // Pulling up at the end of the chapter opens the next one, with the ring that ends the pages filling.
   // Only once the last page has shown or failed, so a loading chapter never skips ahead.
   const pullsOn = lastShown && next && !next.ext ? next.num : undefined;
-  useEffect(() => {
-    if (pullsOn === undefined) return;
-    let from: number | null = null;
-    const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
-    const move = (e: TouchEvent) => {
-      if (e.touches.length !== 1 || (from === null && !atEnd())) {
-        // Only a pull that started needs undoing; most moves are plain scrolling and change nothing.
-        if (from !== null) setPulled(0);
-        from = null;
-        return;
-      }
-      const y = e.touches[0]!.clientY;
-      from ??= y;
-      const d = Math.min(PULL, Math.max(0, (from - y) / 2));
-      setPulled(d);
-      if (d < PULL) return;
-      from = null;
-      removeEventListener('touchmove', move);
-      navigate({ name: 'reader', id: x.id, n: pullsOn }, true);
-    };
-    // The page's own bounce is off only while a finger is down, so a pull moves nothing but the pages, while a flick
-    // that glides into the end after the finger lifts still bounces as everywhere else on iPhone.
-    const hold = (on: boolean) => document.documentElement.classList.toggle('touching', on);
-    const touch = () => hold(true);
-    const release = () => {
-      from = null;
-      hold(false);
-      setPulled(0);
-    };
-    addEventListener('touchstart', touch, { passive: true });
-    addEventListener('touchmove', move, { passive: true });
-    addEventListener('touchend', release, { passive: true });
-    addEventListener('touchcancel', release, { passive: true });
-    return () => {
-      hold(false);
-      removeEventListener('touchstart', touch);
-      removeEventListener('touchmove', move);
-      removeEventListener('touchend', release);
-      removeEventListener('touchcancel', release);
-    };
-  }, [pullsOn, x.id, navigate]);
+  const pulled = usePullNext(x.id, pullsOn);
 
   const toSeries = () => goBack({ name: 'series', id: x.id });
   const backToTop = () => {
@@ -280,80 +199,11 @@ export function Reader({ x, n }: { x: Series; n: number }) {
     scrollTo({ top: 0, behavior: scrollMotion() });
   };
   const toChapter = (to: number) => navigate({ name: 'reader', id: x.id, n: to }, true);
-  // Auto scroll and tap to scroll are never on together: turning one on turns the other off.
-  const tapScrollTo = (on: boolean) => {
-    setTapScrollOn(on);
-    setTapScroll(on);
-  };
-  const toggleAuto = () => {
-    if (!auto && tapScroll) {
-      tapScrollTo(false);
-      toast('Tap to scroll off');
-    }
-    setAuto(!auto);
-    setPaused(false);
-  };
-  const toggleTapScroll = () => {
-    if (!tapScroll) setAuto(false);
-    tapScrollTo(!tapScroll);
-    toast(tapScroll ? 'Tap to scroll off' : 'Tap to scroll on: tap the bottom of the screen to go down, the top to go back');
-  };
-  const changeSpeed = (d: number) => {
-    const s = stepSpeed(speed, d);
-    setSpeed(s);
-    setScrollSpeed(s);
-  };
   const zoomBy = (d: number) => {
     const z = zoom.current?.zoomBy(d);
     // Zooming scrolls to keep the middle in place; that is not the reader scrolling on.
     base.current = scrollY;
     if (z) toast(`Zoom ${Math.round(z * 100)}%`, true);
-  };
-
-  const onImgLoad = (img: HTMLImageElement, i: number) => {
-    const t = loaded.current;
-    t.w += img.naturalWidth;
-    t.h += img.naturalHeight;
-    pagesRef.current?.style.setProperty('--pa', `${t.w} / ${t.h}`);
-    mark(i, 'done');
-  };
-
-  // The chapter's first failed page asks MangaDex for a server again, once (at-home allows 40 requests a minute), and moves
-  // every page not loaded yet to it. A saved chapter loads from the device, so it is left as it is.
-  const moveServer = async (id: string) => {
-    try {
-      const list = await mangadex.refreshPages(id);
-      fresh.current = list;
-      pagesRef.current?.querySelectorAll<HTMLImageElement>('.pg > img').forEach((img, k) => {
-        if (img.naturalWidth || !list[k]) return;
-        img.dataset.r = '1';
-        img.src = imageSrc(list[k].a);
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  // Data-saver image first; on error try a new server, then full quality once, then mark the page failed and say so
-  // once for this chapter.
-  const onImgError = async (img: HTMLImageElement, i: number, u: Page) => {
-    if (!saved && readable && !img.dataset.r) {
-      moved.current ??= moveServer(readable.id);
-      // Moved to the new server: its own load or error follows.
-      if (await moved.current) return;
-    }
-    const b = (fresh.current?.[i] ?? u).b;
-    if (!img.dataset.t && b) {
-      img.dataset.t = '1';
-      img.src = imageSrc(b);
-      return;
-    }
-    mark(i, 'failed');
-    if (!failedOnce.current) {
-      failedOnce.current = true;
-      toast('Some pages failed to load. Try again later, or read this chapter on MangaDex.');
-    }
   };
 
   let content: ReactNode;
@@ -365,33 +215,16 @@ export function Reader({ x, n }: { x: Series; n: number }) {
   else {
     content = (
       <>
-        <div id="zwrap" ref={wrap}>
-          <div id="pages" ref={pagesRef}>
-            {pages.value.map((u, i) => (
-              <div key={u.a} className={`pg ${shown[i] || ''}`}>
-                <img
-                  src={imageSrc(u.a)}
-                  referrerPolicy="same-origin"
-                  loading={resume && i <= resume.i ? 'eager' : 'lazy'}
-                  decoding="async"
-                  alt={`Page ${i + 1}`}
-                  onLoad={(e) => onImgLoad(e.currentTarget, i)}
-                  onError={(e) => onImgError(e.currentTarget, i, u)}
-                />
-                {shown[i] === 'failed' ? (
-                  <div className="pgmsg">
-                    <p>Page {i + 1} failed to load.</p>
-                    <a className="btn" href={mangadex.chapterUrl(readable.id)} target="_blank" rel="noopener noreferrer">
-                      Read on MangaDex ↗
-                    </a>
-                  </div>
-                ) : (
-                  shown[i] !== 'done' && <p className="pgmsg">Loading page {i + 1}…</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <ReaderPages
+          c={readable}
+          pages={pages.value}
+          shown={shown}
+          eagerTo={resume ? resume.i : -1}
+          wrapRef={wrap}
+          pagesRef={pagesRef}
+          onLoad={onImgLoad}
+          onError={onImgError}
+        />
         <div className="endbar">
           {/* A chapter readable here opens by pulling up at the end; only one on an official site keeps a button. */}
           {next?.ext && (
@@ -425,72 +258,28 @@ export function Reader({ x, n }: { x: Series; n: number }) {
           <button aria-label={next ? `Chapter ${fmt(next.num)}` : 'No later chapter'} disabled={!next} onClick={() => next && toChapter(next.num)}>
             ›
           </button>
-          {readable && <Credit c={readable} />}
+          {readable && <ChapterCredit c={readable} />}
         </div>
-        <div className="rtools" role="toolbar" aria-label="Reader" aria-orientation="vertical">
-          <button className="ibtn" aria-label={`Back to ${x.title}`} onClick={toSeries}>
-            <HouseIcon />
-          </button>
-          <button className="ibtn" aria-label="Chapters" aria-expanded={chaptersOpen} disabled={!list.length} onClick={() => setChaptersOpen(true)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 6h11M9 12h11M9 18h11" />
-              <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
-            </svg>
-          </button>
-          {done && (
-            <>
-              <button className="ibtn" aria-label="Auto scroll" aria-pressed={auto} onClick={toggleAuto}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M7 6l5 5 5-5M7 13l5 5 5-5" />
-                </svg>
-              </button>
-              <button className="ibtn" aria-label="Tap to scroll" aria-pressed={tapScroll} onClick={toggleTapScroll}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 3v6M9 6l3-3 3 3M12 21v-6M9 18l3 3 3-3" />
-                  <circle cx="12" cy="12" r="1.5" />
-                </svg>
-              </button>
-              <button className="ibtn" aria-label="Zoom in" onClick={() => zoomBy(0.5)}>
-                +
-              </button>
-              <button className="ibtn" aria-label="Zoom out" onClick={() => zoomBy(-0.5)}>
-                −
-              </button>
-            </>
-          )}
-        </div>
+        <ReaderTools
+          title={x.title}
+          chapters={list.length > 0}
+          chaptersOpen={chaptersOpen}
+          pages={done}
+          auto={scroll.auto}
+          tapScroll={scroll.tapScroll}
+          onSeries={toSeries}
+          onChapters={() => setChaptersOpen(true)}
+          onAuto={scroll.toggleAuto}
+          onTapScroll={scroll.toggleTapScroll}
+          onZoom={zoomBy}
+        />
       </TopBar>
       <div id="strip" className={pulled ? 'pulling' : undefined} style={pulled ? { transform: `translateY(${-pulled}px)` } : undefined}>
         {content}
-        {pullsOn !== undefined && (
-          <div className="pullnext" aria-hidden="true">
-            <svg viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15" pathLength="1" />
-              <circle className="ring" cx="18" cy="18" r="15" pathLength="1" style={{ strokeDashoffset: 1 - pulled / PULL }} />
-              <path d="M18 11v14M12 19l6 6 6-6" />
-            </svg>
-            <span>Pull to read next chapter</span>
-          </div>
-        )}
+        {pullsOn !== undefined && <PullNext pulled={pulled} />}
       </div>
-      {auto && done && (
-        <div id="autoscroll" className="chnav" role="toolbar" aria-label="Auto scroll">
-          <button aria-label={paused ? 'Play' : 'Pause'} onClick={() => setPaused(!paused)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d={paused ? 'M8 5v14l11-7z' : 'M7 5h3.5v14H7zM13.5 5H17v14h-3.5z'} />
-            </svg>
-          </button>
-          <button aria-label="Slower" disabled={speed === SPEEDS[0]} onClick={() => changeSpeed(-1)}>
-            −
-          </button>
-          <b aria-live="polite">{speed}×</b>
-          <button aria-label="Faster" disabled={speed === SPEEDS.at(-1)} onClick={() => changeSpeed(1)}>
-            +
-          </button>
-          <button aria-label="Stop auto scroll" onClick={toggleAuto}>
-            ×
-          </button>
-        </div>
+      {scroll.auto && done && (
+        <AutoScrollBar paused={scroll.paused} speed={scroll.speed} onPause={scroll.setPaused} onSpeed={scroll.changeSpeed} onStop={scroll.toggleAuto} />
       )}
       {cover && (
         <div id="rcover" className={cover} role="status" onAnimationEnd={() => cover === 'out' && setCover(null)}>
@@ -512,50 +301,4 @@ export function Reader({ x, n }: { x: Series; n: number }) {
 /** Smooth scrolling, unless the device asks for reduced motion. */
 function scrollMotion(): ScrollBehavior {
   return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-}
-
-/**
- * The chapter's credit under the chapter switcher: its scanlation group and MangaDex, which MangaDex's API rules require.
- * A credit too long for the switcher scrolls right to left, or with reduced motion has its group name cut short.
- */
-function Credit({ c }: { c: Chapter }) {
-  const line = useRef<HTMLParagraphElement>(null);
-  const [long, setLong] = useState(false);
-  useLayoutEffect(() => setLong(line.current!.scrollWidth > line.current!.clientWidth), []);
-  const grp = c.grp || 'No group credited';
-  const credit = (copy: boolean) => (
-    <span aria-hidden={copy || undefined} style={long ? { animationDuration: `${(grp.length + 11) * 0.3}s` } : undefined}>
-      <i>{grp}</i>&nbsp;· MangaDex
-    </span>
-  );
-  // Two copies, each moved by its own width, so the loop starts again exactly where it began.
-  return (
-    <p ref={line} className={`chcredit${long ? ' long' : ''}`}>
-      {credit(false)}
-      {long && credit(true)}
-    </p>
-  );
-}
-
-/** Every chapter of the series, in the library's sort order, opened on the one being read. */
-function ChaptersSheet({ x, list, n, onClose }: { x: Series; list: Chapter[]; n: number; onClose: () => void }) {
-  const { sort } = useStore();
-  const sheet = useSheet(onClose);
-  useEffect(() => {
-    document.querySelector('#modal [aria-current]')?.scrollIntoView({ block: 'center' });
-  }, []);
-  return (
-    <Sheet label="Chapters" sheet={sheet}>
-      <h2>Chapters</h2>
-      {(sort === 'asc' ? list : [...list].reverse()).map((c) => (
-        <ReadButton key={c.id} x={x} c={c} replace current={c.num === n} className={`ch${c.num <= (x.last || 0) ? ' read' : ''}`}>
-          <b>Ch. {fmt(c.num)}</b>
-          <span>{chapterNote(c)}</span>
-        </ReadButton>
-      ))}
-      <button className="btn ghost" onClick={sheet.close}>
-        Close
-      </button>
-    </Sheet>
-  );
 }
