@@ -159,13 +159,16 @@ details.info .pad p{margin:0}
 .empty{text-align:center;padding:60px 24px;color:var(--muted)}
 .empty .restore{max-width:34ch;margin:28px auto 12px;font-size:var(--font-sm)}
 /* the tab bar floats over the page as a translucent pill, with the page scrolling under it */
-#nav{position:fixed;left:0;right:0;bottom:var(--nav-gap);width:min(320px,calc(100% - 32px));margin:0 auto;padding:4px;gap:4px;background:color-mix(in srgb,var(--surface) 80%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid var(--line);border-radius:var(--radius-full);box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;z-index:5}
+#nav{position:fixed;left:0;right:0;bottom:var(--nav-gap);width:min(480px,calc(100% - 24px));margin:0 auto;padding:4px;gap:4px;background:color-mix(in srgb,var(--surface) 80%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid var(--line);border-radius:var(--radius-full);box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;z-index:5;touch-action:none;-webkit-user-select:none;user-select:none}
+/* the current tab's highlight, one tab wide (TabBar.tsx): it slides to a tapped tab, and follows a finger dragging it (--x) */
+.navpill{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 4px) / 2 - 4px);border-radius:var(--radius-full);background:color-mix(in srgb,var(--accent) 16%,transparent);transform:translateX(var(--x,calc(var(--at) * (100% + 4px))));transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+#nav.dragging .navpill{transition:none}
 #nav[hidden]{display:none}
-#nav button{flex:1;min-height:56px;background:none;border:0;border-radius:var(--radius-full);padding:6px 4px;color:var(--muted);font-size:var(--font-sm);font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#nav button{position:relative;flex:1;min-height:56px;background:none;border:0;border-radius:var(--radius-full);padding:6px 4px;color:var(--muted);font-size:var(--font-sm);font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 /* icons drawn in the app (the tabs, the settings gear), stroked in the button's color */
 #nav svg,.ibtn svg,.lbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .ibtn svg.dots{fill:currentColor;stroke:none}
-#nav button[aria-current]{color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+#nav button.lit{color:var(--accent)}
 .backbar{padding:6px 12px 0;display:flex;justify-content:space-between}
 .top{display:flex;gap:14px;padding:16px}
 .top .cover{width:96px;flex:none}
@@ -399,4 +402,4 @@ html:has(#rcover) :is(.rtrack,#totop){visibility:hidden}
 @keyframes slide-in{from{transform:translateX(100%)}}
 @keyframes slide-out{to{transform:translateX(100%)}}
 /* sheets still run a near-instant animation so closing finishes */
-@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,details.info summary::before{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out,#hold,.held .card,.hmenu{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){.chcredit.long span{flex:initial;min-width:0;margin:0 10px;padding:0;animation:none}.chcredit [aria-hidden]{display:none}#toast,.rbar,#unzoom,#strip,.navpill,details.info summary::before{transition:none}#showbar{animation:none}#modal.on,#modal.on .sheet,#modal.closing,#modal.closing .sheet,#rcover.out,#hold,.held .card,.hmenu{animation-duration:1ms}}
