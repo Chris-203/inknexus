@@ -19,7 +19,7 @@ export function saveData(): boolean {
 }
 
 /** Load one image into the browser cache; settles either way. */
-function warm(src: string): Promise<void> {
+export function warm(src: string): Promise<void> {
   return new Promise((done) => {
     const img = new Image();
     img.referrerPolicy = 'same-origin';

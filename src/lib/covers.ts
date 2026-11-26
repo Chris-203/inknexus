@@ -5,8 +5,8 @@ import type { Series } from './types';
 /**
  * Covers of the series in My Series, kept in Cache Storage under CACHE, where public/sw.js answers the image relay from,
  * so they show at once and offline, and the browser does not clear them from its HTTP cache under pressure. Covers shown
- * anywhere else (Browse, More like this) stay in the HTTP cache only. Covers from other sites are left out: the
- * browser could only keep them as opaque responses, which use far more storage than they hold.
+ * anywhere else (Browse, More like this) public/sw.js keeps itself, only the newest few hundred. Covers from other sites
+ * are left out: the browser could only keep them as opaque responses, which use far more storage than they hold.
  */
 export const CACHE = 'inknexus-covers';
 
