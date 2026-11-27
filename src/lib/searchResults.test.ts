@@ -117,6 +117,25 @@ describe('preloadBrowse', () => {
     expect(asked(r.fetch)).toEqual([':latest']);
   });
 
+  it('starts loading the first 12 covers of the opening results, through the image relay', async () => {
+    const res = Array.from({ length: 15 }, (_, i) => ({ ...hit(`S${i}`), cover: i === 1 ? '' : `https://uploads.mangadex.org/covers/m/${i}.jpg.256.jpg` }));
+    const all = [null, ...GENRES.map((g) => g.id)].flatMap((t) => [`browse:${t ?? ''}:follows`, `browse:${t ?? ''}:latest`]);
+    const r = await start(storage(all.map((k) => [k, { at: Date.now(), res }])));
+    const srcs: string[] = [];
+    vi.stubGlobal(
+      'Image',
+      class {
+        set src(v: string) {
+          srcs.push(v);
+        }
+      },
+    );
+    r.preloadBrowse(null, 'follows');
+    await new Promise((d) => setTimeout(d, 20));
+    expect(r.fetch).not.toHaveBeenCalled();
+    expect(srcs).toEqual(res.slice(0, 12).flatMap((o) => (o.cover ? [`/api/mdimage?url=${encodeURIComponent(o.cover)}`] : [])));
+  });
+
   it('stops at the first failure and keeps the older results', async () => {
     const r = await start(storage([['browse::latest', { at: Date.now() - 2 * 60 * MIN, res: [hit('A')] }]]), () => new Response('', { status: 429 }));
     r.preloadBrowse(null, 'latest');

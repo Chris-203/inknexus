@@ -1,4 +1,5 @@
-import { saveData } from './preload';
+import { imageSrc } from './api';
+import { saveData, warm } from './preload';
 import { isObj, readJson, writeJson } from './storage';
 import type { SearchResult } from './types';
 import { alNames, info, trending } from '../sources/anilist';
@@ -133,11 +134,19 @@ export function loadSearch(term: string): Promise<SearchResult[]> {
   return load(searchKey(term), () => search(term));
 }
 
+/** How many covers of the results the Search tab opens on load with My Series: about a screen of them. */
+const WARM = 12;
+
+/** Start loading the first covers of `res`, so they are on the device, kept by public/sw.js, when the Search tab opens. */
+function warmCovers(res: SearchResult[]) {
+  for (const o of res.slice(0, WARM)) if (o.cover) void warm(imageSrc(o.cover));
+}
+
 /**
- * Load the browse results the Search tab opens on unless they are fresh, then every other genre and order missing from
- * the device, one at a time, so switching between them never waits. Trending, which takes a MangaDex lookup per series,
- * loads only when opened. None on slow or data-saving connections. The first
- * failure stops the queue and is left for the Search tab, which loads and reports it again.
+ * Load the browse results the Search tab opens on unless they are fresh, and the first of their covers, then every other
+ * genre and order missing from the device, one at a time, so switching between them never waits. Trending, which takes a
+ * MangaDex lookup per series, loads only when opened. None on slow or data-saving connections. The first failure stops
+ * the queue and is left for the Search tab, which loads and reports it again.
  */
 export function preloadBrowse(tag: string | null, sort: Sort) {
   if (saveData()) return;
@@ -145,6 +154,7 @@ export function preloadBrowse(tag: string | null, sort: Sort) {
   void (async () => {
     try {
       if (!isFresh(browseKey(tag, sort))) await loadBrowse(tag, sort);
+      warmCovers(savedResults(browseKey(tag, sort)) ?? []);
       for (const [t, s] of all) if (!savedResults(browseKey(t, s))) await loadBrowse(t, s);
     } catch {
       // Opening that genre loads it again and says what failed.

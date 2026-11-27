@@ -50,8 +50,8 @@ Run the app locally with `vercel dev`, which also serves `/api/mangadex`. `npm r
 - `assets/`: cover art (`cover.svg` is the source, `cover.png` is rendered from it)
 - `scripts/pr-media.mjs`: screenshots and GIFs for PR bodies (`open()`, `gif()`), with Playwright driving the installed Chrome, or WebKit as an iPhone 16 Pro Max with `{ browser: 'webkit' }`. Not part of the app or the build
 - `scripts/mobile-check.mjs`: `npm run mobile-check` opens each main screen in WebKit as an iPhone 16 Pro Max and checks the Mobile first rules, with screenshots in the git-ignored `mobile-check/` (usage at its top). Not part of the app, the build or `npm test`
-- `public/`: icons, and the Latin font files with their licenses in `public/fonts/`, copied as-is into the build; `public/sw.js` is the service worker that opens the app without a connection and serves saved chapters and My Series covers from Cache Storage
-- `vercel.json`: builds with Vite into `dist/`, and caches `/fonts/` for a year so text never starts in a fallback font on launch. A changed font file needs a new name, also in its `index.html` preload
+- `public/`: icons, and the Latin font files with their licenses in `public/fonts/`, copied as-is into the build; `public/sw.js` is the service worker that opens the app without a connection and serves saved chapters and covers from Cache Storage
+- `vercel.json`: builds with Vite into `dist/`, and caches `/fonts/` for a year so text never starts in a fallback font on launch, and the hashed build files in `/assets/` so a launch does not ask for them again. A changed font file needs a new name, also in its `index.html` preload
 
 Library data uses the field names in `src/lib/types.ts`. They match what is already saved in people's browsers, so do not rename them without a migration.
 
