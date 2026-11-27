@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { AppContext, type AppApi, type SearchState, type View } from './context';
 import { ImportSheet } from './components/ImportSheet';
+import { TabBar } from './components/TabBar';
 import { movedTo } from './lib/deviceSync';
 import { chaptersDiffer, mergeImport, planImport, type Duplicate } from './lib/importBackup';
 import { showsReadingUpdates } from './lib/readingUpdates';
@@ -180,25 +181,7 @@ export function App() {
         {x && view.name === 'reader' && <Reader key={`${x.id}:${view.n}`} x={x} n={view.n} />}
         {x && view.name === 'frame' && <Frame key={`${x.id}:${view.i}:${view.url}`} x={x} view={view} />}
       </div>
-      <nav id="nav" hidden={full || info}>
-        <button aria-current={tab === 'library' || undefined} onClick={() => view.name !== 'library' && navigate({ name: 'library' })}>
-          {/* a comic book: cover, spine, and a speech bubble */}
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="4" y="2.5" width="16" height="19" rx="2" />
-            <path d="M8 2.5v19" />
-            <path d="M14 6.5c2.2 0 3.5 1.3 3.5 3s-1.3 3-3.5 3c-.4 0-.8 0-1.2-.1L11 13.5l.4-2c-.6-.5-.9-1.2-.9-2 0-1.7 1.3-3 3.5-3z" />
-          </svg>
-          My Series
-        </button>
-        <button aria-current={tab === 'search' || undefined} onClick={() => view.name !== 'search' && navigate({ name: 'search' })}>
-          {/* a compass */}
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <path d="m15.5 8.5-2 5-5 2 2-5z" />
-          </svg>
-          Browse
-        </button>
-      </nav>
+      <TabBar tab={tab} hidden={full || info} go={(t) => view.name !== t && navigate({ name: t })} />
       <div id="toast" role="status" className={message.on ? 'on' : ''}>
         {message.text}
       </div>
